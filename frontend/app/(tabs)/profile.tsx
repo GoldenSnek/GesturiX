@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const Settings = () => {
+const Profile = () => {
     const insets = useSafeAreaInsets();
 
     const [isAudioOutputEnabled, setAudioOutputEnabled] = useState(false);
@@ -173,4 +173,4 @@ const Settings = () => {
     );
 }
 
-export default Settings;
+export default Profile;

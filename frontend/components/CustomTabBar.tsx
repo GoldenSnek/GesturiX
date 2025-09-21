@@ -4,14 +4,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 // Define the type for our tab names to prevent implicit 'any' type errors
-type TabName = 'translate' | 'compose' | 'learn' | 'settings';
+type TabName = 'translate' | 'compose' | 'learn' | 'profile';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View 
-      className="flex-row bg-white border-t border-gray-200" 
+      className="flex-row bg- border-t border-gray-200" 
       style={{ paddingBottom: insets.bottom }}
     >
       {state.routes.map((route, index) => {
@@ -24,7 +24,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             'translate': require('../assets/images/Translate-icon.png'),
             'compose': require('../assets/images/Compose-icon.png'),
             'learn': require('../assets/images/Learn-icon.png'),
-            'settings': require('../assets/images/Settings-icon.png'),
+            'profile': require('../assets/images/Profile-icon.png'),
         }[route.name as TabName] || null;
 
         const handlePress = () => {

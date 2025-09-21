@@ -11,8 +11,13 @@ module.exports = {
         accent: '#FF6B00',
         highlight: '#FFAB7B',
         neutral: '#A8A8A8',
+        darkbg: '#1A1A1A',
+        darksurface: '#333333',
+        darkhover: '#444444',
+        lighthover: '#EBEBEB',
       }
     },
   },
   plugins: [],
+  darkMode: 'class',
 }

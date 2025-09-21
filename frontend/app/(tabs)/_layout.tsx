@@ -24,8 +24,8 @@ const _layout = () => {
         options={{ title: 'Learn', headerShown: false}}
         />
         <Tabs.Screen
-        name="settings"
-        options={{ title: 'Settings', headerShown: false}}
+        name="profile"
+        options={{ title: 'Profile', headerShown: false}}
         />
     </Tabs>
   ) 
