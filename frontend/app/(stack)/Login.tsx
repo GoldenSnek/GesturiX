@@ -1,11 +1,73 @@
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ImageBackground } from 'react-native';
-import React from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ImageBackground, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
 
 const Login = () => {
-  const handleLogin = () => {
-    // Navigate to the main tabs screen
-    router.replace('/(tabs)/translate');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // 🔹 Handle Login
+  const handleLogin = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      Alert.alert('Error', 'Please fill in both fields');
+      return;
+    }
+
+    console.log('Attempting login with:', cleanEmail);
+
+    // 🚀 Attempt to sign in directly (no email verification)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: cleanPassword,
+    });
+
+    if (error) {
+      console.log('Login error:', error);
+      Alert.alert('Login Failed', error.message);
+      return;
+    }
+
+    const user = data?.user;
+    if (!user) {
+      Alert.alert('Error', 'No user data returned from Supabase.');
+      return;
+    }
+
+    console.log('User logged in:', user.email);
+
+    // 🧱 Ensure profile exists (auto-create if missing)
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking profile:', checkError);
+    }
+
+    if (!existingProfile) {
+      console.log('No profile found — creating new profile...');
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: user.id,
+        email: user.email,
+        display_name: '',
+      });
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+      } else {
+        console.log('Profile created successfully');
+      }
+    }
+
+    // ✅ Direct login success
+    Alert.alert('Success', 'Login successful!');
+    router.replace('/(tabs)/translate'); // make sure this route exists
   };
 
   return (
@@ -14,26 +76,29 @@ const Login = () => {
       className="flex-1 justify-center items-center p-8"
       resizeMode="cover"
     >
-      {/* Semi-transparent overlay to make text more readable */}
       <View className="absolute inset-0 bg-black opacity-40" />
-      
-      {/* Login Form Container */}
+
       <View className="relative w-full max-w-sm p-8 rounded-3xl">
         <Text className="text-4xl font-bold text-black mb-10 text-center">Welcome Back</Text>
-        
-        <TextInput 
+
+        <TextInput
           className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
           placeholder="Email"
           placeholderTextColor="#444444"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
         />
-        <TextInput 
+        <TextInput
           className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
           placeholder="Password"
           placeholderTextColor="#444444"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleLogin}
           className="w-full bg-accent rounded-full py-4 items-center mt-4"
         >

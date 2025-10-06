@@ -9,6 +9,6 @@ const LearnStack = () => {
       <Stack.Screen name="Phrases" options={{ title: 'Phrases' }} />
     </Stack>
   );
-};
+}; 
 
 export default LearnStack;
