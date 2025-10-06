@@ -1,13 +1,22 @@
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ImageBackground, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  TextInput,
+  ImageBackground,
+  Alert,
+} from 'react-native';
 import React, { useState } from 'react';
 import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  // 🔹 Handle Login
   const handleLogin = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
@@ -19,7 +28,6 @@ const Login = () => {
 
     console.log('Attempting login with:', cleanEmail);
 
-    // 🚀 Attempt to sign in directly (no email verification)
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: cleanPassword,
@@ -39,16 +47,13 @@ const Login = () => {
 
     console.log('User logged in:', user.email);
 
-    // 🧱 Ensure profile exists (auto-create if missing)
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (checkError) {
-      console.error('Error checking profile:', checkError);
-    }
+    if (checkError) console.error('Error checking profile:', checkError);
 
     if (!existingProfile) {
       console.log('No profile found — creating new profile...');
@@ -57,17 +62,12 @@ const Login = () => {
         email: user.email,
         display_name: '',
       });
-
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-      } else {
-        console.log('Profile created successfully');
-      }
+      if (insertError) console.error('Error creating profile:', insertError);
+      else console.log('Profile created successfully');
     }
 
-    // ✅ Direct login success
     Alert.alert('Success', 'Login successful!');
-    router.replace('/(tabs)/translate'); // make sure this route exists
+    router.replace('/(tabs)/translate');
   };
 
   return (
@@ -78,8 +78,10 @@ const Login = () => {
     >
       <View className="absolute inset-0 bg-black opacity-40" />
 
-      <View className="relative w-full max-w-sm p-8 rounded-3xl">
-        <Text className="text-4xl font-bold text-black mb-10 text-center">Welcome Back</Text>
+      <View className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80">
+        <Text className="text-4xl font-bold text-black mb-10 text-center">
+          Welcome Back
+        </Text>
 
         <TextInput
           className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
@@ -89,14 +91,28 @@ const Login = () => {
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
-          placeholder="Password"
-          placeholderTextColor="#444444"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+
+        {/* Password input with toggle */}
+        <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
+          <TextInput
+            className="flex-1 p-4 text-black text-lg font-bold"
+            placeholder="Password"
+            placeholderTextColor="#444444"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={{ paddingRight: 16 }}
+          >
+            {showPassword ? (
+              <EyeOff color="#0D47A1" size={22} />
+            ) : (
+              <Eye color="#0D47A1" size={22} />
+            )}
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           onPress={handleLogin}

@@ -1,148 +1,299 @@
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ImageBackground, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  TextInput,
+  ImageBackground,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
+import uuid from 'react-native-uuid';
+import { Eye, EyeOff, Camera } from 'lucide-react-native'; // <— icons
 
-// ✅ Redirect URL for Expo Go (used for Google OAuth)
+global.Buffer = global.Buffer || Buffer;
 const redirectUrl = AuthSession.makeRedirectUri();
 
 const SignUp: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // 🔹 Email + Password Sign Up (Instant Account Creation)
-  const handleSignUp = async (): Promise<void> => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+  // 🔹 Pick profile image from gallery
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+    });
+    if (!result.canceled) setImage(result.assets[0].uri);
+  };
 
-    if (!cleanEmail || !cleanPassword) {
-      Alert.alert('Error', 'Please fill in both fields');
-      return;
-    }
+  // 🔹 Upload avatar to Supabase Storage
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
 
-    console.log('Checking for existing account:', cleanEmail);
+const uploadAvatar = async (fileUri: string, userId: string) => {
+  try {
+    const fileExt = fileUri.split('.').pop();
+    const fileName = `${uuid.v4()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
 
-    // 🔍 Check if email already exists in 'profiles' table
-    const { data: existingUser, error: checkError } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const fileBytes = Buffer.from(base64, 'base64');
 
-    if (checkError) {
-      console.error('Error checking existing email:', checkError);
-      Alert.alert('Error', 'Something went wrong. Please try again later.');
-      return;
-    }
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, fileBytes, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
 
-    if (existingUser) {
-      Alert.alert('Error', 'An account with this email already exists.');
-      return;
-    }
+    if (uploadError) throw uploadError;
 
-    console.log('Attempting instant signup with:', cleanEmail);
+    return filePath; // store relative path
+  } catch (err: any) {
+    console.error('Upload error:', err.message);
+    return null;
+  }
+};
 
-    // 🚀 Instant account creation (no email verification)
+
+
+  // 🔹 Sign Up Logic
+  // 🔹 Sign Up Logic
+const handleSignUp = async () => {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
+  const cleanUsername = username.trim();
+
+  if (!cleanEmail || !cleanPassword || !cleanUsername) {
+    Alert.alert('Error', 'Please fill in all required fields.');
+    return;
+  }
+  if (cleanUsername.length < 3) {
+    Alert.alert('Error', 'Username must be at least 3 characters.');
+    return;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleanEmail)) {
+    Alert.alert('Error', 'Please enter a valid email address.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    console.log('Creating user...');
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password: cleanPassword,
     });
 
     if (error) {
-      console.log('Supabase signup error:', error);
+      console.error('Supabase signup error:', error);
       Alert.alert('Sign Up Failed', error.message);
+      setLoading(false);
       return;
     }
 
-    // ✅ Directly log in user
+    const user = data.user;
+    if (!user) {
+      setLoading(false);
+      Alert.alert('Error', 'User creation failed.');
+      return;
+    }
+
+    // 🧱 Upload avatar if chosen
+    let photoUrl = null;
+    if (image) photoUrl = await uploadAvatar(image, user.id);
+
+    // 🧩 UPSERT profile (this fixes the duplicate key error)
+    const { error: upsertError } = await supabase.from('profiles').upsert({
+      id: user.id,
+      username: cleanUsername,
+      email: cleanEmail,
+      photo_url: photoUrl,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (upsertError) {
+      console.error('Profile upsert error:', upsertError);
+      Alert.alert('Error', 'Failed to save profile info.');
+      setLoading(false);
+      return;
+    }
+
+    // 🔹 Automatically sign in user after signup
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: cleanPassword,
     });
 
+    setLoading(false);
+
     if (loginError) {
-      console.error('Login after signup failed:', loginError);
-      Alert.alert('Error', 'Account created, but auto-login failed. Please log in manually.');
+      Alert.alert('Error', 'Account created, but login failed. Please log in manually.');
       router.replace('/(stack)/Login');
       return;
     }
 
     Alert.alert('Success', 'Account created successfully!');
     router.replace('/(stack)/LandingPage');
-// ✅ redirect to home or main screen
-  };
+  } catch (err: any) {
+    console.error('Signup process error:', err.message);
+    Alert.alert('Error', 'An unexpected error occurred.');
+    setLoading(false);
+  }
+};
 
-  // 🔹 Google Sign Up
-  const handleGoogleSignUp = async (): Promise<void> => {
+
+  const handleGoogleSignUp = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: redirectUrl },
     });
-
-    if (error) {
-      Alert.alert('Google Sign Up Failed', error.message);
-    }
+    if (error) Alert.alert('Google Sign Up Failed', error.message);
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/images/LoginSignUpBG.png')}
-      className="flex-1 justify-center items-center p-8"
-      resizeMode="cover"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1"
     >
-      <View className="absolute inset-0 bg-black opacity-40" />
+      <ImageBackground
+        source={require('../../assets/images/LoginSignUpBG.png')}
+        className="flex-1 justify-center items-center"
+        resizeMode="cover"
+      >
+        <View className="absolute inset-0 bg-black opacity-40" />
 
-      <View className="relative w-full max-w-sm p-8 rounded-3xl">
-        <Text className="text-4xl font-bold text-black mb-10 text-center">Create Account</Text>
-
-        <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
-          placeholder="Email"
-          placeholderTextColor="#444444"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-        <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
-          placeholder="Password"
-          placeholderTextColor="#444444"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        {/* Email Sign Up */}
-        <TouchableOpacity
-          onPress={handleSignUp}
-          className="w-full bg-accent rounded-full py-4 items-center mt-4"
+        <ScrollView
+          contentContainerStyle={{ padding: 24, paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
         >
-          <Text className="text-white text-lg font-bold">Sign Up</Text>
-        </TouchableOpacity>
+          <View className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80">
+            <Text className="text-4xl font-bold text-black mb-6 text-center">Create Account</Text>
 
-        {/* Google Sign Up */}
-        <TouchableOpacity
-          onPress={handleGoogleSignUp}
-          className="w-full bg-red-500 rounded-full py-4 items-center mt-4"
-        >
-          <Text className="text-white text-lg font-bold">Sign Up with Google</Text>
-        </TouchableOpacity>
+            {/* Profile Image Picker (Enhanced) */}
+            <TouchableOpacity
+              onPress={pickImage}
+              className="self-center mb-8 items-center justify-center"
+            >
+              <View
+                style={{
+                  width: 130,
+                  height: 130,
+                  borderRadius: 65,
+                  borderWidth: 3,
+                  borderColor: '#4DB6AC',
+                  backgroundColor: '#E0F2F1',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOpacity: 0.25,
+                  shadowRadius: 5,
+                  elevation: 5,
+                }}
+              >
+                {image ? (
+                  <Image
+                    source={{ uri: image }}
+                    style={{ width: 124, height: 124, borderRadius: 62 }}
+                  />
+                ) : (
+                  <>
+                    <Camera color="#0D47A1" size={32} />
+                    <Text className="text-accent font-bold mt-2">Add Photo</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
 
-        <View className="mt-6 flex-row items-center justify-center">
-          <Text className="text-black">Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>
-            <Text className="text-highlight font-bold">Log In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ImageBackground>
+            {/* Username */}
+            <TextInput
+              className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-bold bg-neutral"
+              placeholder="Username"
+              placeholderTextColor="#444444"
+              value={username}
+              onChangeText={setUsername}
+            />
+
+            {/* Email */}
+            <TextInput
+              className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-bold bg-neutral"
+              placeholder="Email"
+              placeholderTextColor="#444444"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+            />
+
+            {/* Password with Eye Toggle */}
+            <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
+              <TextInput
+                className="flex-1 p-4 text-black text-lg font-bold"
+                placeholder="Password"
+                placeholderTextColor="#444444"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={{ paddingRight: 16 }}
+              >
+                {showPassword ? (
+                  <EyeOff color="#0D47A1" size={22} />
+                ) : (
+                  <Eye color="#0D47A1" size={22} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Email Sign Up */}
+            <TouchableOpacity
+              onPress={handleSignUp}
+              disabled={loading}
+              className="w-full bg-accent rounded-full py-4 items-center mt-2"
+            >
+              <Text className="text-white text-lg font-bold">
+                {loading ? 'Creating Account...' : 'Sign Up'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Google Sign Up */}
+            <TouchableOpacity
+              onPress={handleGoogleSignUp}
+              className="w-full bg-red-500 rounded-full py-4 items-center mt-4"
+            >
+              <Text className="text-white text-lg font-bold">Sign Up with Google</Text>
+            </TouchableOpacity>
+
+            <View className="mt-6 flex-row items-center justify-center">
+              <Text className="text-black">Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>
+                <Text className="text-highlight font-bold">Log In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </ImageBackground>
+    </KeyboardAvoidingView>
   );
 };
 
