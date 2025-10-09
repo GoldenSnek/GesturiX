@@ -5,24 +5,42 @@ import {
   TouchableOpacity,
   TextInput,
   ImageBackground,
-  Alert,
+  Alert, // Keeping Alert import, but minimizing usage
 } from 'react-native';
 import React, { useState } from 'react';
 import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
+import Message, { MessageType } from '../../components/Message'; 
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // 👈 MESSAGE STATE
+  const [message, setMessage] = useState(''); 
+  const [messageType, setMessageType] = useState<MessageType>('error');
+
+  // 🔹 Helper functions
+  const showStatus = (msg: string, type: MessageType) => {
+    setMessage(msg);
+    setMessageType(type);
+    // Automatically clear the message after 5 seconds
+    setTimeout(() => setMessage(''), 5000); 
+  };
+
+  const showError = (msg: string) => showStatus(msg, 'error');
+  const showWarning = (msg: string) => showStatus(msg, 'warning');
+  const showSuccess = (msg: string) => showStatus(msg, 'success');
+
   const handleLogin = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
+    // 👈 Replaced Alert with showError
     if (!cleanEmail || !cleanPassword) {
-      Alert.alert('Error', 'Please fill in both fields');
+      showWarning('Please enter both email and password.');
       return;
     }
 
@@ -35,18 +53,22 @@ const Login = () => {
 
     if (error) {
       console.log('Login error:', error);
-      Alert.alert('Login Failed', error.message);
+      // 👈 Replaced Alert with showError
+      // Supabase often returns a specific error, e.g., "Invalid login credentials"
+      showError(error.message || 'Login Failed. Please check your credentials.');
       return;
     }
 
     const user = data?.user;
     if (!user) {
-      Alert.alert('Error', 'No user data returned from Supabase.');
+      // 👈 Replaced Alert with showError
+      showError('User session could not be established.');
       return;
     }
 
     console.log('User logged in:', user.email);
 
+    // --- Profile Check Logic (No changes needed for success) ---
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
@@ -56,6 +78,8 @@ const Login = () => {
     if (checkError) console.error('Error checking profile:', checkError);
 
     if (!existingProfile) {
+      // This case should ideally not happen for login, but if it does, 
+      // we can use a warning or a technical error message.
       console.log('No profile found — creating new profile...');
       const { error: insertError } = await supabase.from('profiles').insert({
         id: user.id,
@@ -66,7 +90,8 @@ const Login = () => {
       else console.log('Profile created successfully');
     }
 
-    Alert.alert('Success', 'Login successful!');
+    // 👈 Replaced Alert with showSuccess
+    showSuccess('Login successful!');
     router.replace('/(tabs)/translate');
   };
 
@@ -77,6 +102,13 @@ const Login = () => {
       resizeMode="cover"
     >
       <View className="absolute inset-0 bg-black opacity-40" />
+
+      {/* 👈 RENDER THE MESSAGE COMPONENT */}
+      <Message 
+        message={message} 
+        type={messageType}
+        onClose={() => setMessage('')} 
+      />
 
       <View className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80">
         <Text className="text-4xl font-bold text-black mb-10 text-center">
