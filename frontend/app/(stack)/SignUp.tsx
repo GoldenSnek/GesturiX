@@ -43,124 +43,104 @@ const SignUp: React.FC = () => {
   };
 
   // 🔹 Upload avatar to Supabase Storage
+  const uploadAvatar = async (fileUri: string, userId: string) => {
+    try {
+      const fileExt = fileUri.split('.').pop();
+      const fileName = `${uuid.v4()}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
 
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const fileBytes = Buffer.from(base64, 'base64');
 
-const uploadAvatar = async (fileUri: string, userId: string) => {
-  try {
-    const fileExt = fileUri.split('.').pop();
-    const fileName = `${uuid.v4()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, fileBytes, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
 
-    const base64 = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const fileBytes = Buffer.from(base64, 'base64');
+      if (uploadError) throw uploadError;
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, fileBytes, {
-        contentType: 'image/jpeg',
-        upsert: true,
+      return filePath; // store relative path
+    } catch (err: any) {
+      console.error('Upload error:', err.message);
+      return null;
+    }
+  };
+
+  // 🔹 Sign Up Logic (let DB trigger create profile)
+  const handleSignUp = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const cleanUsername = username.trim();
+
+    if (!cleanEmail || !cleanPassword || !cleanUsername) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+    if (cleanUsername.length < 3) {
+      Alert.alert('Error', 'Username must be at least 3 characters.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      Alert.alert('Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      console.log('Creating user...');
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        options: {
+          data: {
+            username: cleanUsername,
+          }
+        }
       });
 
-    if (uploadError) throw uploadError;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        Alert.alert('Sign Up Failed', error.message);
+        setLoading(false);
+        return;
+      }
 
-    return filePath; // store relative path
-  } catch (err: any) {
-    console.error('Upload error:', err.message);
-    return null;
-  }
-};
+      const user = data.user;
+      if (!user) {
+        setLoading(false);
+        Alert.alert('Error', 'User creation failed.');
+        return;
+      }
 
+      // 🧱 Upload avatar if chosen (wait for auto profile creation, then update)
+      if (image) {
+        let photoUrl = await uploadAvatar(image, user.id);
+        if (photoUrl) {
+          // Update the profile with photo_url (allowed by RLS after profile exists)
+          await supabase.from('profiles').update({
+            photo_url: photoUrl,
+            updated_at: new Date().toISOString(),
+          }).eq('id', user.id);
+        }
+      }
 
-
-  // 🔹 Sign Up Logic
-  // 🔹 Sign Up Logic
-const handleSignUp = async () => {
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanPassword = password.trim();
-  const cleanUsername = username.trim();
-
-  if (!cleanEmail || !cleanPassword || !cleanUsername) {
-    Alert.alert('Error', 'Please fill in all required fields.');
-    return;
-  }
-  if (cleanUsername.length < 3) {
-    Alert.alert('Error', 'Username must be at least 3 characters.');
-    return;
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(cleanEmail)) {
-    Alert.alert('Error', 'Please enter a valid email address.');
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    console.log('Creating user...');
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: cleanPassword,
-    });
-
-    if (error) {
-      console.error('Supabase signup error:', error);
-      Alert.alert('Sign Up Failed', error.message);
       setLoading(false);
-      return;
-    }
 
-    const user = data.user;
-    if (!user) {
+      // Replace this with your app's desired post-signup flow (e.g. verification, login prompt, etc.)
+      Alert.alert('Success', 'Account created successfully!');
+      router.replace('/(stack)/LandingPage');
+    } catch (err: any) {
+      console.error('Signup process error:', err.message);
+      Alert.alert('Error', 'An unexpected error occurred.');
       setLoading(false);
-      Alert.alert('Error', 'User creation failed.');
-      return;
     }
-
-    // 🧱 Upload avatar if chosen
-    let photoUrl = null;
-    if (image) photoUrl = await uploadAvatar(image, user.id);
-
-    // 🧩 UPSERT profile (this fixes the duplicate key error)
-    const { error: upsertError } = await supabase.from('profiles').upsert({
-      id: user.id,
-      username: cleanUsername,
-      email: cleanEmail,
-      photo_url: photoUrl,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (upsertError) {
-      console.error('Profile upsert error:', upsertError);
-      Alert.alert('Error', 'Failed to save profile info.');
-      setLoading(false);
-      return;
-    }
-
-    // 🔹 Automatically sign in user after signup
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password: cleanPassword,
-    });
-
-    setLoading(false);
-
-    if (loginError) {
-      Alert.alert('Error', 'Account created, but login failed. Please log in manually.');
-      router.replace('/(stack)/Login');
-      return;
-    }
-
-    Alert.alert('Success', 'Account created successfully!');
-    router.replace('/(stack)/LandingPage');
-  } catch (err: any) {
-    console.error('Signup process error:', err.message);
-    Alert.alert('Error', 'An unexpected error occurred.');
-    setLoading(false);
-  }
-};
-
+  };
 
   const handleGoogleSignUp = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
