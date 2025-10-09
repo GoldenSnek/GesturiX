@@ -16,10 +16,11 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
-    "@supabase/supabase-js": "^2.57.4",
+    "@supabase/supabase-js": "^2.74.0",
     "expo": "~53.0.22",
     "expo-auth-session": "~6.2.1",
     "expo-blur": "~14.1.5",
+    "expo-camera": "~16.1.11",
     "expo-constants": "~17.1.7",
     "expo-crypto": "^15.0.7",
     "expo-file-system": "~18.1.11",
@@ -50,8 +51,7 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "tailwindcss": "^3.4.17",
-    "uuid": "^13.0.0",
-    "expo-camera": "~16.1.11"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
