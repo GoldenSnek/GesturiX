@@ -10,7 +10,7 @@ import {
 import React, { useState } from 'react';
 import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, ChevronLeft } from 'lucide-react-native'; // 👈 IMPORT ChevronLeft
 import Message, { MessageType } from '../../components/Message'; 
 
 const Login = () => {
@@ -95,6 +95,16 @@ const Login = () => {
     router.replace('/(tabs)/translate');
   };
 
+  // 🆕 HANDLER FOR GOING BACK
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+        router.back();
+    } else {
+        // Fallback or navigate to a default screen if there's nowhere to go back to
+        router.replace('/(stack)/SignUp'); 
+    }
+  };
+
   return (
     <ImageBackground
       source={require('../../assets/images/LoginSignUpBG.png')}
@@ -102,6 +112,15 @@ const Login = () => {
       resizeMode="cover"
     >
       <View className="absolute inset-0 bg-black opacity-40" />
+
+      {/* 🆕 GO BACK BUTTON */}
+      <TouchableOpacity
+        onPress={handleGoBack}
+        className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10" // Use z-10 to ensure it's above other elements
+      >
+        <ChevronLeft color="#1A1A1A" size={28} />
+      </TouchableOpacity>
+      {/* ---------------- */}
 
       {/* 👈 RENDER THE MESSAGE COMPONENT */}
       <Message 

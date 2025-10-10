@@ -3,18 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'reac
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import AppHeader from '../../components/AppHeader'; 
 
 const Compose = () => {
     const insets = useSafeAreaInsets();
     return (
         <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
-            {/* Header */}
-            <LinearGradient
-                colors={['#FF6B00', '#FFAB7B']}
-                className="items-center py-5"
-            >
-                <Text className="text-primary text-3xl font-bold">GesturiX</Text>
-            </LinearGradient>
+            
+            <AppHeader /> 
 
             <ScrollView className="flex-1 p-4">
                 {/* Text Input Section */}

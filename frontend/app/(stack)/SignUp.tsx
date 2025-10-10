@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import uuid from 'react-native-uuid';
-import { Eye, EyeOff, Camera } from 'lucide-react-native';
+import { Eye, EyeOff, Camera, ChevronLeft } from 'lucide-react-native';
 
 // 👈 UPDATED IMPORT: Use Message.tsx and import the MessageType
 import Message, { MessageType } from '../../components/Message'; 
@@ -154,6 +154,16 @@ const SignUp: React.FC = () => {
     if (error) showError(`Google Sign Up Failed: ${error.message}`);
   };
 
+  // 🆕 HANDLER FOR GOING BACK
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+        router.back();
+    } else {
+        // Fallback or navigate to a default screen if there's nowhere to go back to
+        router.replace('/(stack)/SignUp'); 
+    }
+  };
+
   // 🔹 Render Block
   return (
     <ImageBackground
@@ -162,6 +172,15 @@ const SignUp: React.FC = () => {
       resizeMode="cover"
     >
       <View className="absolute inset-0 bg-black opacity-40" />
+
+      {/* 🆕 GO BACK BUTTON */}
+      <TouchableOpacity
+        onPress={handleGoBack}
+        className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10" // Use z-10 to ensure it's above other elements
+      >
+        <ChevronLeft color="#1A1A1A" size={28} />
+      </TouchableOpacity>
+      {/* ---------------- */}
 
       {/* 👈 RENDER THE NEW MESSAGE COMPONENT */}
       <Message 

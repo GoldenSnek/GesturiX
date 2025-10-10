@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
+import AppHeader from '../../components/AppHeader'; 
 
 export default function Translate() {
     const [isCameraActive, setIsCameraActive] = useState(false);
@@ -109,16 +110,10 @@ export default function Translate() {
         <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
             <StatusBar barStyle="light-content" />
             
-            {/* Header */}
-            <LinearGradient
-                colors={['#FF6B00', '#FFAB7B']}
-                className="items-center py-5"
-            >
-                <Text className="text-primary text-3xl font-bold">GesturiX</Text>
-            </LinearGradient>
+            <AppHeader /> 
 
             {/* Camera Viewfinder */}
-            <View className="flex-1 px-5 pt-5 items-center">
+            <View className="px-5 pt-5 items-center">
                 <View className="w-full aspect-[4/3] bg-primary rounded-2xl overflow-hidden mb-5 relative">
                     {isCameraActive && (
                         <CameraView 
@@ -204,7 +199,7 @@ export default function Translate() {
             </View>
 
             {/* Translation Output */}
-            <View className="px-5 pb-16">
+            <View className="px-5 pb-5">
                 <Text className="text-base font-semibold text-primary mb-3">Output:</Text>
                 <View className="bg-white rounded-xl p-5 min-h-[80px] border border-neutral/20 shadow-sm">
                     <Text className="text-lg text-primary leading-6 text-center">

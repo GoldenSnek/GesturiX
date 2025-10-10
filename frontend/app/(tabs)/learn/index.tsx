@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import AppHeader from '../../../components/AppHeader'; 
 
 // Data for progress and categories
 const progressData = [
@@ -58,13 +59,7 @@ const Learn = () => {
 
   return (
     <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#FF6B00', '#FFAB7B']}
-        className="items-center py-5"
-      >
-        <Text className="text-primary text-3xl font-bold">GesturiX</Text>
-      </LinearGradient>
+      <AppHeader /> 
 
       <ScrollView className="flex-1 px-4 py-6">
         {/* Your Progress Section */}
@@ -85,10 +80,10 @@ const Learn = () => {
             <TouchableOpacity 
               key={category.id} 
               className="bg-orange-500 rounded-xl p-5 mb-4 shadow-md flex-row items-center"
-              onPress={() => router.push(`/(tabs)/learn/${category.id}`)}
+              onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
             >
               <View className="w-16 h-16 rounded-full bg-white/30 items-center justify-center mr-4">
-                <MaterialIcons name={category.icon} size={36} color="primary" />
+                <MaterialIcons name={category.icon as any} size={36} color="primary" />
               </View>
               <View className="flex-1">
                 <Text className="text-2xl font-bold text-primary">{category.title}</Text>
@@ -107,7 +102,7 @@ const Learn = () => {
         <View className="flex-row flex-wrap justify-between">
           {quickActionsData.map((action) => (
             <TouchableOpacity key={action.id} className="w-[48%] bg-gray-100 rounded-xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-gray-200">
-              <MaterialIcons name={action.icon} size={30} color="#FF6B00" className="mb-2" />
+              <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" className="mb-2" />
               <Text className="text-base font-semibold text-gray-800 text-center">{action.title}</Text>
               <Text className="text-xs text-gray-500 text-center mt-1">{action.subtitle}</Text>
             </TouchableOpacity>
