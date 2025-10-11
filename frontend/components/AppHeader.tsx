@@ -24,19 +24,11 @@ const AppHeader = () => {
                 />
             </LinearGradient>
 
-<LinearGradient
-    colors={[
-        // 1. Starts fully opaque (Alpha = 1.0)
-        'rgba(255, 171, 123, 1.0)', 
-        
-        // 2. Ends fully transparent (Alpha = 0.0)
-        'rgba(255, 171, 123, 0.0)' 
-    ]} 
-    // This tells the gradient to fade vertically from the top (y: 0.0) to the bottom (y: 1.0)
-    start={{ x: 0.5, y: 0.0 }} 
-    end={{ x: 0.5, y: 1.0 }} 
-    className="items-center py-2"
-/>
+            <LinearGradient
+                // The colors array defines the gradient stops:
+                colors={['#FFAB7B', '#FFAB7B00']}
+                className="items-center py-2"
+            />
         </View>
     );
 };

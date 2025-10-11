@@ -4,10 +4,13 @@ torchvision>=0.15.0
 torchaudio>=2.0.0
 mediapipe>=0.10.0
 numpy>=1.23.0
+opencv-python>=4.7.0
+fastapi
+uvicorn
+python-multipart
 matplotlib>=3.7.0
 scikit-learn>=1.2.0
 datasets>=2.10.0
-opencv-python>=4.7.0
 #make a .env
 #gigamit nako kay py 3.11
 #python -m venv venv
