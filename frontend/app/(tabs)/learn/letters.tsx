@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppHeaderLearn from '../../../components/AppHeaderLearn';
 
 // Dummy data for letter selection, 'completed' status, and progress
 const alphabetData = [
@@ -41,27 +42,13 @@ const Letters = () => {
 
   return (
     <View className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
-      {/* Header with back button */}
-      <LinearGradient
-        colors={['#FF6B00', '#FFAB7B']}
-        className="items-center py-5 flex-row justify-between px-4"
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color="primary" />
-        </TouchableOpacity>
-        <View>
-          <Text className="text-primary text-xl font-bold">Learn Letters</Text>
-          <Text className="text-primary text-sm mt-1">{completedCount}/26 completed</Text>
-        </View>
-        <View style={{ width: 24 }} />
-      </LinearGradient>
-      
-      {/* Progress Bar */}
-      <View className="w-full h-2 bg-white rounded-full">
-        <View style={{ width: `${(completedCount / 26) * 100}%` }} className="h-full bg-[#FF6B00] rounded-full" />
-      </View>
+      <AppHeaderLearn 
+      title="Learn Letters"
+      completedCount={completedCount}
+      totalCount={26}
+      />
 
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4" contentContainerStyle={{paddingBottom: 150,}}>
         {/* Letter Selection Grid */}
         <Text className="text-lg font-bold text-gray-800 mb-4">Select a Letter</Text>
         <View className="flex-row flex-wrap justify-between mb-1">

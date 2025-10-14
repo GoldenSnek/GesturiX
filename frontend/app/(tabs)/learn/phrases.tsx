@@ -4,9 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import AppHeaderLearn from '../../../components/AppHeaderLearn';
 
-// Dummy data for phrases categorized by type
-const phraseData = {
+// ✅ Define category key types
+type CategoryKey = 'greetings' | 'courtesy' | 'questions';
+
+// ✅ Define phrase item structure
+interface PhraseItem {
+  phrase: string;
+  completed: boolean;
+}
+
+// ✅ Strictly type the phraseData object
+const phraseData: Record<CategoryKey, PhraseItem[]> = {
   greetings: [
     { phrase: 'Hello', completed: true },
     { phrase: 'Good Morning', completed: true },
@@ -18,7 +28,7 @@ const phraseData = {
   ],
   courtesy: [
     { phrase: 'Thank you', completed: false },
-    { phrase: 'You\'re welcome', completed: false },
+    { phrase: "You're welcome", completed: false },
     { phrase: 'Please', completed: false },
     { phrase: 'Excuse me', completed: false },
   ],
@@ -32,7 +42,7 @@ const phraseData = {
 
 const Phrases = () => {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState('greetings');
+  const [activeCategory, setActiveCategory] = useState<CategoryKey>('greetings'); // ✅ Typed
   const [activePhrase, setActivePhrase] = useState('Hello');
 
   const allPhrasesCount = Object.values(phraseData).flat().length;
@@ -40,34 +50,21 @@ const Phrases = () => {
 
   return (
     <View className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
-      {/* Header with back button */}
-      <LinearGradient
-        colors={['#FF6B00', '#FFAB7B']}
-        className="items-center py-5 flex-row justify-between px-4"
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color="primary" />
-        </TouchableOpacity>
-        <View>
-          <Text className="text-primary text-xl font-bold">Learn Phrases</Text>
-          <Text className="text-primary text-sm mt-1">{completedCount}/{allPhrasesCount} completed</Text>
-        </View>
-        <View style={{ width: 24 }} />
-      </LinearGradient>
-      
-      {/* Progress Bar */}
-      <View className="w-full h-2 bg-white rounded-full">
-        <View style={{ width: `${(completedCount / allPhrasesCount) * 100}%` }} className="h-full bg-[#FF6B00] rounded-full" />
-      </View>
+      <AppHeaderLearn 
+        title="Learn Phrases"
+        completedCount={completedCount}
+        totalCount={allPhrasesCount}
+      />
 
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 150 }}>
+        
         {/* Category Tabs */}
         <Text className="text-lg font-bold text-gray-800 mb-4">Choose Category</Text>
         <View className="flex-row justify-around mb-8 p-1 rounded-full bg-gray-200">
           {Object.keys(phraseData).map((category) => (
             <TouchableOpacity 
-              key={category} 
-              onPress={() => setActiveCategory(category)}
+              key={category}
+              onPress={() => setActiveCategory(category as CategoryKey)} // ✅ Cast safely
               className={`flex-1 items-center rounded-full py-2 ${activeCategory === category ? 'bg-[#FF6B00]' : ''}`}
             >
               <Text className={`font-bold ${activeCategory === category ? 'text-white' : 'text-gray-500'}`}>
@@ -78,7 +75,9 @@ const Phrases = () => {
         </View>
 
         {/* Phrase List */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">{activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} Phrases</Text>
+        <Text className="text-lg font-bold text-gray-800 mb-4">
+          {activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} Phrases
+        </Text>
         <View className="mb-8">
           {phraseData[activeCategory].map((item, index) => (
             <TouchableOpacity 
@@ -103,7 +102,10 @@ const Phrases = () => {
 
         {/* Practice Section */}
         <Text className="text-lg font-bold text-gray-800 mb-2">Phrase: {activePhrase}</Text>
-        <Text className="text-sm text-gray-500 mb-4">Practice this common phrase. Pay attention to facial expressions and hand movements for proper communication.</Text>
+        <Text className="text-sm text-gray-500 mb-4">
+          Practice this common phrase. Pay attention to facial expressions and hand movements for proper communication.
+        </Text>
+
         <View className="flex-row justify-between mb-4">
           <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
             <Text className="text-gray-600">Slow Motion</Text>

@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
     View, 
     Text, 
     TouchableOpacity, 
     StatusBar,
     ActivityIndicator,
+    PanResponder, // 👈 ADD THIS
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router'; // ✅
 import AppHeader from '../../components/AppHeader'; 
 
 export default function Translate() {
@@ -21,7 +22,21 @@ export default function Translate() {
     
     const [permission, requestPermission] = useCameraPermissions();
     const insets = useSafeAreaInsets();
-    
+    const router = useRouter(); // ✅ instead of navigation
+
+    const panResponder = useRef(
+    PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 10,
+        onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30) {
+            // 👈 Swipe LEFT → Go to Profile
+            router.push('/compose'); // ✅ use router.push()
+        }
+        },
+    })
+    ).current;
+
     useEffect(() => {
         if (!permission?.granted) {
             requestPermission();
@@ -29,18 +44,15 @@ export default function Translate() {
     }, []);
 
     useFocusEffect(
-    React.useCallback(() => {
-        // When the tab is focused, always start with camera off
-        setIsCameraActive(false);
-        setIsTranslating(false);
-        setTranslatedText('Camera Off. Tap to begin.');
-
-        // When leaving, also ensure camera is stopped
-        return () => {
-        setIsCameraActive(false);
-        setIsTranslating(false);
-        };
-    }, [])
+        React.useCallback(() => {
+            setIsCameraActive(false);
+            setIsTranslating(false);
+            setTranslatedText('Camera Off. Tap to begin.');
+            return () => {
+                setIsCameraActive(false);
+                setIsTranslating(false);
+            };
+        }, [])
     );
 
     const toggleTranslation = () => {
@@ -67,7 +79,6 @@ export default function Translate() {
         }
     };
 
-    // ✅ FIXED FLIP: no more flicker
     const flipCamera = () => {
         setFacing(prev => (prev === 'back' ? 'front' : 'back'));
     };
@@ -78,7 +89,6 @@ export default function Translate() {
         setTranslatedText('Camera Off. Tap to begin.');
     };
 
-    // --- Permission Check UI ---
     if (!permission) {
         return (
             <View className="flex-1 justify-center items-center bg-secondary">
@@ -107,7 +117,8 @@ export default function Translate() {
 
     // --- Main Screen UI ---
     return (
-        <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+        // 👇 Attach swipe gestures here
+        <View {...panResponder.panHandlers} className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
             <StatusBar barStyle="light-content" />
             
             <AppHeader /> 

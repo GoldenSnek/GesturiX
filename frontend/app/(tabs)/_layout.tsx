@@ -8,6 +8,7 @@ const _layout = () => {
     <Tabs
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
+        animation: 'shift',
         headerShown: false,
       }}
     >

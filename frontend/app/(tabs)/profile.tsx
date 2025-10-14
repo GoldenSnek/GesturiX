@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, AntDesign } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useRouter } from 'expo-router'; // ✅
 import { supabase } from '../../src/supabaseClient';
+import AppHeaderProfile from '../../components/AppHeaderProfile'; // ✅ new header
 
 // ✅ Updated TypeScript interface to include photo_url
 interface ProfileData {
@@ -42,6 +45,21 @@ const Profile = () => {
     daysStreak: 7,
     practiceHours: 12.5,
   };
+
+    const router = useRouter(); // ✅ instead of navigation
+
+    const panResponder = useRef(
+    PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 10,
+        onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 30) {
+            // 👈 Swipe RIGHT → Go to Compose
+            router.push('/learn'); // ✅
+        }
+        },
+    })
+    ).current;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -113,40 +131,11 @@ if (urlData?.publicUrl) {
   }
 
   return (
-    <View className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
+    <View {...panResponder.panHandlers} className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <LinearGradient
-        colors={['#FF6B00', '#FFAB7B']}
-        className="items-center py-2 px-4 flex-row justify-between"
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
+      <AppHeaderProfile />
 
-        <View className="flex-row items-center">
-          <Image
-            source={
-              photoUrl
-                ? { uri: photoUrl }
-                : require('../../assets/images/CatPFP.jpg')
-            }
-            className="w-20 h-20 rounded-full mr-4"
-          />
-          <View>
-            <Text className="text-white text-xl font-bold">
-              {profile.username || 'No Name'}
-            </Text>
-            <Text className="text-white text-sm">{profile.email}</Text>
-            <Text className="text-white text-sm">
-              Member since {new Date(profile.created_at).toLocaleDateString()}
-            </Text>
-          </View>
-        </View>
-
-        <View style={{ width: 24 }} />
-      </LinearGradient>
-
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4" contentContainerStyle={{paddingBottom: 150,}}>
         {/* Your Progress Section */}
         <Text className="text-xl font-bold text-gray-800 mb-4">Your Progress</Text>
         <View className="flex-row flex-wrap justify-between mb-8">

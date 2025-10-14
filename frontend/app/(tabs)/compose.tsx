@@ -1,14 +1,34 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, {useRef} from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, PanResponder, } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router'; // ✅
 import AppHeader from '../../components/AppHeader'; 
 
 const Compose = () => {
     const insets = useSafeAreaInsets();
+
+    const router = useRouter(); // ✅ instead of navigation
+
+    const panResponder = useRef(
+    PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 10,
+        onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30) {
+            // 👈 Swipe LEFT → Go to Profile
+            router.push('/learn'); // ✅ use router.push()
+        } else if (gestureState.dx > 30) {
+            // 👈 Swipe RIGHT → Go to Compose
+            router.push('/translate'); // ✅
+        }
+        },
+    })
+    ).current;
+    
     return (
-        <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+        <View {...panResponder.panHandlers} className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
             
             <AppHeader /> 
 

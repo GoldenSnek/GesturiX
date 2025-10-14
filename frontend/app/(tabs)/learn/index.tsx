@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, FlatList, ProgressBarAndroid } from 'react-native';
+import React, {useRef} from 'react';
+import { View, Text, TouchableOpacity, ScrollView, FlatList, ProgressBarAndroid, PanResponder, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useRouter } from 'expo-router'; // ✅
 import AppHeader from '../../../components/AppHeader'; 
 
 // Data for progress and categories
@@ -55,13 +56,31 @@ const quickActionsData = [
 
 
 const Learn = () => {
-  const insets = useSafeAreaInsets();
+    const insets = useSafeAreaInsets();
+
+    const router = useRouter(); // ✅ instead of navigation
+
+    const panResponder = useRef(
+    PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 10,
+        onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30) {
+            // 👈 Swipe LEFT → Go to Profile
+            router.push('/profile'); // ✅ use router.push()
+        } else if (gestureState.dx > 30) {
+            // 👈 Swipe RIGHT → Go to Compose
+            router.push('/compose'); // ✅
+        }
+        },
+    })
+    ).current;
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+    <View {...panResponder.panHandlers} className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
       <AppHeader /> 
 
-      <ScrollView className="flex-1 px-4 py-6">
+      <ScrollView className="flex-1 px-4 py-6" contentContainerStyle={{paddingBottom: 150,}}>
         {/* Your Progress Section */}
         <Text className="text-xl font-bold text-gray-800 mb-4">Your Progress</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
@@ -79,19 +98,19 @@ const Learn = () => {
           {categoriesData.map((category) => (
             <TouchableOpacity 
               key={category.id} 
-              className="bg-orange-500 rounded-xl p-5 mb-4 shadow-md flex-row items-center"
+              className="bg-highlight rounded-xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent"
               onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
             >
               <View className="w-16 h-16 rounded-full bg-white/30 items-center justify-center mr-4">
                 <MaterialIcons name={category.icon as any} size={36} color="primary" />
               </View>
               <View className="flex-1">
-                <Text className="text-2xl font-bold text-primary">{category.title}</Text>
-                <Text className="text-sm text-primary mb-2">{category.subtitle}</Text>
+                <Text className="text-2xl font-bold text-darkbg">{category.title}</Text>
+                <Text className="text-sm text-darkbg mb-2">{category.subtitle}</Text>
                 <View className="w-full h-2 bg-white/30 rounded-full">
-                  <View style={{ width: `${category.progress * 100}%` }} className="h-full bg-primary rounded-full" />
+                  <View style={{ width: `${category.progress * 100}%` }} className="h-full bg-accent rounded-full" />
                 </View>
-                <Text className="text-xs text-white/70 mt-1">{category.completed} of {category.total} completed</Text>
+                <Text className="text-xs text-darkbg mt-1">{category.completed} of {category.total} completed</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -108,7 +127,7 @@ const Learn = () => {
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
+      </ScrollView >
     </View>
   );
 };
