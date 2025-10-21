@@ -1,100 +1,135 @@
-import React, {useRef} from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, PanResponder, } from 'react-native';
+import React, { useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  PanResponder,
+} from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router'; // ✅
-import AppHeader from '../../components/AppHeader'; 
+import { useRouter } from 'expo-router';
+import AppHeader from '../../components/AppHeader';
 
 const Compose = () => {
-    const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-    const router = useRouter(); // ✅ instead of navigation
-
-    const panResponder = useRef(
+  const panResponder = useRef(
     PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
+      onMoveShouldSetPanResponder: (_, gestureState) =>
         Math.abs(gestureState.dx) > 10,
-        onPanResponderRelease: (_, gestureState) => {
+      onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -30) {
-            // 👈 Swipe LEFT → Go to Profile
-            router.push('/learn'); // ✅ use router.push()
+          router.push('/learn');
         } else if (gestureState.dx > 30) {
-            // 👈 Swipe RIGHT → Go to Compose
-            router.push('/translate'); // ✅
+          router.push('/translate');
         }
-        },
+      },
     })
-    ).current;
-    
-    return (
-        <View {...panResponder.panHandlers} className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
-            
-            <AppHeader /> 
+  ).current;
 
-            <ScrollView className="flex-1 p-4">
-                {/* Text Input Section */}
-                <View className="bg-white rounded-xl shadow-md p-4 mb-6">
-                    <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-base font-semibold text-primary">Type or Speak</Text>
-                        <TouchableOpacity className="bg-accent rounded-full p-2 shadow-sm">
-                            <MaterialCommunityIcons name="microphone" size={20} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                    <TextInput
-                        className="h-24 p-4 text-base bg-secondary rounded-lg border border-neutral/30 text-primary"
-                        placeholder="Type something to see its sign..."
-                        multiline={true}
-                    />
-                </View>
+  return (
+    <View
+      {...panResponder.panHandlers}
+      className="flex-1 bg-secondary"
+      style={{ paddingTop: insets.top }}
+    >
+      <AppHeader />
 
-                {/* Sign Language Video Section */}
-                <Text className="text-base font-semibold text-primary mb-2">Sign Language Video</Text>
-                <View className="w-full aspect-[4/3] bg-primary rounded-2xl overflow-hidden mb-5 relative">
-                    {/* Placeholder for video feed */}
-                    <View className="flex-1 justify-center items-center px-5">
-                        <MaterialIcons 
-                            name="videocam" 
-                            size={80} 
-                            color="#A8A8A8" 
-                        />
-                        <Text className="text-lg font-semibold text-neutral mt-4 mb-2">
-                            Video Placeholder
-                        </Text>
-                        <Text className="text-sm text-neutral/50 text-center leading-5">
-                            The corresponding sign will appear here
-                        </Text>
-                    </View>
-                    
-                    {/* Video overlay corners */}
-                    <View className="absolute top-4 left-4 w-6 h-6 border-t-[3px] border-l-[3px] border-accent" />
-                    <View className="absolute top-4 right-4 w-6 h-6 border-t-[3px] border-r-[3px] border-accent" />
-                    <View className="absolute bottom-4 left-4 w-6 h-6 border-b-[3px] border-l-[3px] border-accent" />
-                    <View className="absolute bottom-4 right-4 w-6 h-6 border-b-[3px] border-r-[3px] border-accent" />
-                </View>
+      <ScrollView
+        className="flex-1 p-4"
+        contentContainerStyle={{ paddingBottom: 150 }}
+      >
+        {/* 🗣️ Text Input Section */}
+        <View className="bg-white rounded-2xl shadow-md p-5 mb-8 border border-accent">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text
+              className="text-xl text-primary tracking-wide"
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
+              Type or Speak
+            </Text>
 
-                {/* Quick Phrases Section */}
-                <Text className="text-base font-semibold text-primary mb-2">Quick Phrases</Text>
-                <View className="flex-row flex-wrap justify-between">
-                    <TouchableOpacity className="bg-highlight rounded-full px-4 py-2 my-1 shadow-sm">
-                        <Text className="text-primary text-sm font-semibold">Hello</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-highlight rounded-full px-4 py-2 my-1 shadow-sm">
-                        <Text className="text-primary text-sm font-semibold">Thank You</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-highlight rounded-full px-4 py-2 my-1 shadow-sm">
-                        <Text className="text-primary text-sm font-semibold">How are you?</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-highlight rounded-full px-4 py-2 my-1 shadow-sm">
-                        <Text className="text-primary text-sm font-semibold">I love you</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-highlight rounded-full px-4 py-2 my-1 shadow-sm">
-                        <Text className="text-primary text-sm font-semibold">Good morning</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+            <TouchableOpacity className="bg-accent rounded-full p-3 shadow-sm active:opacity-80">
+              <MaterialCommunityIcons
+                name="microphone"
+                size={22}
+                color="white"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            className="h-28 p-4 text-base bg-secondary rounded-xl border border-neutral text-primary"
+            placeholder="Type something to see its sign..."
+            placeholderTextColor="#888"
+            multiline={true}
+            style={{ fontFamily: 'Montserrat-SemiBold' }}
+          />
         </View>
-    )
-}
+
+        {/* 🎥 Sign Language Video Section */}
+        <Text
+          className="text-lg text-primary mb-3"
+          style={{ fontFamily: 'Audiowide-Regular', letterSpacing: 0.5 }}
+        >
+          Sign Language Video
+        </Text>
+
+        <View className="w-full aspect-[4/3] bg-primary rounded-3xl overflow-hidden mb-7 relative">
+          <View className="flex-1 justify-center items-center px-5">
+            <MaterialIcons name="videocam" size={80} color="#A8A8A8" />
+            <Text
+              className="text-lg text-neutral mt-4 mb-2"
+              style={{ fontFamily: 'Montserrat-SemiBold' }}
+            >
+              Video Placeholder
+            </Text>
+            <Text
+              className="text-sm text-neutral/50 text-center leading-5"
+              style={{ fontFamily: 'Inter-Regular' }}
+            >
+              The corresponding sign will appear here
+            </Text>
+          </View>
+
+          {/* 🎬 Frame Corners */}
+          <View className="absolute top-4 left-4 w-6 h-6 border-t-[3px] border-l-[3px] border-accent" />
+          <View className="absolute top-4 right-4 w-6 h-6 border-t-[3px] border-r-[3px] border-accent" />
+          <View className="absolute bottom-4 left-4 w-6 h-6 border-b-[3px] border-l-[3px] border-accent" />
+          <View className="absolute bottom-4 right-4 w-6 h-6 border-b-[3px] border-r-[3px] border-accent" />
+        </View>
+
+        {/* 💬 Quick Phrases Section */}
+        <Text
+          className="text-lg text-primary mb-3"
+          style={{ fontFamily: 'Fredoka-SemiBold' }}
+        >
+          Quick Phrases
+        </Text>
+
+        <View className="flex-row flex-wrap justify-between">
+          {['Hello', 'Thank You', 'How are you?', 'I love you', 'Good morning'].map(
+            (phrase) => (
+              <TouchableOpacity
+                key={phrase}
+                className="bg-highlight rounded-full px-5 py-2 my-1 shadow-sm active:opacity-80"
+              >
+                <Text
+                  className="text-primary text-base"
+                  style={{ fontFamily: 'Audiowide-Regular' }}
+                >
+                  {phrase}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
 
 export default Compose;

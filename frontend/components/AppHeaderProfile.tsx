@@ -85,11 +85,11 @@ const AppHeaderProfile = () => {
               className="w-14 h-14 rounded-full mr-3"
             />
             <View>
-              <Text className="text-primary text-lg font-bold">
+              <Text className="text-primary text-lg font-fredoka-semibold">
                 {profile.username}
               </Text>
-              <Text className="text-primary text-xs">{profile.email}</Text>
-              <Text className="text-primary text-xs">
+              <Text className="text-primary text-xs font-fredoka">{profile.email}</Text>
+              <Text className="text-primary text-xs font-fredoka">
                 Member since {new Date(profile.created_at).toLocaleDateString()}
               </Text>
             </View>

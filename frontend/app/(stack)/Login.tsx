@@ -5,29 +5,24 @@ import {
   TouchableOpacity,
   TextInput,
   ImageBackground,
-  Alert, // Keeping Alert import, but minimizing usage
 } from 'react-native';
 import React, { useState } from 'react';
 import { supabase } from '../../src/supabaseClient';
 import { router } from 'expo-router';
-import { Eye, EyeOff, ChevronLeft } from 'lucide-react-native'; // 👈 IMPORT ChevronLeft
-import Message, { MessageType } from '../../components/Message'; 
+import { Eye, EyeOff, ChevronLeft } from 'lucide-react-native';
+import Message, { MessageType } from '../../components/Message';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // 👈 MESSAGE STATE
-  const [message, setMessage] = useState(''); 
+  const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('error');
 
-  // 🔹 Helper functions
   const showStatus = (msg: string, type: MessageType) => {
     setMessage(msg);
     setMessageType(type);
-    // Automatically clear the message after 5 seconds
-    setTimeout(() => setMessage(''), 5000); 
+    setTimeout(() => setMessage(''), 5000);
   };
 
   const showError = (msg: string) => showStatus(msg, 'error');
@@ -38,13 +33,10 @@ const Login = () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // 👈 Replaced Alert with showError
     if (!cleanEmail || !cleanPassword) {
       showWarning('Please enter both email and password.');
       return;
     }
-
-    console.log('Attempting login with:', cleanEmail);
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
@@ -52,23 +44,16 @@ const Login = () => {
     });
 
     if (error) {
-      console.log('Login error:', error);
-      // 👈 Replaced Alert with showError
-      // Supabase often returns a specific error, e.g., "Invalid login credentials"
       showError(error.message || 'Login Failed. Please check your credentials.');
       return;
     }
 
     const user = data?.user;
     if (!user) {
-      // 👈 Replaced Alert with showError
       showError('User session could not be established.');
       return;
     }
 
-    console.log('User logged in:', user.email);
-
-    // --- Profile Check Logic (No changes needed for success) ---
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
@@ -78,30 +63,23 @@ const Login = () => {
     if (checkError) console.error('Error checking profile:', checkError);
 
     if (!existingProfile) {
-      // This case should ideally not happen for login, but if it does, 
-      // we can use a warning or a technical error message.
-      console.log('No profile found — creating new profile...');
       const { error: insertError } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email,
         display_name: '',
       });
       if (insertError) console.error('Error creating profile:', insertError);
-      else console.log('Profile created successfully');
     }
 
-    // 👈 Replaced Alert with showSuccess
     showSuccess('Login successful!');
     router.replace('/(tabs)/translate');
   };
 
-  // 🆕 HANDLER FOR GOING BACK
   const handleGoBack = () => {
     if (router.canGoBack()) {
-        router.back();
+      router.back();
     } else {
-        // Fallback or navigate to a default screen if there's nowhere to go back to
-        router.replace('/(stack)/SignUp'); 
+      router.replace('/(stack)/SignUp');
     }
   };
 
@@ -116,26 +94,26 @@ const Login = () => {
       {/* 🆕 GO BACK BUTTON */}
       <TouchableOpacity
         onPress={handleGoBack}
-        className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10" // Use z-10 to ensure it's above other elements
+        className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10"
       >
         <ChevronLeft color="#1A1A1A" size={28} />
       </TouchableOpacity>
-      {/* ---------------- */}
 
-      {/* 👈 RENDER THE MESSAGE COMPONENT */}
-      <Message 
-        message={message} 
+      <Message
+        message={message}
         type={messageType}
-        onClose={() => setMessage('')} 
+        onClose={() => setMessage('')}
       />
 
       <View className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80">
-        <Text className="text-4xl font-bold text-black mb-10 text-center">
+        {/* 🔹 TITLE — futuristic style */}
+        <Text className="text-4xl text-black mb-10 text-center font-audiowide">
           Welcome Back
         </Text>
 
+        {/* 🔹 Inputs — friendly rounded style */}
         <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-bold bg-neutral"
+          className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-montserrat-semibold bg-neutral"
           placeholder="Email"
           placeholderTextColor="#444444"
           autoCapitalize="none"
@@ -143,10 +121,9 @@ const Login = () => {
           onChangeText={setEmail}
         />
 
-        {/* Password input with toggle */}
         <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
           <TextInput
-            className="flex-1 p-4 text-black text-lg font-bold"
+            className="flex-1 p-4 text-black text-lg font-montserrat-semibold"
             placeholder="Password"
             placeholderTextColor="#444444"
             secureTextEntry={!showPassword}
@@ -165,17 +142,18 @@ const Login = () => {
           </TouchableOpacity>
         </View>
 
+        {/* 🔹 Button — clean and bold tech style */}
         <TouchableOpacity
           onPress={handleLogin}
           className="w-full bg-accent rounded-full py-4 items-center mt-4"
         >
-          <Text className="text-white text-lg font-bold">Log In</Text>
+          <Text className="text-white text-lg font-audiowide">Log In</Text>
         </TouchableOpacity>
 
         <View className="mt-6 flex-row items-center justify-center">
-          <Text className="text-black">Don't have an account? </Text>
+          <Text className="text-black font-fredoka">Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/SignUp')}>
-            <Text className="text-highlight font-bold">Sign Up</Text>
+            <Text className="text-highlight font-fredoka-bold">Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 
@@ -15,7 +13,7 @@ interface PhraseItem {
   completed: boolean;
 }
 
-// ✅ Strictly type the phraseData object
+// ✅ Phrase data
 const phraseData: Record<CategoryKey, PhraseItem[]> = {
   greetings: [
     { phrase: 'Hello', completed: true },
@@ -42,7 +40,7 @@ const phraseData: Record<CategoryKey, PhraseItem[]> = {
 
 const Phrases = () => {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState<CategoryKey>('greetings'); // ✅ Typed
+  const [activeCategory, setActiveCategory] = useState<CategoryKey>('greetings');
   const [activePhrase, setActivePhrase] = useState('Hello');
 
   const allPhrasesCount = Object.values(phraseData).flat().length;
@@ -59,15 +57,20 @@ const Phrases = () => {
       <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 150 }}>
         
         {/* Category Tabs */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Choose Category</Text>
+        <Text style={styles.sectionTitle}>Choose Category</Text>
         <View className="flex-row justify-around mb-8 p-1 rounded-full bg-gray-200">
           {Object.keys(phraseData).map((category) => (
             <TouchableOpacity 
               key={category}
-              onPress={() => setActiveCategory(category as CategoryKey)} // ✅ Cast safely
-              className={`flex-1 items-center rounded-full py-2 ${activeCategory === category ? 'bg-[#FF6B00]' : ''}`}
+              onPress={() => setActiveCategory(category as CategoryKey)}
+              className={`flex-1 items-center rounded-full py-2 ${activeCategory === category ? 'bg-highlight' : ''}`}
             >
-              <Text className={`font-bold ${activeCategory === category ? 'text-white' : 'text-gray-500'}`}>
+              <Text
+                style={[
+                  styles.categoryText,
+                  { color: activeCategory === category ? '#000' : '#6B7280' }
+                ]}
+              >
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -75,18 +78,23 @@ const Phrases = () => {
         </View>
 
         {/* Phrase List */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">
+        <Text style={styles.sectionTitle}>
           {activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} Phrases
         </Text>
         <View className="mb-8">
           {phraseData[activeCategory].map((item, index) => (
             <TouchableOpacity 
-              key={index} 
+              key={index}
               onPress={() => setActivePhrase(item.phrase)}
-              className={`w-full rounded-lg py-4 mb-2 ${activePhrase === item.phrase ? 'bg-[#FF6B00]' : 'bg-gray-200'}`}
+              className={`w-full rounded-lg py-4 mb-2 ${activePhrase === item.phrase ? 'bg-highlight' : 'bg-gray-200'}`}
             >
               <View className="flex-row items-center pl-4">
-                <Text className={`text-xl font-bold ${activePhrase === item.phrase ? 'text-white' : 'text-gray-500'}`}>
+                <Text
+                  style={[
+                    styles.phraseText,
+                    { color: activePhrase === item.phrase ? '#000' : '#6B7280' }
+                  ]}
+                >
                   {item.phrase}
                 </Text>
               </View>
@@ -95,50 +103,46 @@ const Phrases = () => {
         </View>
 
         {/* Video Placeholder */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Practice: "{activePhrase}"</Text>
+        <Text style={styles.sectionTitle}>Practice: "{activePhrase}"</Text>
         <View className="w-full aspect-video bg-gray-800 rounded-xl items-center justify-center overflow-hidden mb-6">
-          <Text className="text-white">Sign for "{activePhrase}"</Text>
+          <Text style={styles.videoPlaceholder}>Sign for "{activePhrase}"</Text>
         </View>
 
         {/* Practice Section */}
-        <Text className="text-lg font-bold text-gray-800 mb-2">Phrase: {activePhrase}</Text>
-        <Text className="text-sm text-gray-500 mb-4">
+        <Text style={styles.sectionTitle}>Phrase: {activePhrase}</Text>
+        <Text style={styles.descriptionText}>
           Practice this common phrase. Pay attention to facial expressions and hand movements for proper communication.
         </Text>
 
         <View className="flex-row justify-between mb-4">
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Slow Motion</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Repeat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Practice</Text>
-          </TouchableOpacity>
+          {['Slow Motion', 'Repeat', 'Practice'].map((label, i) => (
+            <TouchableOpacity key={i} className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center border border-accent">
+              <Text style={styles.buttonText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <TouchableOpacity className="w-full bg-[#FF6B00] rounded-full py-4 items-center mb-6">
-          <Text className="text-white text-lg font-bold">Completed</Text>
+          <Text style={styles.completeButtonText}>Completed</Text>
         </TouchableOpacity>
         
         {/* Phrase Tips */}
-        <Text className="text-lg font-bold text-gray-800 mb-2">Phrase Tips</Text>
+        <Text style={styles.sectionTitle}>Phrase Tips</Text>
         <View className="p-4 bg-gray-200 rounded-lg mb-4">
           <View className="flex-row items-center mb-2">
             <MaterialIcons name="emoji-emotions" size={24} color="#555" />
-            <Text className="text-lg font-bold text-gray-800 ml-2">Facial Expressions</Text>
+            <Text style={styles.tipHeader}>Facial Expressions</Text>
           </View>
-          <Text className="text-sm text-gray-500">
+          <Text style={styles.tipText}>
             Facial expressions are crucial for conveying meaning in sign language.
           </Text>
         </View>
         <View className="p-4 bg-gray-200 rounded-lg">
           <View className="flex-row items-center mb-2">
             <MaterialIcons name="swap-horiz" size={24} color="#555" />
-            <Text className="text-lg font-bold text-gray-800 ml-2">Natural Flow</Text>
+            <Text style={styles.tipHeader}>Natural Flow</Text>
           </View>
-          <Text className="text-sm text-gray-500">
+          <Text style={styles.tipText}>
             Practice smooth transitions between signs for natural communication.
           </Text>
         </View>
@@ -149,4 +153,51 @@ const Phrases = () => {
 
 export default Phrases;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  sectionTitle: {
+    fontFamily: 'Audiowide-Regular',
+    fontSize: 18,
+    color: '#1F2937',
+    marginBottom: 10,
+  },
+  categoryText: {
+    fontFamily: 'Fredoka-SemiBold',
+    fontSize: 16,
+  },
+  phraseText: {
+    fontFamily: 'Fredoka-SemiBold',
+    fontSize: 18,
+  },
+  videoPlaceholder: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 16,
+    color: '#fff',
+  },
+  descriptionText: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+  buttonText: {
+    fontFamily: 'Fredoka-SemiBold',
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  completeButtonText: {
+    fontFamily: 'Fredoka-SemiBold',
+    fontSize: 18,
+    color: '#fff',
+  },
+  tipHeader: {
+    fontFamily: 'Fredoka-Regular',
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  tipText: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 14,
+    color: '#6B7280',
+  },
+});

@@ -29,8 +29,8 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
 
         {/* Title and progress text centered */}
         <View className="flex-1 items-center -ml-8">
-          <Text className="text-primary text-lg font-bold">{title}</Text>
-          <Text className="text-primary text-xs mt-1">
+          <Text className="text-primary text-lg font-fredoka-semibold">{title}</Text>
+          <Text className="text-primary text-xs mt-1 font-fredoka">
             {completedCount}/{totalCount} completed
           </Text>
         </View>

@@ -79,11 +79,13 @@ const Profile = () => {
           error: userError,
         } = await supabase.auth.getUser();
         if (userError || !user) throw userError || new Error('No user logged in');
+
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, email, created_at, photo_url')
           .eq('id', user.id)
           .single();
+
         if (error) throw error;
         setProfile(data as ProfileData);
         setNewUsername(data.username);
@@ -120,6 +122,7 @@ const Profile = () => {
       .from('profiles')
       .update({ username: newUsername.trim(), updated_at: new Date().toISOString() })
       .eq('id', profile?.id);
+
     if (error) {
       Alert.alert('Update failed', error.message);
     } else {
@@ -171,7 +174,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-100">
+      <View className="flex-1 items-center justify-center bg-secondary">
         <ActivityIndicator size="large" color="#FF6B00" />
       </View>
     );
@@ -179,15 +182,20 @@ const Profile = () => {
 
   if (!profile) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-100">
-        <Text className="text-gray-600">No profile data found.</Text>
+      <View className="flex-1 items-center justify-center bg-secondary">
+        <Text
+          className="text-primary"
+          style={{ fontFamily: 'Montserrat-SemiBold' }}
+        >
+          No profile data found.
+        </Text>
       </View>
     );
   }
 
   return (
-    <View 
-      className="flex-1 bg-gray-100"
+    <View
+      className="flex-1 bg-secondary"
       style={{ paddingTop: insets.top }}
     >
       <AppHeaderProfile />
@@ -198,194 +206,124 @@ const Profile = () => {
         contentContainerStyle={{ paddingBottom: 150 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* --- Centered Profile Photo + Username Block --- */}
-        <View style={{ alignItems: 'center', justifyContent: 'center', marginVertical: 38 }}>
-          <View style={{ justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: 10 }}>
+        {/* 🧍 Profile Photo + Username */}
+        <View className="items-center justify-center my-10">
+          <View className="relative items-center mb-3">
             <Image
-              source={{ uri: photoUrl || 'https://ui-avatars.com/api/?name=User&background=999&color=fff' }}
+              source={{
+                uri:
+                  photoUrl ||
+                  'https://ui-avatars.com/api/?name=User&background=999&color=fff',
+              }}
               style={{
-                width: 200,
-                height: 200,
-                borderRadius: 100,
+                width: 180,
+                height: 180,
+                borderRadius: 90,
                 backgroundColor: '#eee',
               }}
             />
             <TouchableOpacity
-              style={{
-                position: 'absolute',
-                right: -10,
-                bottom: 16,
-                backgroundColor: '#fff',
-                borderRadius: 18,
-                elevation: 3,
-                padding: 6,
-              }}
+              className="absolute right-0 bottom-4 bg-white rounded-full p-2 shadow-md active:opacity-80"
               onPress={() => setShowPhotoOptions(true)}
             >
-              <MaterialIcons name="edit" size={26} color="#FF6B00" />
+              <MaterialIcons name="edit" size={24} color="#FF6B00" />
             </TouchableOpacity>
           </View>
 
-          {/* Username */}
-          <View style={{ alignItems: 'center', width: 220, marginTop: 2 }}>
+          {/* ✏️ Username */}
+          <View className="items-center w-[240px]">
             {!isEditingUsername ? (
               <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
                 onPress={() => setIsEditingUsername(true)}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
+                className="flex-row items-center justify-center"
               >
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#222', marginRight: 6 }}>
+                <Text
+                  className="text-2xl text-primary mr-2"
+                  style={{ fontFamily: 'Fredoka-SemiBold' }}
+                >
                   {profile.username}
                 </Text>
-                <MaterialIcons name="edit" size={22} color="#FF6B00" />
+                <MaterialIcons name="edit" size={20} color="#FF6B00" />
               </TouchableOpacity>
             ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <View className="flex-row items-center justify-center">
                 <TextInput
-                  style={{
-                    fontSize: 22,
-                    borderBottomWidth: 1,
-                    borderColor: '#FF6B00',
-                    color: '#333',
-                    flex: 1,
-                    textAlign: 'center',
-                  }}
                   value={newUsername}
                   onChangeText={setNewUsername}
                   editable={!usernameLoading}
+                  className="border-b border-accent text-center text-primary text-lg flex-1"
+                  style={{ fontFamily: 'Montserrat-SemiBold' }}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading} style={{ marginLeft: 10 }}>
-                  <Text style={{ color: '#FF6B00', fontWeight: 'bold' }}>Save</Text>
+                <TouchableOpacity
+                  onPress={handleSaveUsername}
+                  disabled={usernameLoading}
+                  className="ml-3"
+                >
+                  <Text
+                    className="text-accent"
+                    style={{ fontFamily: 'Fredoka-SemiBold' }}
+                  >
+                    Save
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsEditingUsername(false)} disabled={usernameLoading} style={{ marginLeft: 10 }}>
-                  <Text style={{ color: '#888' }}>Cancel</Text>
+                <TouchableOpacity
+                  onPress={() => setIsEditingUsername(false)}
+                  disabled={usernameLoading}
+                  className="ml-3"
+                >
+                  <Text
+                    className="text-neutral"
+                    style={{ fontFamily: 'Montserrat-SemiBold' }}
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
         </View>
 
-        {/* --- Fullscreen Photo Modal --- */}
-        <Modal visible={showPhotoModal} transparent animationType="fade" onRequestClose={() => setShowPhotoModal(false)}>
-          <Pressable
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(20,20,20,0.96)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={() => setShowPhotoModal(false)}
-          >
-            <Image
-              source={{ uri: photoUrl || undefined }}
-              style={{
-                width: '80%',
-                height: '50%',
-                borderRadius: 16,
-                borderWidth: 4,
-                borderColor: '#fff',
-                resizeMode: 'cover',
-              }}
-            />
-            <TouchableOpacity
-              style={{
-                position: 'absolute',
-                top: 32,
-                right: 20,
-                padding: 8,
-                backgroundColor: 'rgba(0,0,0,0.35)',
-                borderRadius: 18,
-              }}
-              onPress={() => setShowPhotoModal(false)}
-            >
-              <AntDesign name="closecircle" size={32} color="#fff" />
-            </TouchableOpacity>
-          </Pressable>
-        </Modal>
+        {/* 🏆 Progress Section */}
+        <Text
+          className="text-xl text-primary mb-3"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Your Progress
+        </Text>
 
-        {/* --- Bottom Sheet for Photo Options --- */}
-        <Modal visible={showPhotoOptions} transparent animationType="slide">
-          <Pressable
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              justifyContent: 'flex-end',
-            }}
-            onPress={() => setShowPhotoOptions(false)}
-          >
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                paddingVertical: 20,
-                paddingHorizontal: 25,
-              }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 }}>
-                Edit Profile Photo
-              </Text>
-
-              <TouchableOpacity
-                onPress={handleViewPhoto}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 14,
-                }}
-              >
-                <MaterialIcons name="visibility" size={24} color="#FF6B00" style={{ marginRight: 12 }} />
-                <Text style={{ fontSize: 16, color: '#222' }}>View Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleChangePhoto}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 14,
-                }}
-              >
-                <MaterialIcons name="photo-camera" size={24} color="#FF6B00" style={{ marginRight: 12 }} />
-                <Text style={{ fontSize: 16, color: '#222' }}>Change Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowPhotoOptions(false)}
-                style={{
-                  marginTop: 10,
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 12,
-                }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FF6B00' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
-
-        {/* Progress */}
-        <Text className="text-xl font-bold text-gray-800 mb-4">Your Progress</Text>
         <View className="flex-row flex-wrap justify-between mb-8">
           {Object.entries(progressData).map(([key, value]) => (
             <View
               key={key}
-              className="w-[48%] bg-white rounded-xl p-4 shadow-md mb-4 items-center"
+              className="w-[48%] bg-white rounded-2xl p-4 shadow-md mb-4 items-center border border-accent"
             >
-              <Text className="text-3xl font-bold text-[#FF6B00]">{value}</Text>
-              <Text className="text-sm text-gray-500 text-center capitalize">
+              <Text
+                className="text-3xl text-accent mb-1"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {value}
+              </Text>
+              <Text
+                className="text-sm text-neutral text-center capitalize"
+                style={{ fontFamily: 'Montserrat-SemiBold' }}
+              >
                 {key.replace(/([A-Z])/g, ' $1')}
               </Text>
             </View>
           ))}
         </View>
 
-        {/* Settings */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Settings</Text>
-        <View className="bg-white rounded-xl p-4 shadow-md mb-6">
+        {/* ⚙️ Settings */}
+        <Text
+          className="text-lg text-primary mb-3"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Settings
+        </Text>
+
+        <View className="bg-white rounded-2xl p-4 shadow-md mb-8 border border-accent">
           {(
             [
               ['Sound Effects', isSoundEffectsEnabled, setSoundEffectsEnabled],
@@ -396,10 +334,16 @@ const Profile = () => {
           ).map(([label, value, setter], idx) => (
             <View
               key={idx}
-              className={`flex-row items-center justify-between py-2 ${idx !== 3 ? 'border-b border-gray-200' : ''
-                }`}
+              className={`flex-row items-center justify-between py-3 ${
+                idx !== 3 ? 'border-b border-accent' : ''
+              }`}
             >
-              <Text className="text-base font-medium text-gray-800">{label}</Text>
+              <Text
+                className="text-base text-primary"
+                style={{ fontFamily: 'Fredoka-Regular' }}
+              >
+                {label}
+              </Text>
               <Switch
                 trackColor={{ false: '#E5E7EB', true: '#FF6B00' }}
                 thumbColor={value ? '#fff' : '#f4f3f4'}
@@ -410,15 +354,26 @@ const Profile = () => {
           ))}
         </View>
 
-        {/* Account */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Account</Text>
-        <View className="bg-white rounded-xl p-4 shadow-md mb-6">
+        {/* 👤 Account */}
+        <Text
+          className="text-lg text-primary mb-3"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Account
+        </Text>
+
+        <View className="bg-white rounded-2xl p-4 shadow-md border border-accent">
           <TouchableOpacity
             onPress={handleSignOut}
             className="flex-row items-center justify-between py-2"
           >
-            <Text className="text-base font-bold text-red-500">Sign Out</Text>
-            <AntDesign name="logout" size={24} color="#ef4444" />
+            <Text
+              className="text-base text-red-500"
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
+              Sign Out
+            </Text>
+            <AntDesign name="logout" size={22} color="#ef4444" />
           </TouchableOpacity>
         </View>
       </ScrollView>

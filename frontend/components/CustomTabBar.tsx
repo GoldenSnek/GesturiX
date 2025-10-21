@@ -97,7 +97,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                     style={{ tintColor: iconTintColor }} 
                   />
                   <Text 
-                    className={`text-xs font-semibold mt-1 ${textClassName}`} // text-accent
+                    className={`text-xs font-orbitron mt-1 ${textClassName}`} // text-accent
                     numberOfLines={1}
                   >
                     {label}

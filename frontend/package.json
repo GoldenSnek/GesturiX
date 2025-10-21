@@ -11,6 +11,11 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/audiowide": "^0.4.1",
+    "@expo-google-fonts/fredoka": "^0.4.1",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/montserrat": "^0.4.2",
+    "@expo-google-fonts/orbitron": "^0.4.2",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.3.10",

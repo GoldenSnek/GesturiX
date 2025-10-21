@@ -1,17 +1,22 @@
-import React, {useRef} from 'react';
-import { View, Text, TouchableOpacity, ScrollView, FlatList, ProgressBarAndroid, PanResponder, } from 'react-native';
+// learn.tsx
+import React, { useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  PanResponder,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useRouter } from 'expo-router'; // ✅
-import AppHeader from '../../../components/AppHeader'; 
+import { useRouter } from 'expo-router';
+import AppHeader from '../../../components/AppHeader';
 
-// Data for progress and categories
+// 📊 Progress and Category Data
 const progressData = [
-  { label: 'Lessons Completed', value: '25', unit: 'Lessons Completed' },
-  { label: 'Streak', value: '7 days', unit: '' },
-  { label: 'Learning Time', value: '3.2 hrs', unit: '' },
+  { label: 'Lessons Completed', value: '25' },
+  { label: 'Streak', value: '7 days' },
+  { label: 'Learning Time', value: '3.2 hrs' },
 ];
 
 const categoriesData = [
@@ -19,11 +24,10 @@ const categoriesData = [
     id: 'letters',
     title: 'Letters',
     subtitle: 'Learn the Alphabet',
-    icon: 'text-fields', // Example icon, choose suitable one
+    icon: 'text-fields',
     completed: 12,
     total: 26,
     progress: 0.46,
-    color: '#FF6B00'
   },
   {
     id: 'numbers',
@@ -32,8 +36,7 @@ const categoriesData = [
     icon: 'format-list-numbered',
     completed: 12,
     total: 26,
-    progress: 0.40,
-    color: '#FF6B00'
+    progress: 0.4,
   },
   {
     id: 'phrases',
@@ -43,7 +46,6 @@ const categoriesData = [
     completed: 12,
     total: 26,
     progress: 0.17,
-    color: '#FF6B00'
   },
 ];
 
@@ -54,80 +56,142 @@ const quickActionsData = [
   { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline' },
 ];
 
-
 const Learn = () => {
-    const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-    const router = useRouter(); // ✅ instead of navigation
-
-    const panResponder = useRef(
+  const panResponder = useRef(
     PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
+      onMoveShouldSetPanResponder: (_, gestureState) =>
         Math.abs(gestureState.dx) > 10,
-        onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -30) {
-            // 👈 Swipe LEFT → Go to Profile
-            router.push('/profile'); // ✅ use router.push()
-        } else if (gestureState.dx > 30) {
-            // 👈 Swipe RIGHT → Go to Compose
-            router.push('/compose'); // ✅
-        }
-        },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30) router.push('/profile');
+        else if (gestureState.dx > 30) router.push('/compose');
+      },
     })
-    ).current;
+  ).current;
 
   return (
-    <View {...panResponder.panHandlers} className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
-      <AppHeader /> 
+    <View
+      {...panResponder.panHandlers}
+      className="flex-1 bg-white"
+      style={{ paddingTop: insets.top }}
+    >
+      <AppHeader />
 
-      <ScrollView className="flex-1 px-4 py-6" contentContainerStyle={{paddingBottom: 150,}}>
-        {/* Your Progress Section */}
-        <Text className="text-xl font-bold text-gray-800 mb-4">Your Progress</Text>
+      <ScrollView
+        className="flex-1 px-4 py-6"
+        contentContainerStyle={{ paddingBottom: 150 }}
+      >
+        {/* 🧠 Progress Section */}
+        <Text
+          className="text-2xl text-gray-900 mb-4"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Your Progress
+        </Text>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
           {progressData.map((item, index) => (
-            <View key={index} className="bg-gray-100 rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-gray-200">
-              <Text className="text-3x1 font-bold text-gray-800">{item.value}</Text>
-              <Text className="text-xs text-gray-500 text-center mt-1">{item.label}</Text>
+            <View
+              key={index}
+              className="bg-gray-100 rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent"
+            >
+              <Text
+                className="text-2xl text-gray-800"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {item.value}
+              </Text>
+              <Text
+                className="text-xs text-gray-600 text-center mt-1"
+                style={{ fontFamily: 'Montserrat-SemiBold' }}
+              >
+                {item.label}
+              </Text>
             </View>
           ))}
         </ScrollView>
 
-        {/* Choose Category Section */}
-        <Text className="text-xl font-bold text-gray-800 mb-4">Choose Category</Text>
-        <View className="mb-6">
-          {categoriesData.map((category) => (
-            <TouchableOpacity 
-              key={category.id} 
-              className="bg-highlight rounded-xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent"
-              onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
-            >
-              <View className="w-16 h-16 rounded-full bg-white/30 items-center justify-center mr-4">
-                <MaterialIcons name={category.icon as any} size={36} color="primary" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-2xl font-bold text-darkbg">{category.title}</Text>
-                <Text className="text-sm text-darkbg mb-2">{category.subtitle}</Text>
-                <View className="w-full h-2 bg-white/30 rounded-full">
-                  <View style={{ width: `${category.progress * 100}%` }} className="h-full bg-accent rounded-full" />
-                </View>
-                <Text className="text-xs text-darkbg mt-1">{category.completed} of {category.total} completed</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* 🏷️ Category Section */}
+        <Text
+          className="text-2xl text-gray-900 mb-4"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Choose Category
+        </Text>
 
-        {/* Quick Actions Section */}
-        <Text className="text-xl font-bold text-gray-800 mb-4">Quick Actions</Text>
+        {categoriesData.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            className="bg-highlight rounded-2xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent"
+            onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
+          >
+            <View className="w-16 h-16 rounded-full bg-white/30 items-center justify-center mr-4">
+              <MaterialIcons name={category.icon as any} size={36} color="#FF6B00" />
+            </View>
+
+            <View className="flex-1">
+              <Text
+                className="text-2xl text-darkbg"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {category.title}
+              </Text>
+              <Text
+                className="text-sm text-darkbg mb-2"
+                style={{ fontFamily: 'Montserrat-SemiBold' }}
+              >
+                {category.subtitle}
+              </Text>
+
+              <View className="w-full h-2 bg-white/30 rounded-full">
+                <View
+                  style={{ width: `${category.progress * 100}%` }}
+                  className="h-full bg-accent rounded-full"
+                />
+              </View>
+              <Text
+                className="text-xs text-darkbg mt-1"
+                style={{ fontFamily: 'Montserrat-SemiBold' }}
+              >
+                {category.completed} of {category.total} completed
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* ⚡ Quick Actions */}
+        <Text
+          className="text-2xl text-gray-900 mb-4"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Quick Actions
+        </Text>
+
         <View className="flex-row flex-wrap justify-between">
           {quickActionsData.map((action) => (
-            <TouchableOpacity key={action.id} className="w-[48%] bg-gray-100 rounded-xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-gray-200">
-              <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" className="mb-2" />
-              <Text className="text-base font-semibold text-gray-800 text-center">{action.title}</Text>
-              <Text className="text-xs text-gray-500 text-center mt-1">{action.subtitle}</Text>
+            <TouchableOpacity
+              key={action.id}
+              className="w-[48%] bg-gray-100 rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent"
+            >
+              <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" />
+              <Text
+                className="text-base text-gray-800 text-center mt-2"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {action.title}
+              </Text>
+              <Text
+                className="text-xs text-gray-500 text-center mt-1"
+                style={{ fontFamily: 'Montserrat-SemiBold' }}
+              >
+                {action.subtitle}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView >
+      </ScrollView>
     </View>
   );
 };

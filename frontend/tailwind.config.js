@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  // NOTE: Update this to include the paths to all files that contain Nativewind classes.
   content: ["./App.tsx", "./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {
@@ -15,7 +14,32 @@ module.exports = {
         darksurface: '#333333',
         darkhover: '#444444',
         lighthover: '#EBEBEB',
-      }
+      },
+
+      // 🎨 FONT SETUP
+      fontFamily: {
+        // 🧠 Existing fonts (Inter, Montserrat, Orbitron)
+        'inter': ['Inter-Regular'],
+        'inter-bold': ['Inter-Bold'],
+        'inter-italic': ['Inter-Italic'],
+        'inter-bolditalic': ['Inter-BoldItalic'],
+
+        'montserrat': ['Montserrat-Regular'],
+        'montserrat-semibold': ['Montserrat-SemiBold'],
+        'montserrat-bold': ['Montserrat-Bold'],
+        'montserrat-italic': ['Montserrat-Italic'],
+        'montserrat-bolditalic': ['Montserrat-BoldItalic'],
+
+        'orbitron': ['Orbitron-Regular'],
+        'orbitron-bold': ['Orbitron-Bold'],
+
+        'fredoka': ['Fredoka-Regular'],
+        'fredoka-medium': ['Fredoka-Medium'],
+        'fredoka-semibold': ['Fredoka-SemiBold'],
+        'fredoka-bold': ['Fredoka-Bold'],
+
+        'audiowide': ['Audiowide-Regular'],
+      },
     },
   },
   plugins: [],

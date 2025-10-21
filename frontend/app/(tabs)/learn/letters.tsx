@@ -1,12 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 
-// Dummy data for letter selection, 'completed' status, and progress
 const alphabetData = [
   { letter: 'A', completed: true },
   { letter: 'B', completed: true },
@@ -42,22 +39,41 @@ const Letters = () => {
 
   return (
     <View className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
-      <AppHeaderLearn 
-      title="Learn Letters"
-      completedCount={completedCount}
-      totalCount={26}
+      <AppHeaderLearn
+        title="Learn Letters"
+        completedCount={completedCount}
+        totalCount={26}
       />
 
-      <ScrollView className="flex-1 p-4" contentContainerStyle={{paddingBottom: 150,}}>
-        {/* Letter Selection Grid */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Select a Letter</Text>
+      <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 150 }}>
+        
+        {/* Title */}
+        <Text
+          className="text-lg text-gray-800 mb-4"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Select a Letter
+        </Text>
+
+        {/* Grid of Letters */}
         <View className="flex-row flex-wrap justify-between mb-1">
           {alphabetData.map((item, index) => (
-            <TouchableOpacity 
-              key={index} 
-              className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${item.completed ? 'border-[#FF6B00] bg-white' : 'border-gray-300 bg-gray-200'}`}
+            <TouchableOpacity
+              key={index}
+              className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
+                item.completed ? 'border-[#FF6B00] bg-white' : 'border-gray-300 bg-gray-200'
+              }`}
             >
-              <Text className={`text-2xl font-bold ${item.completed ? 'text-[#FF6B00]' : 'text-gray-500'}`}>{item.letter}</Text>
+              <Text
+                style={{
+                  fontFamily: 'Fredoka-SemiBold',
+                  fontSize: 24,
+                  color: item.completed ? '#FF6B00' : '#6B7280',
+                }}
+              >
+                {item.letter}
+              </Text>
+
               {item.completed && (
                 <View className="absolute top-1 right-1">
                   <MaterialIcons name="check-circle" size={16} color="#FF6B00" />
@@ -67,29 +83,64 @@ const Letters = () => {
           ))}
         </View>
 
-        {/* Video Placeholder */}
-        <Text className="text-lg font-bold text-gray-800 mb-4">Practice: "A"</Text>
-        <View className="w-full aspect-video bg-gray-800 rounded-xl items-center justify-center overflow-hidden mb-6">
-          <Text className="text-white">Sign for "Hello"</Text>
-        </View>
-
         {/* Practice Section */}
-        <Text className="text-lg font-bold text-gray-800 mb-2">Letter: A</Text>
-        <Text className="text-sm text-gray-500 mb-4">Practice the sign for letter A. Watch the video demonstration and practice the hand position shown.</Text>
-        <View className="flex-row justify-between mb-4">
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Slow Motion</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Repeat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center">
-            <Text className="text-gray-600">Practice</Text>
-          </TouchableOpacity>
+        <Text
+          className="text-lg text-gray-800 mb-4"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Practice: "A"
+        </Text>
+
+        {/* Video Placeholder */}
+        <View className="w-full aspect-video bg-gray-800 rounded-xl items-center justify-center overflow-hidden mb-6">
+          <Text
+            className="text-white text-lg"
+            style={{ fontFamily: 'Montserrat-SemiBold' }}
+          >
+            Sign for "A"
+          </Text>
         </View>
 
-        <TouchableOpacity className="w-full bg-[#FF6B00] rounded-full py-4 items-center">
-          <Text className="text-white text-lg font-bold">Completed</Text>
+        {/* Description */}
+        <Text
+          className="text-lg text-gray-800 mb-2"
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          Letter: A
+        </Text>
+        <Text
+          className="text-sm text-gray-600 mb-4"
+          style={{ fontFamily: 'Montserrat-SemiBold' }}
+        >
+          Practice the sign for the letter A. Watch the video demonstration and
+          mimic the hand position carefully.
+        </Text>
+
+        {/* Practice Buttons */}
+        <View className="flex-row justify-between mb-4">
+          {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
+            <TouchableOpacity
+              key={label}
+              className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center border border-accent"
+            >
+              <Text
+                className="text-gray-700"
+                style={{ fontFamily: 'Fredoka-Regular' }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Completed Button */}
+        <TouchableOpacity className="w-full bg-[#FF6B00] rounded-full py-4 items-center shadow-md">
+          <Text
+            className="text-white text-lg"
+            style={{ fontFamily: 'Fredoka-SemiBold' }}
+          >
+            Completed
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -97,5 +148,3 @@ const Letters = () => {
 };
 
 export default Letters;
-
-const styles = StyleSheet.create({});
