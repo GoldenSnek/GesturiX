@@ -1,4 +1,4 @@
-// learn.tsx
+// File: app/(tabs)/learn.tsx
 import React, { useRef } from 'react';
 import {
   View,
@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../../../src/ThemeContext'; // ✅ Use global theme
 import AppHeader from '../../../components/AppHeader';
 
 // 📊 Progress and Category Data
@@ -59,6 +60,7 @@ const quickActionsData = [
 const Learn = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isDark } = useTheme(); // ✅ read global dark mode
 
   const panResponder = useRef(
     PanResponder.create({
@@ -74,7 +76,7 @@ const Learn = () => {
   return (
     <View
       {...panResponder.panHandlers}
-      className="flex-1 bg-white"
+      className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}
       style={{ paddingTop: insets.top }}
     >
       <AppHeader />
@@ -85,7 +87,9 @@ const Learn = () => {
       >
         {/* 🧠 Progress Section */}
         <Text
-          className="text-2xl text-gray-900 mb-4"
+          className={`text-2xl mb-4 ${
+            isDark ? 'text-secondary' : 'text-primary'
+          }`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Your Progress
@@ -95,16 +99,22 @@ const Learn = () => {
           {progressData.map((item, index) => (
             <View
               key={index}
-              className="bg-gray-100 rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent"
+              className={`rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent ${
+                isDark ? 'bg-darksurface' : 'bg-secondary'
+              }`}
             >
               <Text
-                className="text-2xl text-gray-800"
+                className={`text-2xl ${
+                  isDark ? 'text-highlight' : 'text-primary'
+                }`}
                 style={{ fontFamily: 'Fredoka-SemiBold' }}
               >
                 {item.value}
               </Text>
               <Text
-                className="text-xs text-gray-600 text-center mt-1"
+                className={`text-xs text-center mt-1 ${
+                  isDark ? 'text-neutral' : 'text-neutral'
+                }`}
                 style={{ fontFamily: 'Montserrat-SemiBold' }}
               >
                 {item.label}
@@ -115,7 +125,9 @@ const Learn = () => {
 
         {/* 🏷️ Category Section */}
         <Text
-          className="text-2xl text-gray-900 mb-4"
+          className={`text-2xl mb-4 ${
+            isDark ? 'text-secondary' : 'text-primary'
+          }`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Choose Category
@@ -124,35 +136,55 @@ const Learn = () => {
         {categoriesData.map((category) => (
           <TouchableOpacity
             key={category.id}
-            className="bg-highlight rounded-2xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent"
+            className={`rounded-2xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent ${
+              isDark ? 'bg-darksurface' : 'bg-highlight'
+            }`}
             onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
           >
-            <View className="w-16 h-16 rounded-full bg-white/30 items-center justify-center mr-4">
-              <MaterialIcons name={category.icon as any} size={36} color="#FF6B00" />
+            <View
+              className={`w-16 h-16 rounded-full items-center justify-center mr-4 ${
+                isDark ? 'bg-darkhover' : 'bg-white/30'
+              }`}
+            >
+              <MaterialIcons
+                name={category.icon as any}
+                size={36}
+                color="#FF6B00"
+              />
             </View>
 
             <View className="flex-1">
               <Text
-                className="text-2xl text-darkbg"
+                className={`text-2xl ${
+                  isDark ? 'text-secondary' : 'text-darkbg'
+                }`}
                 style={{ fontFamily: 'Fredoka-SemiBold' }}
               >
                 {category.title}
               </Text>
               <Text
-                className="text-sm text-darkbg mb-2"
+                className={`text-sm mb-2 ${
+                  isDark ? 'text-neutral' : 'text-darkbg'
+                }`}
                 style={{ fontFamily: 'Montserrat-SemiBold' }}
               >
                 {category.subtitle}
               </Text>
 
-              <View className="w-full h-2 bg-white/30 rounded-full">
+              <View
+                className={`w-full h-2 rounded-full ${
+                  isDark ? 'bg-darkhover' : 'bg-white/30'
+                }`}
+              >
                 <View
                   style={{ width: `${category.progress * 100}%` }}
                   className="h-full bg-accent rounded-full"
                 />
               </View>
               <Text
-                className="text-xs text-darkbg mt-1"
+                className={`text-xs mt-1 ${
+                  isDark ? 'text-neutral' : 'text-darkbg'
+                }`}
                 style={{ fontFamily: 'Montserrat-SemiBold' }}
               >
                 {category.completed} of {category.total} completed
@@ -163,7 +195,9 @@ const Learn = () => {
 
         {/* ⚡ Quick Actions */}
         <Text
-          className="text-2xl text-gray-900 mb-4"
+          className={`text-2xl mb-4 ${
+            isDark ? 'text-secondary' : 'text-primary'
+          }`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Quick Actions
@@ -173,17 +207,23 @@ const Learn = () => {
           {quickActionsData.map((action) => (
             <TouchableOpacity
               key={action.id}
-              className="w-[48%] bg-gray-100 rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent"
+              className={`w-[48%] rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent ${
+                isDark ? 'bg-darksurface' : 'bg-secondary'
+              }`}
             >
               <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" />
               <Text
-                className="text-base text-gray-800 text-center mt-2"
+                className={`text-base text-center mt-2 ${
+                  isDark ? 'text-highlight' : 'text-primary'
+                }`}
                 style={{ fontFamily: 'Fredoka-SemiBold' }}
               >
                 {action.title}
               </Text>
               <Text
-                className="text-xs text-gray-500 text-center mt-1"
+                className={`text-xs text-center mt-1 ${
+                  isDark ? 'text-neutral' : 'text-neutral'
+                }`}
                 style={{ fontFamily: 'Montserrat-SemiBold' }}
               >
                 {action.subtitle}

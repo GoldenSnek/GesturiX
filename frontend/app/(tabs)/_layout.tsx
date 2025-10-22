@@ -1,35 +1,41 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import {Tabs} from "expo-router";
+import { View, Text } from 'react-native';
+import React from 'react';
+import { Tabs } from 'expo-router';
 import CustomTabBar from '../../components/CustomTabBar';
+import { useTheme } from '../../src/ThemeContext';
 
 const _layout = () => {
-  return (
-    <Tabs
-      tabBar={props => <CustomTabBar {...props} />}
-      screenOptions={{
-        animation: 'shift',
-        headerShown: false,
-      }}
-    >
-        <Tabs.Screen
-        name="translate"
-        options={{ title: 'Translate', headerShown: false}}
-        />
-        <Tabs.Screen
-        name="compose"
-        options={{ title: 'Compose', headerShown: false}}
-        />
-        <Tabs.Screen
-        name="learn"
-        options={{ title: 'Learn', headerShown: false}}
-        />
-        <Tabs.Screen
-        name="profile"
-        options={{ title: 'Profile', headerShown: false}}
-        />
-    </Tabs>
-  ) 
-}
+  const { isDark } = useTheme();
 
-export default _layout
+return (
+    <View style={{ flex: 1, backgroundColor: isDark ? '#1A1A1A' : '#F8F8F8' }}>
+      <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{
+          animation: 'shift',
+          headerShown: false,
+          sceneContainerStyle: { backgroundColor: isDark ? '#1A1A1A' : '#F8F8F8' },
+        }}
+      >
+        <Tabs.Screen
+          name="translate"
+          options={{ title: 'Translate', headerShown: false }}
+        />
+        <Tabs.Screen
+          name="compose"
+          options={{ title: 'Compose', headerShown: false }}
+        />
+        <Tabs.Screen
+          name="learn"
+          options={{ title: 'Learn', headerShown: false }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{ title: 'Profile', headerShown: false }}
+        />
+      </Tabs>
+    </View>
+  );
+};
+
+export default _layout;

@@ -1,3 +1,4 @@
+// File: app/compose.tsx
 import React, { useRef } from 'react';
 import {
   View,
@@ -10,11 +11,13 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../../src/ThemeContext'; // ✅ Use your global theme
 import AppHeader from '../../components/AppHeader';
 
 const Compose = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isDark } = useTheme(); // ✅ Access current theme
 
   const panResponder = useRef(
     PanResponder.create({
@@ -33,7 +36,7 @@ const Compose = () => {
   return (
     <View
       {...panResponder.panHandlers}
-      className="flex-1 bg-secondary"
+      className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}
       style={{ paddingTop: insets.top }}
     >
       <AppHeader />
@@ -43,10 +46,16 @@ const Compose = () => {
         contentContainerStyle={{ paddingBottom: 150 }}
       >
         {/* 🗣️ Text Input Section */}
-        <View className="bg-white rounded-2xl shadow-md p-5 mb-8 border border-accent">
+        <View
+          className={`rounded-2xl shadow-md p-5 mb-8 border ${
+            isDark
+              ? 'bg-darksurface border-accent'
+              : 'bg-white border-accent'
+          }`}
+        >
           <View className="flex-row justify-between items-center mb-4">
             <Text
-              className="text-xl text-primary tracking-wide"
+              className={`${isDark ? 'text-secondary' : 'text-primary'} text-xl tracking-wide`}
               style={{ fontFamily: 'Fredoka-SemiBold' }}
             >
               Type or Speak
@@ -62,27 +71,39 @@ const Compose = () => {
           </View>
 
           <TextInput
-            className="h-28 p-4 text-base bg-secondary rounded-xl border border-neutral text-primary"
+            className={`h-28 p-4 text-base rounded-xl border ${
+              isDark
+                ? 'bg-darkhover border-darkhover text-secondary'
+                : 'bg-secondary border-neutral text-primary'
+            }`}
             placeholder="Type something to see its sign..."
-            placeholderTextColor="#888"
-            multiline={true}
+            placeholderTextColor={isDark ? '#A8A8A8' : '#888'}
+            multiline
             style={{ fontFamily: 'Montserrat-SemiBold' }}
           />
         </View>
 
         {/* 🎥 Sign Language Video Section */}
         <Text
-          className="text-lg text-primary mb-3"
+          className={`${isDark ? 'text-secondary' : 'text-primary'} text-lg mb-3`}
           style={{ fontFamily: 'Audiowide-Regular', letterSpacing: 0.5 }}
         >
           Sign Language Video
         </Text>
 
-        <View className="w-full aspect-[4/3] bg-primary rounded-3xl overflow-hidden mb-7 relative">
+        <View
+          className={`w-full aspect-[4/3] rounded-3xl overflow-hidden mb-7 relative ${
+            isDark ? 'bg-darksurface' : 'bg-primary'
+          }`}
+        >
           <View className="flex-1 justify-center items-center px-5">
-            <MaterialIcons name="videocam" size={80} color="#A8A8A8" />
+            <MaterialIcons
+              name="videocam"
+              size={80}
+              color={isDark ? '#777' : '#A8A8A8'}
+            />
             <Text
-              className="text-lg text-neutral mt-4 mb-2"
+              className={`${isDark ? 'text-neutral' : 'text-neutral'} text-lg mt-4 mb-2`}
               style={{ fontFamily: 'Montserrat-SemiBold' }}
             >
               Video Placeholder
@@ -104,7 +125,7 @@ const Compose = () => {
 
         {/* 💬 Quick Phrases Section */}
         <Text
-          className="text-lg text-primary mb-3"
+          className={`${isDark ? 'text-secondary' : 'text-primary'} text-lg mb-3`}
           style={{ fontFamily: 'Fredoka-SemiBold' }}
         >
           Quick Phrases
@@ -115,10 +136,12 @@ const Compose = () => {
             (phrase) => (
               <TouchableOpacity
                 key={phrase}
-                className="bg-highlight rounded-full px-5 py-2 my-1 shadow-sm active:opacity-80"
+                className={`rounded-full px-5 py-2 my-1 shadow-sm active:opacity-80 ${
+                  isDark ? 'bg-accent' : 'bg-highlight'
+                }`}
               >
                 <Text
-                  className="text-primary text-base"
+                  className={`${isDark ? 'text-darkbg' : 'text-primary'} text-base`}
                   style={{ fontFamily: 'Audiowide-Regular' }}
                 >
                   {phrase}

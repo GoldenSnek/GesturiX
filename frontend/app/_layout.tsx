@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import './global.css';
+import { ThemeProvider } from '../src/ThemeContext';
 
 import { useFonts } from 'expo-font';
 
@@ -77,10 +78,12 @@ const RootLayout = () => {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(stack)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(stack)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </ThemeProvider>
   );
 };
 

@@ -24,7 +24,7 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
       >
         {/* Back button */}
         <TouchableOpacity onPress={() => router.back()} className="p-1">
-          <Ionicons name="arrow-back" size={24} color="white" />
+          <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
 
         {/* Title and progress text centered */}
@@ -40,7 +40,7 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
       </LinearGradient>
 
       {/* Thin progress bar (white background with orange fill) */}
-      <View className="w-full bg-white rounded-full" style={{ height: 6 }}>
+      <View className="w-full bg-secondary rounded-full" style={{ height: 6 }}>
         <View
           style={{ width: `${pct}%`, height: 6 }}
           className="bg-[#FF6B00] rounded-full"

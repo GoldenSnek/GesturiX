@@ -10,8 +10,6 @@ import {
   PanResponder,
   TextInput,
   Alert,
-  Pressable,
-  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, AntDesign } from '@expo/vector-icons';
@@ -21,6 +19,8 @@ import AppHeaderProfile from '../../components/AppHeaderProfile';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
+import { useTheme } from '../../src/ThemeContext';
+
 global.Buffer = global.Buffer || Buffer;
 
 interface ProfileData {
@@ -33,12 +33,12 @@ interface ProfileData {
 
 const Profile = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { isDark, toggleTheme } = useTheme();
+
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
 
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
@@ -46,7 +46,6 @@ const Profile = () => {
 
   const [isSoundEffectsEnabled, setSoundEffectsEnabled] = useState(false);
   const [isVibrationEnabled, setVibrationEnabled] = useState(false);
-  const [isDarkModeEnabled, setDarkModeEnabled] = useState(false);
   const [areNotificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const progressData = {
@@ -55,8 +54,6 @@ const Profile = () => {
     daysStreak: 7,
     practiceHours: 12.5,
   };
-
-  const router = useRouter();
 
   const panResponder = useRef(
     PanResponder.create({
@@ -134,13 +131,7 @@ const Profile = () => {
     setUsernameLoading(false);
   };
 
-  const handleViewPhoto = () => {
-    setShowPhotoOptions(false);
-    setShowPhotoModal(true);
-  };
-
   const handleChangePhoto = async () => {
-    setShowPhotoOptions(false);
     let result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       aspect: [1, 1],
@@ -174,17 +165,17 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-secondary">
-        <ActivityIndicator size="large" color="#FF6B00" />
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
+        <ActivityIndicator size="large" color="accent" />
       </View>
     );
   }
 
   if (!profile) {
     return (
-      <View className="flex-1 items-center justify-center bg-secondary">
+      <View className={`flex-1 items-center justify-center ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
         <Text
-          className="text-primary"
+          className={`${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Montserrat-SemiBold' }}
         >
           No profile data found.
@@ -194,10 +185,7 @@ const Profile = () => {
   }
 
   return (
-    <View
-      className="flex-1 bg-secondary"
-      style={{ paddingTop: insets.top }}
-    >
+    <View className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`} style={{ paddingTop: insets.top }}>
       <AppHeaderProfile />
 
       <ScrollView
@@ -206,88 +194,113 @@ const Profile = () => {
         contentContainerStyle={{ paddingBottom: 150 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 🧍 Profile Photo + Username */}
-        <View className="items-center justify-center my-10">
-          <View className="relative items-center mb-3">
-            <Image
-              source={{
-                uri:
-                  photoUrl ||
-                  'https://ui-avatars.com/api/?name=User&background=999&color=fff',
-              }}
-              style={{
-                width: 180,
-                height: 180,
-                borderRadius: 90,
-                backgroundColor: '#eee',
-              }}
-            />
-            <TouchableOpacity
-              className="absolute right-0 bottom-4 bg-white rounded-full p-2 shadow-md active:opacity-80"
-              onPress={() => setShowPhotoOptions(true)}
-            >
-              <MaterialIcons name="edit" size={24} color="#FF6B00" />
-            </TouchableOpacity>
-          </View>
+{/* 🧍 Profile Section */}
+<View className="items-center mt-10 mb-8 px-6">
+  {/* Profile Image Container */}
+  <View className="relative items-center">
+    <Image
+      source={{
+        uri:
+          photoUrl ||
+          'https://ui-avatars.com/api/?name=User&background=999&color=fff',
+      }}
+      style={{
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        borderWidth: 3,
+        borderColor: isDark ? '#FF6B00' : '#FFAB7B',
+        backgroundColor: isDark ? '#1E1E1E' : '#F8F8F8',
+      }}
+    />
 
-          {/* ✏️ Username */}
-          <View className="items-center w-[240px]">
-            {!isEditingUsername ? (
-              <TouchableOpacity
-                onPress={() => setIsEditingUsername(true)}
-                activeOpacity={0.8}
-                className="flex-row items-center justify-center"
-              >
-                <Text
-                  className="text-2xl text-primary mr-2"
-                  style={{ fontFamily: 'Fredoka-SemiBold' }}
-                >
-                  {profile.username}
-                </Text>
-                <MaterialIcons name="edit" size={20} color="#FF6B00" />
-              </TouchableOpacity>
-            ) : (
-              <View className="flex-row items-center justify-center">
-                <TextInput
-                  value={newUsername}
-                  onChangeText={setNewUsername}
-                  editable={!usernameLoading}
-                  className="border-b border-accent text-center text-primary text-lg flex-1"
-                  style={{ fontFamily: 'Montserrat-SemiBold' }}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  onPress={handleSaveUsername}
-                  disabled={usernameLoading}
-                  className="ml-3"
-                >
-                  <Text
-                    className="text-accent"
-                    style={{ fontFamily: 'Fredoka-SemiBold' }}
-                  >
-                    Save
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setIsEditingUsername(false)}
-                  disabled={usernameLoading}
-                  className="ml-3"
-                >
-                  <Text
-                    className="text-neutral"
-                    style={{ fontFamily: 'Montserrat-SemiBold' }}
-                  >
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
+    {/* Edit Photo Button */}
+    <TouchableOpacity
+      onPress={handleChangePhoto}
+      className={`absolute bottom-2 right-3 rounded-full p-2 shadow-lg active:opacity-80 ${
+        isDark ? 'bg-darksurface' : 'bg-white'
+      }`}
+    >
+      <MaterialIcons name="photo-camera" size={22} color="#FF6B00" />
+    </TouchableOpacity>
+  </View>
+
+    {/* Username Section */}
+    <View className="items-center mt-5 w-[260px]">
+      {!isEditingUsername ? (
+        <View className="flex-row items-center space-x-2">
+          <Text
+            className={`text-2xl ${
+              isDark ? 'text-secondary' : 'text-primary'
+            }`}
+            style={{ fontFamily: 'Fredoka-SemiBold' }}
+          >
+            {profile.username}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setIsEditingUsername(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="edit" size={20} color="#FF6B00" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View className="w-full items-center">
+          <TextInput
+            value={newUsername}
+            onChangeText={setNewUsername}
+            editable={!usernameLoading}
+            placeholder="Enter new username"
+            placeholderTextColor={isDark ? '#A8A8A8' : '#888'}
+            className={`w-full border-b-2 pb-1 text-center text-lg ${
+              isDark
+                ? 'border-accent text-secondary bg-darksurface'
+                : 'border-accent text-primary bg-white'
+            }`}
+            style={{ fontFamily: 'Montserrat-SemiBold' }}
+          />
+
+        {/* Uniform Action Buttons */}
+        <View className="flex-row justify-center mt-4">
+          <TouchableOpacity
+            onPress={handleSaveUsername}
+            disabled={usernameLoading}
+            className="bg-accent px-6 py-2 rounded-full active:opacity-80 mx-2"
+          >
+            <Text
+              className="text-white text-base"
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
+              Save
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsEditingUsername(false)}
+            disabled={usernameLoading}
+            className={`px-6 py-2 rounded-full border active:opacity-80 mx-2 ${
+              isDark ? 'border-neutral' : 'border-primary'
+            }`}
+          >
+            <Text
+              className={`text-base ${
+                isDark ? 'text-neutral' : 'text-primary'
+              }`}
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
+              Cancel
+            </Text>
+          </TouchableOpacity>
+        </View>
               </View>
             )}
           </View>
         </View>
 
+
         {/* 🏆 Progress Section */}
         <Text
-          className="text-xl text-primary mb-3"
+          className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Your Progress
@@ -297,16 +310,17 @@ const Profile = () => {
           {Object.entries(progressData).map(([key, value]) => (
             <View
               key={key}
-              className="w-[48%] bg-white rounded-2xl p-4 shadow-md mb-4 items-center border border-accent"
+              className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
+                isDark ? 'bg-darksurface' : 'bg-white'
+              }`}
             >
-              <Text
-                className="text-3xl text-accent mb-1"
-                style={{ fontFamily: 'Fredoka-SemiBold' }}
-              >
+              <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
                 {value}
               </Text>
               <Text
-                className="text-sm text-neutral text-center capitalize"
+                className={`text-sm text-center capitalize ${
+                  isDark ? 'text-neutral' : 'text-primary'
+                }`}
                 style={{ fontFamily: 'Montserrat-SemiBold' }}
               >
                 {key.replace(/([A-Z])/g, ' $1')}
@@ -317,21 +331,23 @@ const Profile = () => {
 
         {/* ⚙️ Settings */}
         <Text
-          className="text-lg text-primary mb-3"
+          className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Settings
         </Text>
 
-        <View className="bg-white rounded-2xl p-4 shadow-md mb-8 border border-accent">
-          {(
-            [
-              ['Sound Effects', isSoundEffectsEnabled, setSoundEffectsEnabled],
-              ['Vibration', isVibrationEnabled, setVibrationEnabled],
-              ['Notifications', areNotificationsEnabled, setNotificationsEnabled],
-              ['Dark Mode', isDarkModeEnabled, setDarkModeEnabled],
-            ] as [string, boolean, React.Dispatch<React.SetStateAction<boolean>>][]
-          ).map(([label, value, setter], idx) => (
+        <View
+          className={`rounded-2xl p-4 shadow-md mb-8 border border-accent ${
+            isDark ? 'bg-darksurface' : 'bg-white'
+          }`}
+        >
+          {[
+            ['Sound Effects', isSoundEffectsEnabled, setSoundEffectsEnabled],
+            ['Vibration', isVibrationEnabled, setVibrationEnabled],
+            ['Notifications', areNotificationsEnabled, setNotificationsEnabled],
+            ['Dark Mode', isDark, 'darkMode'],
+          ].map(([label, value, setter], idx) => (
             <View
               key={idx}
               className={`flex-row items-center justify-between py-3 ${
@@ -339,38 +355,48 @@ const Profile = () => {
               }`}
             >
               <Text
-                className="text-base text-primary"
+                className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
                 style={{ fontFamily: 'Fredoka-Regular' }}
               >
                 {label}
               </Text>
-              <Switch
-                trackColor={{ false: '#E5E7EB', true: '#FF6B00' }}
-                thumbColor={value ? '#fff' : '#f4f3f4'}
-                onValueChange={() => setter(!value)}
-                value={value}
-              />
+                <Switch
+                  trackColor={{
+                    false: '#d1d5db', // gray-300 for off state
+                    true: '#FF6B00', // your orange accent color
+                  }}
+                  thumbColor={value ? '#fff' : '#f4f3f4'}
+                  onValueChange={() => {
+                    if (setter === 'darkMode') {
+                      toggleTheme();
+                    } else if (typeof setter === 'function') {
+                      (setter as any)(!value);
+                    }
+                  }}
+                  value={value}
+                />
             </View>
           ))}
         </View>
 
         {/* 👤 Account */}
         <Text
-          className="text-lg text-primary mb-3"
+          className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Account
         </Text>
 
-        <View className="bg-white rounded-2xl p-4 shadow-md border border-accent">
+        <View
+          className={`rounded-2xl p-4 shadow-md border border-accent ${
+            isDark ? 'bg-darksurface' : 'bg-white'
+          }`}
+        >
           <TouchableOpacity
             onPress={handleSignOut}
             className="flex-row items-center justify-between py-2"
           >
-            <Text
-              className="text-base text-red-500"
-              style={{ fontFamily: 'Fredoka-SemiBold' }}
-            >
+            <Text className="text-base text-red-500" style={{ fontFamily: 'Fredoka-SemiBold' }}>
               Sign Out
             </Text>
             <AntDesign name="logout" size={22} color="#ef4444" />

@@ -1,8 +1,10 @@
+// File: app/(tabs)/learn/letters.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
+import { useTheme } from '../../../src/ThemeContext'; // ✅ use global theme
 
 const alphabetData = [
   { letter: 'A', completed: true },
@@ -36,20 +38,26 @@ const alphabetData = [
 const Letters = () => {
   const insets = useSafeAreaInsets();
   const completedCount = alphabetData.filter(item => item.completed).length;
+  const { isDark } = useTheme(); // ✅ global dark mode
 
   return (
-    <View className="flex-1 bg-gray-100" style={{ paddingTop: insets.top }}>
+    <View
+      className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}
+      style={{ paddingTop: insets.top }}
+    >
       <AppHeaderLearn
         title="Learn Letters"
         completedCount={completedCount}
         totalCount={26}
       />
 
-      <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 150 }}>
-        
+      <ScrollView
+        className="flex-1 p-4"
+        contentContainerStyle={{ paddingBottom: 150 }}
+      >
         {/* Title */}
         <Text
-          className="text-lg text-gray-800 mb-4"
+          className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Select a Letter
@@ -61,14 +69,22 @@ const Letters = () => {
             <TouchableOpacity
               key={index}
               className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
-                item.completed ? 'border-[#FF6B00] bg-white' : 'border-gray-300 bg-gray-200'
+                item.completed
+                  ? 'border-accent bg-secondary'
+                  : isDark
+                  ? 'border-darkhover bg-darksurface'
+                  : 'border-neutral bg-lighthover'
               }`}
             >
               <Text
                 style={{
                   fontFamily: 'Fredoka-SemiBold',
                   fontSize: 24,
-                  color: item.completed ? '#FF6B00' : '#6B7280',
+                  color: item.completed
+                    ? '#FF6B00'
+                    : isDark
+                    ? '#E5E7EB'
+                    : '#6B7280',
                 }}
               >
                 {item.letter}
@@ -85,16 +101,20 @@ const Letters = () => {
 
         {/* Practice Section */}
         <Text
-          className="text-lg text-gray-800 mb-4"
+          className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Practice: "A"
         </Text>
 
         {/* Video Placeholder */}
-        <View className="w-full aspect-video bg-gray-800 rounded-xl items-center justify-center overflow-hidden mb-6">
+        <View
+          className={`w-full aspect-video rounded-xl items-center justify-center overflow-hidden mb-6 ${
+            isDark ? 'bg-darksurface' : 'bg-primary'
+          }`}
+        >
           <Text
-            className="text-white text-lg"
+            className="text-secondary text-lg"
             style={{ fontFamily: 'Montserrat-SemiBold' }}
           >
             Sign for "A"
@@ -103,13 +123,13 @@ const Letters = () => {
 
         {/* Description */}
         <Text
-          className="text-lg text-gray-800 mb-2"
+          className={`text-lg mb-2 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
           Letter: A
         </Text>
         <Text
-          className="text-sm text-gray-600 mb-4"
+          className={`text-sm mb-4 ${isDark ? 'text-neutral' : 'text-neutral'}`}
           style={{ fontFamily: 'Montserrat-SemiBold' }}
         >
           Practice the sign for the letter A. Watch the video demonstration and
@@ -121,10 +141,12 @@ const Letters = () => {
           {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
             <TouchableOpacity
               key={label}
-              className="flex-1 bg-gray-200 rounded-full py-3 mx-1 items-center border border-accent"
+              className={`flex-1 rounded-full py-3 mx-1 items-center border border-accent ${
+                isDark ? 'bg-darksurface' : 'bg-lighthover'
+              }`}
             >
               <Text
-                className="text-gray-700"
+                className={`${isDark ? 'text-secondary' : 'text-primary'}`}
                 style={{ fontFamily: 'Fredoka-Regular' }}
               >
                 {label}
@@ -134,9 +156,9 @@ const Letters = () => {
         </View>
 
         {/* Completed Button */}
-        <TouchableOpacity className="w-full bg-[#FF6B00] rounded-full py-4 items-center shadow-md">
+        <TouchableOpacity className="w-full bg-accent rounded-full py-4 items-center shadow-md">
           <Text
-            className="text-white text-lg"
+            className="text-secondary text-lg"
             style={{ fontFamily: 'Fredoka-SemiBold' }}
           >
             Completed
