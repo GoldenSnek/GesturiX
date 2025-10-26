@@ -10,6 +10,8 @@ import {
   PanResponder,
   TextInput,
   Alert,
+  Linking,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, AntDesign } from '@expo/vector-icons';
@@ -184,6 +186,13 @@ const Profile = () => {
     );
   }
 
+  // Helper for GitHub link open
+  const openGitHub = async (url: string) => {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) await Linking.openURL(url);
+    else Alert.alert('Unable to open link');
+  };
+
   return (
     <View className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`} style={{ paddingTop: insets.top }}>
       <AppHeaderProfile />
@@ -303,7 +312,7 @@ const Profile = () => {
           className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
         >
-          Your Progress
+          My Progress
         </Text>
 
         <View className="flex-row flex-wrap justify-between mb-8">
@@ -379,6 +388,54 @@ const Profile = () => {
           ))}
         </View>
 
+        <Text
+          className={`text-lg mb-3 mt-8 ${isDark ? 'text-secondary' : 'text-primary'}`}
+          style={{ fontFamily: 'Audiowide-Regular' }}
+        >
+          About
+        </Text>
+
+        <View
+          className={`rounded-2xl p-4 shadow-md border border-accent mb-10 ${
+            isDark ? 'bg-darksurface' : 'bg-white'
+          }`}
+        >
+          <Text
+            className={`text-base mb-4 ${isDark ? 'text-neutral' : 'text-primary'}`}
+            style={{ fontFamily: 'Montserrat-SemiBold', lineHeight: 22 }}
+          >
+            Gesturix is a modern sign language learning companion that helps you
+            learn, translate, and communicate using interactive tools and real-time
+            sign recognition. Built with love and purpose to make learning sign
+            language accessible for everyone.
+          </Text>
+
+          <Text
+            className={`text-sm mb-2 ${isDark ? 'text-secondary' : 'text-primary'}`}
+            style={{ fontFamily: 'Fredoka-SemiBold' }}
+          >
+            Developed by:
+          </Text>
+
+          {[
+            { name: 'John Michael A. Nave', url: 'https://github.com/GoldenSnek' },
+            { name: 'Jesnar T. Tindogan', url: 'https://github.com/Jasner13' },
+            { name: 'John Michael B. Villamor', url: 'https://github.com/Villamormike' },
+          ].map((dev, idx) => (
+            <TouchableOpacity
+              key={idx}
+              onPress={() => openGitHub(dev.url)}
+              className="active:opacity-70"
+            >
+              <Text
+                className="text-accent text-base underline mb-1"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {dev.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         {/* 👤 Account */}
         <Text
           className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
@@ -392,11 +449,29 @@ const Profile = () => {
             isDark ? 'bg-darksurface' : 'bg-white'
           }`}
         >
+          {/* Exit App */}
+          <TouchableOpacity
+            onPress={() => BackHandler.exitApp()}
+            className="flex-row items-center justify-between py-2 border-b border-orange-400"
+          >
+            <Text
+              className="text-base text-yellow-500"
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
+              Exit App
+            </Text>
+            <AntDesign name="closecircleo" size={22} color="#efc144ff" />
+          </TouchableOpacity>
+
+          {/* Sign Out */}
           <TouchableOpacity
             onPress={handleSignOut}
             className="flex-row items-center justify-between py-2"
           >
-            <Text className="text-base text-red-500" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+            <Text
+              className="text-base text-red-500"
+              style={{ fontFamily: 'Fredoka-SemiBold' }}
+            >
               Sign Out
             </Text>
             <AntDesign name="logout" size={22} color="#ef4444" />
