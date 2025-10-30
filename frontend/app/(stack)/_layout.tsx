@@ -8,7 +8,7 @@ const AuthStackLayout = () => {
         headerShown: false, animation: 'slide_from_right'
       }}
     >
-      <Stack.Screen name="LandingPage" />
+      <Stack.Screen name="index" />
       <Stack.Screen name="Login" />
       <Stack.Screen name="SignUp" />
     </Stack>

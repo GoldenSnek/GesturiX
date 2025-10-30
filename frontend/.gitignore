@@ -3,13 +3,27 @@
 # dependencies
 node_modules/
 
-# Expo
+# Expo / EAS Build Cache and Artifacts
 .expo/
+.eas/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native Development Cache
+# These directories are generated from prebuild/build and often cause conflicts
+android/build/
+android/.gradle/
+ios/build/
+ios/Pods/
+ios/.xccheckout/
+*.xcworkspace/
+*.xcodeproj/
+Podfile.lock
+app/bundles/
+
+# Native Keystores and Certificates
 .kotlin/
 *.orig.*
 *.jks
@@ -17,6 +31,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+/android/key.store
 
 # Metro
 .metro-health-check*
@@ -30,10 +45,15 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# Local Environment/Secret Files (CRITICAL)
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
 
+# Example app files
 app-example
+
+# Temporary/Cache Files
+.local/
