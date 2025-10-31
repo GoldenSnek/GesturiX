@@ -108,7 +108,7 @@ const Profile = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.replace('/(stack)/LandingPage');
+    router.replace('/(stack)');
   };
 
   const handleSaveUsername = async () => {
