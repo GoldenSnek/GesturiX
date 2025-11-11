@@ -1,23 +1,28 @@
-// File: ../../components/AppHeaderLearn.tsx
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons'; // Feather for a more minimalist icon
 import { useRouter } from 'expo-router';
 
 interface AppHeaderLearnProps {
   title: string;
   completedCount: number;
   totalCount: number;
+  onResetProgress?: () => void; // Parent passes reset handler
 }
 
-const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, totalCount }) => {
+const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({
+  title,
+  completedCount,
+  totalCount,
+  onResetProgress
+}) => {
   const router = useRouter();
   const pct = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : 0;
+  const [showConfirm, setShowConfirm] = useState(false);
 
   return (
     <View style={{ backgroundColor: 'transparent' }}>
-      {/* Top gradient with back button and title */}
       <LinearGradient
         colors={['#FF6B00', '#FFAB7B']}
         className="py-3 px-4 flex-row items-center justify-between"
@@ -27,7 +32,7 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
 
-        {/* Title and progress text centered */}
+        {/* Title and progress */}
         <View className="flex-1 items-center -ml-8">
           <Text className="text-primary text-lg font-fredoka-semibold">{title}</Text>
           <Text className="text-primary text-xs mt-1 font-fredoka">
@@ -35,14 +40,20 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
           </Text>
         </View>
 
-        {/* Spacer to balance layout */}
-        <View style={{ width: 24 }} />
+        {/* Reset icon at upper right */}
+        <TouchableOpacity
+          onPress={() => setShowConfirm(true)}
+          className="p-1"
+          style={{ width: 32, alignItems: 'flex-end' }}
+        >
+          <Feather name="rotate-ccw" size={22} color="#472900" />
+        </TouchableOpacity>
       </LinearGradient>
 
-      {/* Thin progress bar (white background with orange fill) */}
-      <View className="w-full bg-secondary rounded-full" style={{ height: 6 }}>
+      {/* Progress bar */}
+      <View className="w-full bg-secondary rounded-full" style={{ height: 5 }}>
         <View
-          style={{ width: `${pct}%`, height: 6 }}
+          style={{ width: `${pct}%`, height: 5 }}
           className="bg-[#FF6B00] rounded-full"
         />
       </View>
@@ -57,6 +68,85 @@ const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({ title, completedCount, 
         end={{ x: 0.5, y: 1.0 }}
         className="items-center py-2"
       />
+
+      {/* Minimalist modal confirmation */}
+      <Modal
+        visible={showConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirm(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.25)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <View style={{
+            backgroundColor: '#FFF3E6',
+            padding: 19,
+            borderRadius: 14,
+            width: 250,
+            alignItems: 'center',
+            shadowColor: '#FF6B00',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 5
+          }}>
+            <Text style={{
+              fontFamily: 'Fredoka-SemiBold',
+              fontSize: 16,
+              color: '#472900',
+              marginBottom: 9
+            }}>Reset lesson progress?</Text>
+            <Text style={{
+              fontFamily: 'Montserrat-SemiBold',
+              fontSize: 13,
+              color: '#472900',
+              marginBottom: 17,
+              textAlign: 'center'
+            }}>
+              This will restart completion. Are you sure?
+            </Text>
+            <View style={{ flexDirection: 'row', marginTop: 2 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#FF6B00',
+                  paddingVertical: 8,
+                  paddingHorizontal: 18,
+                  borderRadius: 8,
+                  marginRight: 12
+                }}
+                onPress={() => {
+                  setShowConfirm(false);
+                  if (onResetProgress) onResetProgress();
+                }}
+              >
+                <Text style={{
+                  color: 'white',
+                  fontSize: 14,
+                  fontFamily: 'Fredoka-SemiBold'
+                }}>Reset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#f2ebe8',
+                  paddingVertical: 8,
+                  paddingHorizontal: 18,
+                  borderRadius: 8
+                }}
+                onPress={() => setShowConfirm(false)}
+              >
+                <Text style={{
+                  color: '#472900',
+                  fontSize: 14,
+                  fontFamily: 'Fredoka-SemiBold'
+                }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

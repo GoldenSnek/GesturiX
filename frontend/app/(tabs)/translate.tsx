@@ -90,7 +90,7 @@ export default function Translate() {
           name: "frame.jpg",
         } as any);
 
-        const res = await axios.post("http://192.168.1.5:8000/predict", formData, { //ilisi ni if necessary, akoa rani i auto detect later
+        const res = await axios.post("http://192.168.123.137:8000/predict", formData, { //ilisi ni if necessary, akoa rani i auto detect later
           headers: { "Content-Type": "multipart/form-data" },
         });
 

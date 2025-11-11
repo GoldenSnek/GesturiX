@@ -1,5 +1,5 @@
-// File: app/(tabs)/learn.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+
 import {
   View,
   Text,
@@ -10,8 +10,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../../src/ThemeContext'; // ✅ Use global theme
+import { useTheme } from '../../../src/ThemeContext';
 import AppHeader from '../../../components/AppHeader';
+
+import { phrases } from '../../../constants/phrases';
+import { getCompletedPhrases } from '../../../utils/progressStorage';
+import { useFocusEffect } from '@react-navigation/native';
 
 // 📊 Progress and Category Data
 const progressData = [
@@ -20,35 +24,8 @@ const progressData = [
   { label: 'Learning Time', value: '3.2 hrs' },
 ];
 
-const categoriesData = [
-  {
-    id: 'letters',
-    title: 'Letters',
-    subtitle: 'Learn the Alphabet',
-    icon: 'text-fields',
-    completed: 12,
-    total: 26,
-    progress: 0.46,
-  },
-  {
-    id: 'numbers',
-    title: 'Numbers',
-    subtitle: 'Count in sign language',
-    icon: 'format-list-numbered',
-    completed: 12,
-    total: 26,
-    progress: 0.4,
-  },
-  {
-    id: 'phrases',
-    title: 'Phrases',
-    subtitle: 'Common expressions',
-    icon: 'record-voice-over',
-    completed: 12,
-    total: 26,
-    progress: 0.17,
-  },
-];
+// You may want to fetch totals from actual data for other categories too!
+const totalPhrases = phrases.length;
 
 const quickActionsData = [
   { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz' },
@@ -60,7 +37,52 @@ const quickActionsData = [
 const Learn = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isDark } = useTheme(); // ✅ read global dark mode
+  const { isDark } = useTheme();
+
+  // NEW: State for phrase progress
+  const [phrasesCompleted, setPhrasesCompleted] = useState(0);
+
+  useFocusEffect(
+  React.useCallback(() => {
+    let isActive = true;
+    (async () => {
+      const done = await getCompletedPhrases(phrases.map(p => p.id));
+      if (isActive) setPhrasesCompleted(done.length);
+    })();
+    return () => { isActive = false; };
+  }, [])
+);
+
+  // Optionally: update categoriesData in useMemo to always reflect current progress
+  const categoriesData = useMemo(() => [
+    {
+      id: 'letters',
+      title: 'Letters',
+      subtitle: 'Learn the Alphabet',
+      icon: 'text-fields',
+      completed: 12,
+      total: 26,
+      progress: 12 / 26,
+    },
+    {
+      id: 'numbers',
+      title: 'Numbers',
+      subtitle: 'Count in sign language',
+      icon: 'format-list-numbered',
+      completed: 12,
+      total: 26,
+      progress: 12 / 26,
+    },
+    {
+      id: 'phrases',
+      title: 'Phrases',
+      subtitle: 'Common expressions',
+      icon: 'record-voice-over',
+      completed: phrasesCompleted,
+      total: totalPhrases,
+      progress: totalPhrases > 0 ? phrasesCompleted / totalPhrases : 0,
+    },
+  ], [phrasesCompleted]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -80,7 +102,6 @@ const Learn = () => {
       style={{ paddingTop: insets.top }}
     >
       <AppHeader />
-
       <ScrollView
         className="flex-1 px-4 py-6"
         contentContainerStyle={{ paddingBottom: 150 }}
@@ -94,7 +115,6 @@ const Learn = () => {
         >
           Your Progress
         </Text>
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
           {progressData.map((item, index) => (
             <View
@@ -170,7 +190,6 @@ const Learn = () => {
               >
                 {category.subtitle}
               </Text>
-
               <View
                 className={`w-full h-2 rounded-full ${
                   isDark ? 'bg-darkhover' : 'bg-white/30'
