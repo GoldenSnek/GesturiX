@@ -11,13 +11,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "1.0.1",
       "infoPlist": {
         "NSCameraUsageDescription": "GesturiX needs access to your camera to translate sign language in real-time."
       }
     },
     "android": {
-      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/GesturiX-icon.png",
         "backgroundColor": "#ffffff"
