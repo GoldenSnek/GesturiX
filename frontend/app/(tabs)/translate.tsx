@@ -29,11 +29,13 @@ export default function Translate() {
   const [hasPermission, setHasPermission] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [prediction, setPrediction] = useState<string>("None");
+  const [facing, setFacing] = useState<"front" | "back">("back");
+  const [flash, setFlash] = useState<"on" | "off">("off");
 
   const cameraRef = useRef<Camera>(null);
   const devices = useCameraDevices();
   const device: CameraDevice | undefined =
-    devices.find((d) => d.position === "front") ??
+    devices.find((d) => d.position === facing) ??
     devices.find((d) => d.position === "back");
 
   const insets = useSafeAreaInsets();
@@ -54,7 +56,6 @@ export default function Translate() {
   useEffect(() => {
     (async () => {
       const status = await Camera.requestCameraPermission();
-      console.log("Camera permission:", status);
       setHasPermission(status === "granted");
     })();
   }, []);
@@ -90,14 +91,13 @@ export default function Translate() {
           name: "frame.jpg",
         } as any);
 
-        const res = await axios.post("http://192.168.1.5:8000/predict", formData, { //ilisi ni if necessary, akoa rani i auto detect later
+        const res = await axios.post("http://192.168.1.6:8000/predict", formData, { //ilisi ni
           headers: { "Content-Type": "multipart/form-data" },
         });
 
         if (res.data.prediction) {
           setPrediction(res.data.prediction);
 
-          // 🟢 CHANGED — update translated text on-screen
           if (res.data.prediction !== "None") {
             setTranslatedText(`Detected sign: ${res.data.prediction.toUpperCase()}`);
           } else {
@@ -140,6 +140,9 @@ export default function Translate() {
     setTranslatedText("Camera Off. Tap to begin.");
   };
 
+  const flipCamera = () => setFacing(facing === "back" ? "front" : "back");
+  const toggleFlash = () => setFlash(flash === "off" ? "on" : "off");
+
   // 🧠 Theme colors
   const bgColor = isDark ? "bg-darkbg" : "bg-secondary";
   const textColor = isDark ? "text-secondary" : "text-primary";
@@ -169,7 +172,7 @@ export default function Translate() {
       {/* Camera View */}
       <View className="px-5 pt-5 items-center">
         <View
-          className={`w-full aspect-[4/3] ${
+          className={`w-full aspect-[1/1] ${
             isDark ? "bg-darkhover" : "bg-primary"
           } rounded-2xl overflow-hidden mb-5 relative`}
         >
@@ -180,12 +183,31 @@ export default function Translate() {
               device={device}
               isActive={true}
               photo={true}
+              torch={facing === "back" ? flash : "off"}
             />
+          )}
+
+          {/* Flip / Flash Buttons (always above overlay) */}
+          {isCameraActive && (
+            <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-2 z-50">
+              {facing === "back" && (
+                <TouchableOpacity onPress={toggleFlash} className="p-2">
+                  <MaterialIcons
+                    name={flash === "on" ? "flash-on" : "flash-off"}
+                    size={28}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={flipCamera} className="p-2">
+                <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Overlay */}
           {(!isCameraActive || !isTranslating) && (
-            <View className="absolute inset-0 justify-center items-center px-5 bg-black/50">
+            <View className="absolute inset-0 justify-center items-center px-5 bg-black/50 z-40">
               <MaterialIcons
                 name={isCameraActive ? "pause-circle-outline" : "videocam-off"}
                 size={80}
@@ -252,7 +274,6 @@ export default function Translate() {
         <View
           className={`rounded-xl p-5 min-h-[80px] border border-accent shadow-sm ${surfaceColor}`}
         >
-          {/* 🟢 CHANGED — show live prediction */}
           <Text
             className={`text-lg text-center leading-6 font-montserrat-bold ${textColor}`}
           >
