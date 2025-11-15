@@ -1,5 +1,5 @@
 
-![GesturiX Logo](frontend/assets/images/GesturiX-word-color.png)
+![GesturiX Logo](frontend/assets/images/GesturiX-readme.png)
 
 Gesturix is a modern sign language learning companion that helps you learn, translate, and communicate using interactive tools and real-time sign recognition. Built with love and purpose to make learning sign language accessible for everyone.
 ## Features
@@ -110,10 +110,13 @@ Gesturix is a modern sign language learning companion that helps you learn, tran
 ## Developer Profiles
 
 - **Jesnar T. Tindogan**  << Project Manager | Backend developer >>
+  
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Jasner13)
 
 - **John Michael A. Nave**  << Lead Developer | DevOps Engineer >>
+  
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/GoldenSnek)
 
 - **John Michael B. Villamor**  <<  ML Engineer | Quality Assurance>>
+  
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Villamormike)
