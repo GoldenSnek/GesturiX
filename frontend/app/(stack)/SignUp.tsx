@@ -18,6 +18,9 @@ import uuid from 'react-native-uuid';
 import { Eye, EyeOff, Camera, ChevronLeft } from 'lucide-react-native';
 import Message, { MessageType } from '../../components/Message';
 
+// 🟦 Reanimated
+import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+
 global.Buffer = global.Buffer || Buffer;
 const redirectUrl = AuthSession.makeRedirectUri();
 
@@ -50,32 +53,6 @@ const SignUp: React.FC = () => {
     if (!result.canceled) setImage(result.assets[0].uri);
   };
 
-  const uploadAvatar = async (fileUri: string, userId: string) => {
-    try {
-      const fileExt = fileUri.split('.').pop();
-      const fileName = `${uuid.v4()}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
-
-      const base64 = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const fileBytes = Buffer.from(base64, 'base64');
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, fileBytes, {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-      return filePath;
-    } catch (err: any) {
-      console.error('Upload error:', err.message);
-      return null;
-    }
-  };
-
   const handleSignUp = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
@@ -89,7 +66,7 @@ const SignUp: React.FC = () => {
       showWarning('Username must be at least 3 characters.');
       return;
     }
-    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
       showWarning('Please enter a valid email address.');
       return;
@@ -105,7 +82,6 @@ const SignUp: React.FC = () => {
       });
 
       if (error) {
-        console.error('Supabase signup error:', error);
         showError(`Sign Up Failed: ${error.message}`);
         setLoading(false);
         return;
@@ -119,11 +95,10 @@ const SignUp: React.FC = () => {
       }
 
       setLoading(false);
-      showSuccess('Account created successfully! You are now logged in.');
-      router.replace('/(stack)/LandingPage');
+      showSuccess('Account created successfully!');
+      router.replace('/(tabs)/translate');
     } catch (err: any) {
-      console.error('Signup process error:', err.message);
-      showError('An unexpected error occurred during signup.');
+      showError('Unexpected signup error.');
       setLoading(false);
     }
   };
@@ -138,7 +113,7 @@ const SignUp: React.FC = () => {
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/(stack)/SignUp');
+    else router.replace('/(stack)/Login');
   };
 
   return (
@@ -149,7 +124,6 @@ const SignUp: React.FC = () => {
     >
       <View className="absolute inset-0 bg-black opacity-40" />
 
-      {/* Go Back */}
       <TouchableOpacity
         onPress={handleGoBack}
         className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10"
@@ -159,97 +133,127 @@ const SignUp: React.FC = () => {
 
       <Message message={message} type={messageType} onClose={() => setMessage('')} />
 
-      <View className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80">
-        <Text className="text-4xl text-black mb-6 text-center font-audiowide">
+      {/* Card animation only */}
+      <Animated.View
+        entering={FadeInUp.duration(700).delay(150)}
+        className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80"
+      >
+        {/* Title */}
+        <Animated.Text
+          entering={FadeInDown.delay(200).duration(600)}
+          className="text-4xl text-black mb-6 text-center font-audiowide"
+        >
           Create Account
-        </Text>
+        </Animated.Text>
 
-        <TouchableOpacity
-          onPress={pickImage}
-          className="self-center mb-8 items-center justify-center"
-        >
-          <View
-            style={{
-              width: 130,
-              height: 130,
-              borderRadius: 65,
-              borderWidth: 3,
-              borderColor: '#4DB6AC',
-              backgroundColor: '#E0F2F1',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.25,
-              shadowRadius: 5,
-              elevation: 5,
-            }}
-          >
-            {image ? (
-              <Image source={{ uri: image }} style={{ width: 124, height: 124, borderRadius: 62 }} />
-            ) : (
-              <>
-                <Camera color="#0D47A1" size={32} />
-                <Text className="text-accent font-fredoka-semibold mt-2">Add Photo</Text>
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
-          placeholder="Username"
-          placeholderTextColor="#444444"
-          value={username}
-          onChangeText={setUsername}
-        />
-
-        <TextInput
-          className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
-          placeholder="Email"
-          placeholderTextColor="#444444"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-
-        <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
-          <TextInput
-            className="flex-1 p-4 text-black text-lg font-montserrat-semibold"
-            placeholder="Password"
-            placeholderTextColor="#444444"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ paddingRight: 16 }}>
-            {showPassword ? <EyeOff color="#0D47A1" size={22} /> : <Eye color="#0D47A1" size={22} />}
+        {/* Avatar */}
+        <Animated.View entering={FadeInUp.delay(250).duration(600)} className="self-center mb-8">
+          <TouchableOpacity onPress={pickImage} className="items-center justify-center">
+            <View
+              style={{
+                width: 130,
+                height: 130,
+                borderRadius: 65,
+                borderWidth: 3,
+                borderColor: '#4DB6AC',
+                backgroundColor: '#E0F2F1',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#000',
+                shadowOpacity: 0.25,
+                shadowRadius: 5,
+                elevation: 5,
+              }}
+            >
+              {image ? (
+                <Image
+                  source={{ uri: image }}
+                  style={{ width: 124, height: 124, borderRadius: 62 }}
+                />
+              ) : (
+                <>
+                  <Camera color="#0D47A1" size={32} />
+                  <Text className="text-accent font-fredoka-semibold mt-2">Add Photo</Text>
+                </>
+              )}
+            </View>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        <TouchableOpacity
-          onPress={handleSignUp}
-          disabled={loading}
-          className="w-full bg-accent rounded-full py-4 items-center mt-2"
-        >
-          <Text className="text-white text-lg font-audiowide">
-            {loading ? 'Creating Account...' : 'Sign Up'}
-          </Text>
-        </TouchableOpacity>
+        {/* Username */}
+        <Animated.View entering={FadeInUp.delay(350).duration(600)}>
+          <TextInput
+            className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
+            placeholder="Username"
+            placeholderTextColor="#444444"
+            value={username}
+            onChangeText={setUsername}
+            selectionColor="#FFAB7B"
+          />
+        </Animated.View>
 
-        <TouchableOpacity
-          onPress={handleGoogleSignUp}
-          className="w-full bg-red-500 rounded-full py-4 items-center mt-4"
-        >
-          <Text className="text-white text-lg font-audiowide">Sign Up with Google</Text>
-        </TouchableOpacity>
+        {/* Email */}
+        <Animated.View entering={FadeInUp.delay(450).duration(600)}>
+          <TextInput
+            className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
+            placeholder="Email"
+            placeholderTextColor="#444444"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            selectionColor="#FFAB7B"
+          />
+        </Animated.View>
 
-        <View className="mt-6 flex-row items-center justify-center">
+        {/* Password */}
+        <Animated.View entering={FadeInUp.delay(550).duration(600)}>
+          <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
+            <TextInput
+              className="flex-1 p-4 text-black text-lg font-montserrat-semibold"
+              placeholder="Password"
+              placeholderTextColor="#444444"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              selectionColor="#FFAB7B"
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ paddingRight: 16 }}>
+              {showPassword ? <EyeOff color="#0D47A1" size={22} /> : <Eye color="#0D47A1" size={22} />}
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Sign Up Button */}
+        <Animated.View entering={FadeInUp.delay(650).duration(600)} style={{ backgroundColor: 'transparent' }}>
+          <TouchableOpacity
+            onPress={handleSignUp}
+            disabled={loading}
+            className="w-full bg-accent rounded-full py-4 items-center mt-2 shadow-lg"
+          >
+            <Text className="text-white text-lg font-audiowide">
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Google Sign Up */}
+        <Animated.View entering={FadeInUp.delay(750).duration(600)} style={{ backgroundColor: 'transparent' }}>
+          <TouchableOpacity
+            onPress={handleGoogleSignUp}
+            className="w-full bg-red-500 rounded-full py-4 items-center mt-4 shadow-lg"
+          >
+            <Text className="text-white text-lg font-audiowide">Sign Up with Google</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Footer */}
+        <Animated.View entering={FadeInUp.delay(850).duration(600)} className="mt-6 flex-row items-center justify-center">
           <Text className="text-black font-fredoka">Already have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>
             <Text className="text-highlight font-fredoka-semibold">Log In</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </ImageBackground>
   );
 };
