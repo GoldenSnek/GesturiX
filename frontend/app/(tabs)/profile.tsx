@@ -22,6 +22,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import { useTheme } from '../../src/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native'; // ADD THIS IMPORT
+import { fetchUserStatistics, getCurrentUserId } from '../../utils/supabaseApi'; // ADD THIS IMPORT
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -50,12 +52,12 @@ const Profile = () => {
   const [isVibrationEnabled, setVibrationEnabled] = useState(false);
   const [areNotificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  const progressData = {
-    lessonsCompleted: 25,
-    signsLearned: 180,
-    daysStreak: 7,
-    practiceHours: 12.5,
-  };
+  // NEW: State for Supabase statistics
+  const [userStats, setUserStats] = useState({
+    lessons_completed: 0,
+    days_streak: 0,
+    practice_hours: 0,
+  });
 
   const panResponder = useRef(
     PanResponder.create({
@@ -68,6 +70,21 @@ const Profile = () => {
       },
     })
   ).current;
+
+  // Fetch user statistics when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      async function loadStats() {
+        const userId = await getCurrentUserId();
+        if (typeof userId !== 'string') return;
+        const stats = await fetchUserStatistics(userId);
+        if (isActive) setUserStats(stats);
+      }
+      loadStats();
+      return () => { isActive = false; };
+    }, [])
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -306,8 +323,7 @@ const Profile = () => {
           </View>
         </View>
 
-
-        {/* 🏆 Progress Section */}
+        {/* 🏆 Progress Section - UPDATED WITH LIVE DATA */}
         <Text
           className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
           style={{ fontFamily: 'Audiowide-Regular' }}
@@ -316,26 +332,77 @@ const Profile = () => {
         </Text>
 
         <View className="flex-row flex-wrap justify-between mb-8">
-          {Object.entries(progressData).map(([key, value]) => (
-            <View
-              key={key}
-              className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
-                isDark ? 'bg-darksurface' : 'bg-white'
+          <View
+            className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
+              isDark ? 'bg-darksurface' : 'bg-white'
+            }`}
+          >
+            <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+              {userStats.lessons_completed}
+            </Text>
+            <Text
+              className={`text-sm text-center capitalize ${
+                isDark ? 'text-neutral' : 'text-primary'
               }`}
+              style={{ fontFamily: 'Montserrat-SemiBold' }}
             >
-              <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
-                {value}
-              </Text>
-              <Text
-                className={`text-sm text-center capitalize ${
-                  isDark ? 'text-neutral' : 'text-primary'
-                }`}
-                style={{ fontFamily: 'Montserrat-SemiBold' }}
-              >
-                {key.replace(/([A-Z])/g, ' $1')}
-              </Text>
-            </View>
-          ))}
+              Lessons Completed
+            </Text>
+          </View>
+
+          <View
+            className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
+              isDark ? 'bg-darksurface' : 'bg-white'
+            }`}
+          >
+            <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+              0
+            </Text>
+            <Text
+              className={`text-sm text-center capitalize ${
+                isDark ? 'text-neutral' : 'text-primary'
+              }`}
+              style={{ fontFamily: 'Montserrat-SemiBold' }}
+            >
+              Signs Learned
+            </Text>
+          </View>
+
+          <View
+            className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
+              isDark ? 'bg-darksurface' : 'bg-white'
+            }`}
+          >
+            <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+              {userStats.days_streak}
+            </Text>
+            <Text
+              className={`text-sm text-center capitalize ${
+                isDark ? 'text-neutral' : 'text-primary'
+              }`}
+              style={{ fontFamily: 'Montserrat-SemiBold' }}
+            >
+              Days Streak
+            </Text>
+          </View>
+
+          <View
+            className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
+              isDark ? 'bg-darksurface' : 'bg-white'
+            }`}
+          >
+            <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+              {userStats.practice_hours.toFixed(1)}
+            </Text>
+            <Text
+              className={`text-sm text-center capitalize ${
+                isDark ? 'text-neutral' : 'text-primary'
+              }`}
+              style={{ fontFamily: 'Montserrat-SemiBold' }}
+            >
+              Practice Hours
+            </Text>
+          </View>
         </View>
 
         {/* ⚙️ Settings */}
@@ -367,12 +434,13 @@ const Profile = () => {
                 className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
                 style={{ fontFamily: 'Fredoka-Regular' }}
               >
-                {label}
+              <Text>{String(label)}</Text>
+
               </Text>
                 <Switch
                   trackColor={{
-                    false: '#d1d5db', // gray-300 for off state
-                    true: '#FF6B00', // your orange accent color
+                    false: '#d1d5db',
+                    true: '#FF6B00',
                   }}
                   thumbColor={value ? '#fff' : '#f4f3f4'}
                   onValueChange={() => {
@@ -382,7 +450,7 @@ const Profile = () => {
                       (setter as any)(!value);
                     }
                   }}
-                  value={value}
+                  value={!!value}
                 />
             </View>
           ))}

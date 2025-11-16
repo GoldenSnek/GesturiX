@@ -1,16 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../src/supabaseClient'; // Adjust path as needed
-import { getCurrentUserId } from './supabaseApi'; // Adjust path as needed
-import { phrases } from '../constants/phrases';   // Adjust path as needed
+import { supabase } from '../src/supabaseClient';
+import { getCurrentUserId } from './supabaseApi';
+import { phrases } from '../constants/phrases';
+
+// Helper to get user-specific key
+async function getUserKey(key: string): Promise<string | null> {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+  return `user_${userId}_${key}`;
+}
 
 export async function markPhraseCompleted(phraseId: string) {
-  await AsyncStorage.setItem(`phrase_${phraseId}_completed`, 'true');
-  await syncCompletedPhrasesToSupabase(); // Sync lessons_completed
-  await updateStreakOnLessonComplete();   // Sync streak
+  const userKey = await getUserKey(`phrase_${phraseId}_completed`);
+  if (!userKey) return;
+  
+  await AsyncStorage.setItem(userKey, 'true');
+  await syncCompletedPhrasesToSupabase();
+  await updateStreakOnLessonComplete();
 }
 
 export async function isPhraseCompleted(phraseId: string): Promise<boolean> {
-  const completed = await AsyncStorage.getItem(`phrase_${phraseId}_completed`);
+  const userKey = await getUserKey(`phrase_${phraseId}_completed`);
+  if (!userKey) return false;
+  
+  const completed = await AsyncStorage.getItem(userKey);
   return completed === 'true';
 }
 
@@ -75,7 +88,6 @@ export async function updatePracticeTime(hoursToAdd: number) {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  // Fetch current hour count
   const { data: stats } = await supabase
     .from('user_statistics')
     .select('practice_hours')
@@ -87,4 +99,18 @@ export async function updatePracticeTime(hoursToAdd: number) {
   await supabase
     .from('user_statistics')
     .upsert([{ user_id: userId, practice_hours: newHours }], { onConflict: 'user_id' });
+}
+
+// Clear local AsyncStorage for current user (call on logout)
+export async function clearUserProgressData() {
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+
+  // Get all AsyncStorage keys for this user
+  const allKeys = await AsyncStorage.getAllKeys();
+  const userKeys = allKeys.filter(key => key.startsWith(`user_${userId}_`));
+  
+  if (userKeys.length > 0) {
+    await AsyncStorage.multiRemove(userKeys);
+  }
 }

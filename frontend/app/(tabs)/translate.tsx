@@ -91,7 +91,7 @@ export default function Translate() {
           name: "frame.jpg",
         } as any);
 
-        const res = await axios.post("http://192.168.1.6:8000/predict", formData, { //ilisi ni
+        const res = await axios.post("http://192.168.174.136:8000/predict", formData, { //ilisi ni
           headers: { "Content-Type": "multipart/form-data" },
         });
 
