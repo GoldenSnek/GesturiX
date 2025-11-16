@@ -17,12 +17,8 @@ import { phrases } from '../../../constants/phrases';
 import { getCompletedPhrases } from '../../../utils/progressStorage';
 import { useFocusEffect } from '@react-navigation/native';
 
-// 📊 Progress and Category Data
-const progressData = [
-  { label: 'Lessons Completed', value: '25' },
-  { label: 'Streak', value: '7 days' },
-  { label: 'Learning Time', value: '3.2 hrs' },
-];
+// 🟧 Import the Supabase API helper
+import { fetchUserStatistics, getCurrentUserId } from '../../../utils/supabaseApi'; // Adjust path if different
 
 // You may want to fetch totals from actual data for other categories too!
 const totalPhrases = phrases.length;
@@ -43,17 +39,45 @@ const Learn = () => {
   const [phrasesCompleted, setPhrasesCompleted] = useState(0);
 
   useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const done = await getCompletedPhrases(phrases.map(p => p.id));
+        if (isActive) setPhrasesCompleted(done.length);
+      })();
+      return () => { isActive = false; };
+    }, [])
+  );
+
+  // 🟧 NEW: State for Supabase statistics
+  const [userStats, setUserStats] = useState({
+    lessons_completed: 0,
+    days_streak: 0,
+    practice_hours: 0,
+  });
+
+  useFocusEffect(
   React.useCallback(() => {
     let isActive = true;
-    (async () => {
-      const done = await getCompletedPhrases(phrases.map(p => p.id));
-      if (isActive) setPhrasesCompleted(done.length);
-    })();
-    return () => { isActive = false; };
+    async function loadStats() {
+      const userId = await getCurrentUserId();
+      if (typeof userId !== 'string') return;
+      const stats = await fetchUserStatistics(userId);
+      if (isActive) setUserStats(stats);
+    }
+    loadStats();
+    return () => { isActive = false; }; // Clean up
   }, [])
 );
 
-  // Optionally: update categoriesData in useMemo to always reflect current progress
+
+  // 🟧 Dynamic progress data for the Progress cards
+  const progressData = [
+    { label: 'Lessons Completed', value: `${userStats.lessons_completed}` },
+    { label: 'Streak', value: `${userStats.days_streak} days` },
+    { label: 'Learning Time', value: `${(userStats.practice_hours).toFixed(1)} hrs` },
+  ];
+
   const categoriesData = useMemo(() => [
     {
       id: 'letters',

@@ -5,9 +5,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { Video, ResizeMode } from 'expo-av';
 import { phrases } from '../../../constants/phrases';
-import { markPhraseCompleted, getCompletedPhrases } from '../../../utils/progressStorage';
+import { markPhraseCompleted, getCompletedPhrases, syncCompletedPhrasesToSupabase, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const STORAGE_LAST_PHRASE = 'phrasescreen_last_phrase_id';
 
@@ -82,6 +83,7 @@ export default function PhraseLearnScreen() {
     const allPhrasesInCat = phrases.filter(p => p.category === activeCategory);
     const currentIdx = allPhrasesInCat.findIndex(p => p.id === selectedPhrase.id);
     await markPhraseCompleted(selectedPhrase.id);
+    await updateStreakOnLessonComplete();
     const done = await getCompletedPhrases(phrases.map(p => p.id));
     setDoneIds(done);
     setCompleted(true);
@@ -113,12 +115,14 @@ export default function PhraseLearnScreen() {
   };
 
   const handleResetProgress = async () => {
-    await resetAllPhraseProgress();
-    const done = await getCompletedPhrases(phrases.map(p => p.id));
-    setDoneIds(done);
-    setCompleted(false);
-    setSelectedPhrase(phrases.filter(p => p.category === activeCategory)[0]);
-  };
+  await resetAllPhraseProgress();
+  await syncCompletedPhrasesToSupabase(); // <-- ensures backend stats are zeroed
+  const done = await getCompletedPhrases(phrases.map(p => p.id));
+  setDoneIds(done);
+  setCompleted(false);
+  setSelectedPhrase(phrases.filter(p => p.category === activeCategory)[0]);
+};
+
 
   return (
     <View
