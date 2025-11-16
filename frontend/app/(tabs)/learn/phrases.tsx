@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { Video, ResizeMode } from 'expo-av';
 import { phrases } from '../../../constants/phrases';
-import { markPhraseCompleted, getCompletedPhrases, syncCompletedPhrasesToSupabase, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
+import { markPhraseCompleted, getCompletedPhrases, resetPhraseProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -115,8 +115,7 @@ export default function PhraseLearnScreen() {
   };
 
   const handleResetProgress = async () => {
-  await resetAllPhraseProgress();
-  await syncCompletedPhrasesToSupabase(); // <-- ensures backend stats are zeroed
+  await resetPhraseProgress(); // ✅ Uses the new function
   const done = await getCompletedPhrases(phrases.map(p => p.id));
   setDoneIds(done);
   setCompleted(false);

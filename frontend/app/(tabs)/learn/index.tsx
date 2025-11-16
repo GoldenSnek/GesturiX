@@ -1,5 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
-
+import React, { useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,14 +13,14 @@ import { useTheme } from '../../../src/ThemeContext';
 import AppHeader from '../../../components/AppHeader';
 
 import { phrases } from '../../../constants/phrases';
-import { getCompletedPhrases } from '../../../utils/progressStorage';
+import { alphabetSigns } from '../../../constants/alphabetSigns';
+import { getCompletedPhrases, getCompletedLetters } from '../../../utils/progressStorage';
 import { useFocusEffect } from '@react-navigation/native';
 
-// 🟧 Import the Supabase API helper
-import { fetchUserStatistics, getCurrentUserId } from '../../../utils/supabaseApi'; // Adjust path if different
+import { fetchUserStatistics, getCurrentUserId } from '../../../utils/supabaseApi';
 
-// You may want to fetch totals from actual data for other categories too!
 const totalPhrases = phrases.length;
+const totalLetters = alphabetSigns.length;
 
 const quickActionsData = [
   { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz' },
@@ -35,21 +34,33 @@ const Learn = () => {
   const router = useRouter();
   const { isDark } = useTheme();
 
-  // NEW: State for phrase progress
+  // State for phrase progress
   const [phrasesCompleted, setPhrasesCompleted] = useState(0);
+  const [lettersCompleted, setLettersCompleted] = useState(0);
 
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
       (async () => {
-        const done = await getCompletedPhrases(phrases.map(p => p.id));
-        if (isActive) setPhrasesCompleted(done.length);
+        const donePhrases = await getCompletedPhrases(phrases.map(p => p.id));
+        if (isActive) setPhrasesCompleted(donePhrases.length);
       })();
       return () => { isActive = false; };
     }, [])
   );
 
-  // 🟧 NEW: State for Supabase statistics
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const doneLetters = await getCompletedLetters(alphabetSigns.map(l => l.letter));
+        if (isActive) setLettersCompleted(doneLetters.length);
+      })();
+      return () => { isActive = false; };
+    }, [])
+  );
+
+  // State for Supabase statistics
   const [userStats, setUserStats] = useState({
     lessons_completed: 0,
     days_streak: 0,
@@ -57,21 +68,19 @@ const Learn = () => {
   });
 
   useFocusEffect(
-  React.useCallback(() => {
-    let isActive = true;
-    async function loadStats() {
-      const userId = await getCurrentUserId();
-      if (typeof userId !== 'string') return;
-      const stats = await fetchUserStatistics(userId);
-      if (isActive) setUserStats(stats);
-    }
-    loadStats();
-    return () => { isActive = false; }; // Clean up
-  }, [])
-);
+    React.useCallback(() => {
+      let isActive = true;
+      async function loadStats() {
+        const userId = await getCurrentUserId();
+        if (typeof userId !== 'string') return;
+        const stats = await fetchUserStatistics(userId);
+        if (isActive) setUserStats(stats);
+      }
+      loadStats();
+      return () => { isActive = false; };
+    }, [])
+  );
 
-
-  // 🟧 Dynamic progress data for the Progress cards
   const progressData = [
     { label: 'Lessons Completed', value: `${userStats.lessons_completed}` },
     { label: 'Streak', value: `${userStats.days_streak} days` },
@@ -84,9 +93,9 @@ const Learn = () => {
       title: 'Letters',
       subtitle: 'Learn the Alphabet',
       icon: 'text-fields',
-      completed: 12,
-      total: 26,
-      progress: 12 / 26,
+      completed: lettersCompleted,
+      total: totalLetters,
+      progress: totalLetters > 0 ? lettersCompleted / totalLetters : 0,
     },
     {
       id: 'numbers',
@@ -106,7 +115,7 @@ const Learn = () => {
       total: totalPhrases,
       progress: totalPhrases > 0 ? phrasesCompleted / totalPhrases : 0,
     },
-  ], [phrasesCompleted]);
+  ], [lettersCompleted, phrasesCompleted]);
 
   const panResponder = useRef(
     PanResponder.create({
