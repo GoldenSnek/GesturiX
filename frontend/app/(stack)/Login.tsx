@@ -84,7 +84,7 @@ const Login = () => {
   return (
     <ImageBackground
       source={require('../../assets/images/LoginSignUpBG.png')}
-      className="flex-1 justify-center items-center p-8"
+      className="flex-1 justify-center items-center"
       resizeMode="cover"
     >
       <View className="absolute inset-0 bg-black opacity-40" />

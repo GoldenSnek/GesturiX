@@ -4,15 +4,16 @@ import { router } from 'expo-router';
 // We only keep basic Animated imports for the initial splash screen entrance effects
 import Animated, { 
   FadeInUp, FadeInLeft, FadeInRight,
-  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withRepeat, withTiming, Easing, interpolate
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, 
+  interpolate, FadeInDown
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur'; 
+// NOTE: BlurView is not used in this file, but kept in imports
+// import { BlurView } from 'expo-blur'; 
 
 const windowHeight = Dimensions.get('window').height;
 
 // --- TypeScript Interfaces for Props (Simplified) ---
 interface FeatureItemProps {
-  icon: string;
   title: string;
   description: string;
 }
@@ -23,13 +24,11 @@ interface InfoBlockProps {
 }
 // ---------------------------------------
 
-// --- Feature Item Component (Updated with dark background and light text) ---
-const FeatureItem = ({ icon, title, description }: FeatureItemProps) => (
+// --- Feature Item Component (Updated with dark background and light text, NO ICON) ---
+const FeatureItem = ({ title, description }: FeatureItemProps) => (
   <View className="w-full bg-black/60 p-6 rounded-2xl shadow-xl shadow-black/20 mb-6 border border-accent/50">
-    <View className="flex-row items-center mb-2">
-      <Text className="text-3xl mr-3">{icon}</Text>
-      <Text className="text-xl font-montserrat-bold text-white">{title}</Text>
-    </View>
+    {/* Title is now standalone since the icon is removed */}
+    <Text className="text-xl font-montserrat-bold text-white mb-2">{title}</Text>
     <Text className="text-base font-montserrat-regular text-gray-200">{description}</Text>
   </View>
 );
@@ -51,25 +50,19 @@ const LandingPage = () => {
     scrollY.value = event.contentOffset.y;
   });
 
-  // Animated style for the pulsating down arrow
+  // Animated style for the static scroll down arrow (no pulse, but fades on scroll)
   const arrowAnimatedStyle = useAnimatedStyle(() => {
-    // Fade out completely when scrolled past 50px
-    const opacity = interpolate(
+    // Calculate opacity based on scroll position (fades out completely when scrolled past 50px)
+    const scrollVisibility = interpolate(
       scrollY.value,
       [0, 50],
       [1, 0]
     );
 
-    // Pulsating scale animation
-    const scale = withRepeat(
-      withTiming(1.2, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-      -1, // -1 means infinite repeat
-      true // Reverse the animation on each repeat
-    );
-
     return {
-      opacity,
-      transform: [{ scale: scale }],
+      // The arrow is now static, using only the scroll-based fade
+      opacity: scrollVisibility,
+      transform: [{ scale: 1.0 }],
     };
   });
 
@@ -101,9 +94,9 @@ const LandingPage = () => {
             {/* Dark overlay for contrast on the landing image */}
             <View className="absolute inset-0 bg-black opacity-50" />
 
-            {/* Logo (Removed mt-8 to allow it to sit lower and naturally space out from buttons) */}
+            {/* Logo (Placed higher via flex alignment) */}
             <Animated.View 
-              entering={FadeInUp.duration(2000).delay(500)}
+              entering={FadeInUp.duration(2000).delay(0)}
               className="z-10 items-center" 
             >
               <Image
@@ -116,7 +109,7 @@ const LandingPage = () => {
             {/* Buttons (Positioned lower with mb-8) and Scroll Indicator */}
             <View className="z-10 w-full mb-8 items-center">
               {/* Get Started */}
-              <Animated.View entering={FadeInRight.duration(500).delay(1500)} className="w-full">
+              <Animated.View entering={FadeInUp.duration(500).delay(1300)} className="w-full">
                 <TouchableOpacity
                   onPress={() => router.push('/(stack)/SignUp')}
                   className="w-full bg-accent rounded-full py-4 mb-4 items-center shadow-lg shadow-black/40"
@@ -128,7 +121,7 @@ const LandingPage = () => {
               </Animated.View>
 
               {/* Log In */}
-              <Animated.View entering={FadeInLeft.duration(500).delay(2000)} className="w-full">
+              <Animated.View entering={FadeInUp.duration(500).delay(1500)} className="w-full">
                 <TouchableOpacity
                   onPress={() => router.push('/(stack)/Login')}
                   className="w-full border-2 border-accent rounded-full py-4 items-center shadow-lg shadow-black/40 bg-black/20"
@@ -139,9 +132,16 @@ const LandingPage = () => {
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* Pulsating Scroll Down Indicator (Pushed further down with mt-12) */}
-              <Animated.View style={arrowAnimatedStyle} className="">
-                <Text className="text-accent text-3xl">⇩</Text>
+              {/* Static Scroll Down Indicator (FIXED: Separating entering animation from style animation) */}
+              {/* Outer View for the Layout Animation (FadeInDown) */}
+              <Animated.View 
+                entering={FadeInDown.duration(3000).delay(2500)} 
+                className=""
+              >
+                {/* Inner View for the Shared Value Animation (opacity/transform from scroll) */}
+                <Animated.View style={arrowAnimatedStyle}>
+                  <Text className="text-accent text-2xl">⇩</Text>
+                </Animated.View>
               </Animated.View>
             </View>
           </ImageBackground>
@@ -157,23 +157,20 @@ const LandingPage = () => {
           </Text>
           
           <View className="w-full max-w-lg items-center">
+            {/* Icons removed from FeatureItem calls */}
             <FeatureItem 
-              icon="🌍"
               title="Real-Time Translation"
               description="Instantly translate spoken and written words as you interact, breaking down communication barriers globally."
             />
             <FeatureItem 
-              icon="📚"
               title="Learn Through Videos and Tutorials"
               description="Access an integrated library of video lessons and guides to quickly master new skills and app features."
             />
             <FeatureItem 
-              icon="👤"
               title="Customizable Profile"
               description="Personalize your user experience, control privacy settings, and track your progress in one dedicated area."
             />
             <FeatureItem 
-              icon="✨"
               title="Plus, Much More..."
               description="We're constantly working on future updates like spatial computing integration and advanced personalization!"
             />
@@ -211,13 +208,13 @@ const LandingPage = () => {
             
             <View className="flex-row justify-center space-x-8 mb-6">
               <TouchableOpacity onPress={() => console.log('Privacy')}>
-                <Text className="text-highlight text-base font-montserrat-regular">Privacy Policy   </Text>
+                <Text className="text-highlight text-base font-montserrat-regular">Privacy Policy   </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => console.log('Terms')}>
-                <Text className="text-highlight text-base font-montserrat-regular">   Terms of Service   </Text>
+                <Text className="text-highlight text-base font-montserrat-regular">   Terms of Service   </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => console.log('Contact')}>
-                <Text className="text-highlight text-base font-montserrat-regular">   Contact Us</Text>
+                <Text className="text-highlight text-base font-montserrat-regular">   Contact Us</Text>
               </TouchableOpacity>
             </View>
             
