@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   PanResponder,
+  ImageBackground, // 💡 Added ImageBackground
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { alphabetSigns } from '../../../constants/alphabetSigns';
 import { getCompletedPhrases, getCompletedLetters } from '../../../utils/progressStorage';
 import { useFocusEffect } from '@react-navigation/native';
 
+// NOTE: Assuming these utility functions are correctly implemented and available
 import { fetchUserStatistics, getCurrentUserId } from '../../../utils/supabaseApi';
 
 const totalPhrases = phrases.length;
@@ -34,6 +36,9 @@ const Learn = () => {
   const router = useRouter();
   const { isDark } = useTheme();
 
+  // Define base color class for the outer container
+  const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
+
   // State for phrase progress
   const [phrasesCompleted, setPhrasesCompleted] = useState(0);
   const [lettersCompleted, setLettersCompleted] = useState(0);
@@ -42,6 +47,7 @@ const Learn = () => {
     React.useCallback(() => {
       let isActive = true;
       (async () => {
+        // NOTE: Mapped IDs/letters are passed to utility functions
         const donePhrases = await getCompletedPhrases(phrases.map(p => p.id));
         if (isActive) setPhrasesCompleted(donePhrases.length);
       })();
@@ -53,6 +59,7 @@ const Learn = () => {
     React.useCallback(() => {
       let isActive = true;
       (async () => {
+        // NOTE: Mapped IDs/letters are passed to utility functions
         const doneLetters = await getCompletedLetters(alphabetSigns.map(l => l.letter));
         if (isActive) setLettersCompleted(doneLetters.length);
       })();
@@ -102,6 +109,7 @@ const Learn = () => {
       title: 'Numbers',
       subtitle: 'Count in sign language',
       icon: 'format-list-numbered',
+      // Using hardcoded values for numbers category for demonstration
       completed: 12,
       total: 26,
       progress: 12 / 26,
@@ -129,161 +137,171 @@ const Learn = () => {
   ).current;
 
   return (
-    <View
-      {...panResponder.panHandlers}
-      className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}
-      style={{ paddingTop: insets.top }}
-    >
-      <AppHeader />
-      <ScrollView
-        className="flex-1 px-4 py-6"
-        contentContainerStyle={{ paddingBottom: 150 }}
+    // 1. Outer View sets the base background color
+    <View className={`flex-1 ${bgColorClass}`}>
+      <ImageBackground
+        source={require('../../../assets/images/MainBG.png')}
+        className="flex-1" // Ensure the background covers the entire area
+        resizeMode="cover"
       >
-        {/* 🧠 Progress Section */}
-        <Text
-          className={`text-2xl mb-4 ${
-            isDark ? 'text-secondary' : 'text-primary'
-          }`}
-          style={{ fontFamily: 'Audiowide-Regular' }}
+        {/* 2. Inner View handles padding, swipe, and content */}
+        <View
+          {...panResponder.panHandlers}
+          className="flex-1"
+          style={{ paddingTop: insets.top }}
         >
-          Your Progress
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
-          {progressData.map((item, index) => (
-            <View
-              key={index}
-              className={`rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent ${
-                isDark ? 'bg-darksurface' : 'bg-secondary'
-              }`}
-            >
-              <Text
-                className={`text-2xl ${
-                  isDark ? 'text-highlight' : 'text-primary'
-                }`}
-                style={{ fontFamily: 'Fredoka-SemiBold' }}
-              >
-                {item.value}
-              </Text>
-              <Text
-                className={`text-xs text-center mt-1 ${
-                  isDark ? 'text-neutral' : 'text-neutral'
-                }`}
-                style={{ fontFamily: 'Montserrat-SemiBold' }}
-              >
-                {item.label}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* 🏷️ Category Section */}
-        <Text
-          className={`text-2xl mb-4 ${
-            isDark ? 'text-secondary' : 'text-primary'
-          }`}
-          style={{ fontFamily: 'Audiowide-Regular' }}
-        >
-          Choose Category
-        </Text>
-
-        {categoriesData.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            className={`rounded-2xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent ${
-              isDark ? 'bg-darksurface' : 'bg-highlight'
-            }`}
-            onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
+          <AppHeader />
+          <ScrollView
+            className="flex-1 px-4 py-6"
+            contentContainerStyle={{ paddingBottom: 150 }}
           >
-            <View
-              className={`w-16 h-16 rounded-full items-center justify-center mr-4 ${
-                isDark ? 'bg-darkhover' : 'bg-white/30'
+            {/* 🧠 Progress Section */}
+            <Text
+              className={`text-2xl mb-4 ${
+                isDark ? 'text-secondary' : 'text-primary'
               }`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
             >
-              <MaterialIcons
-                name={category.icon as any}
-                size={36}
-                color="#FF6B00"
-              />
-            </View>
+              Your Progress
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+              {progressData.map((item, index) => (
+                <View
+                  key={index}
+                  className={`rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent ${
+                    isDark ? 'bg-darksurface' : 'bg-secondary'
+                  }`}
+                >
+                  <Text
+                    className={`text-2xl ${
+                      isDark ? 'text-highlight' : 'text-primary'
+                    }`}
+                    style={{ fontFamily: 'Fredoka-SemiBold' }}
+                  >
+                    {item.value}
+                  </Text>
+                  <Text
+                    className={`text-xs text-center mt-1 ${
+                      isDark ? 'text-neutral' : 'text-neutral'
+                    }`}
+                    style={{ fontFamily: 'Montserrat-SemiBold' }}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
 
-            <View className="flex-1">
-              <Text
-                className={`text-2xl ${
-                  isDark ? 'text-secondary' : 'text-darkbg'
+            {/* 🏷️ Category Section */}
+            <Text
+              className={`text-2xl mb-4 ${
+                isDark ? 'text-secondary' : 'text-primary'
+              }`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Choose Category
+            </Text>
+
+            {categoriesData.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                className={`rounded-2xl p-5 mb-4 shadow-md flex-row items-center border-2 border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-highlight'
                 }`}
-                style={{ fontFamily: 'Fredoka-SemiBold' }}
-              >
-                {category.title}
-              </Text>
-              <Text
-                className={`text-sm mb-2 ${
-                  isDark ? 'text-neutral' : 'text-darkbg'
-                }`}
-                style={{ fontFamily: 'Montserrat-SemiBold' }}
-              >
-                {category.subtitle}
-              </Text>
-              <View
-                className={`w-full h-2 rounded-full ${
-                  isDark ? 'bg-darkhover' : 'bg-white/30'
-                }`}
+                onPress={() => router.push(`/(tabs)/learn/${category.id}` as any)}
               >
                 <View
-                  style={{ width: `${category.progress * 100}%` }}
-                  className="h-full bg-accent rounded-full"
-                />
-              </View>
-              <Text
-                className={`text-xs mt-1 ${
-                  isDark ? 'text-neutral' : 'text-darkbg'
-                }`}
-                style={{ fontFamily: 'Montserrat-SemiBold' }}
-              >
-                {category.completed} of {category.total} completed
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+                  className={`w-16 h-16 rounded-full items-center justify-center mr-4 ${
+                    isDark ? 'bg-darkhover' : 'bg-white/30'
+                  }`}
+                >
+                  <MaterialIcons
+                    name={category.icon as any}
+                    size={36}
+                    color="#FF6B00"
+                  />
+                </View>
 
-        {/* ⚡ Quick Actions */}
-        <Text
-          className={`text-2xl mb-4 ${
-            isDark ? 'text-secondary' : 'text-primary'
-          }`}
-          style={{ fontFamily: 'Audiowide-Regular' }}
-        >
-          Quick Actions
-        </Text>
+                <View className="flex-1">
+                  <Text
+                    className={`text-2xl ${
+                      isDark ? 'text-secondary' : 'text-darkbg'
+                    }`}
+                    style={{ fontFamily: 'Fredoka-SemiBold' }}
+                  >
+                    {category.title}
+                  </Text>
+                  <Text
+                    className={`text-sm mb-2 ${
+                      isDark ? 'text-neutral' : 'text-darkbg'
+                    }`}
+                    style={{ fontFamily: 'Montserrat-SemiBold' }}
+                  >
+                    {category.subtitle}
+                  </Text>
+                  <View
+                    className={`w-full h-2 rounded-full ${
+                      isDark ? 'bg-darkhover' : 'bg-white/30'
+                    }`}
+                  >
+                    <View
+                      style={{ width: `${category.progress * 100}%` }}
+                      className="h-full bg-accent rounded-full"
+                    />
+                  </View>
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? 'text-neutral' : 'text-darkbg'
+                    }`}
+                    style={{ fontFamily: 'Montserrat-SemiBold' }}
+                  >
+                    {category.completed} of {category.total} completed
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
 
-        <View className="flex-row flex-wrap justify-between">
-          {quickActionsData.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              className={`w-[48%] rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent ${
-                isDark ? 'bg-darksurface' : 'bg-secondary'
+            {/* ⚡ Quick Actions */}
+            <Text
+              className={`text-2xl mb-4 ${
+                isDark ? 'text-secondary' : 'text-primary'
               }`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
             >
-              <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" />
-              <Text
-                className={`text-base text-center mt-2 ${
-                  isDark ? 'text-highlight' : 'text-primary'
-                }`}
-                style={{ fontFamily: 'Fredoka-SemiBold' }}
-              >
-                {action.title}
-              </Text>
-              <Text
-                className={`text-xs text-center mt-1 ${
-                  isDark ? 'text-neutral' : 'text-neutral'
-                }`}
-                style={{ fontFamily: 'Montserrat-SemiBold' }}
-              >
-                {action.subtitle}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              Quick Actions
+            </Text>
+
+            <View className="flex-row flex-wrap justify-between">
+              {quickActionsData.map((action) => (
+                <TouchableOpacity
+                  key={action.id}
+                  className={`w-[48%] rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent ${
+                    isDark ? 'bg-darksurface' : 'bg-secondary'
+                  }`}
+                >
+                  <MaterialIcons name={action.icon as any} size={30} color="#FF6B00" />
+                  <Text
+                    className={`text-base text-center mt-2 ${
+                      isDark ? 'text-highlight' : 'text-primary'
+                    }`}
+                    style={{ fontFamily: 'Fredoka-SemiBold' }}
+                  >
+                    {action.title}
+                  </Text>
+                  <Text
+                    className={`text-xs text-center mt-1 ${
+                      isDark ? 'text-neutral' : 'text-neutral'
+                    }`}
+                    style={{ fontFamily: 'Montserrat-SemiBold' }}
+                  >
+                    {action.subtitle}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
+      </ImageBackground>
     </View>
   );
 };

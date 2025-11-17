@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Animated, Easing, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  ScrollView, 
+  Animated, 
+  Easing, 
+  ActivityIndicator, 
+  ImageBackground // 💡 Added ImageBackground import
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
@@ -21,6 +30,9 @@ const CAMERA_PANEL_HEIGHT = 370;
 const Letters = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
+
+  // Define base color class for the outer container
+  const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
 
 
   const [doneLetters, setDoneLetters] = useState<string[]>([]);
@@ -131,6 +143,7 @@ const Letters = () => {
         } as any);
 
 
+        // NOTE: Hardcoded local IP address - for testing only!
         const res = await axios.post('http://192.168.174.136:8000/predict', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -212,341 +225,350 @@ const Letters = () => {
 
 
   return (
-    <View
-      className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}
-      style={{ paddingTop: insets.top }}
-    >
-      <AppHeaderLearn
-        title="Learn Letters"
-        completedCount={completedCount}
-        totalCount={TOTAL_LETTERS}
-        onResetProgress={handleReset}
-      />
-
-
-      <ScrollView
-        className="flex-1 p-4"
-        contentContainerStyle={{ paddingBottom: isCameraPanelVisible ? CAMERA_PANEL_HEIGHT + 170 : 150 }}
+    // 1. Outer View sets the base background color
+    <View className={`flex-1 ${bgColorClass}`}>
+      <ImageBackground
+        source={require('../../../assets/images/MainBG.png')}
+        className="flex-1"
+        resizeMode="cover"
       >
-        <Text
-          className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
-          style={{ fontFamily: 'Audiowide-Regular' }}
+        <View
+          className="flex-1"
+          style={{ paddingTop: insets.top }}
         >
-          Select a Letter
-        </Text>
+          <AppHeaderLearn
+            title="Learn Letters"
+            completedCount={completedCount}
+            totalCount={TOTAL_LETTERS}
+            onResetProgress={handleReset}
+          />
 
 
-        {/* Letter Grid */}
-        <View className="flex-row flex-wrap justify-between mb-1">
-          {alphabetSigns.map((item, idx) => {
-            const isCompleted = doneLetters.includes(item.letter);
-            const isSelected = currentIdx === idx;
-            const canSelect = canSelectLetter(idx);
+          <ScrollView
+            className="flex-1 p-4"
+            contentContainerStyle={{ paddingBottom: isCameraPanelVisible ? CAMERA_PANEL_HEIGHT + 170 : 150 }}
+          >
+            <Text
+              className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Select a Letter
+            </Text>
 
 
-            return (
-              <TouchableOpacity
-                key={item.letter}
-                className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
-                  isCompleted
-                    ? 'border-accent bg-secondary'
-                    : isDark
-                      ? 'border-darkhover bg-darksurface'
-                      : 'border-neutral bg-lighthover'
-                }`}
-                activeOpacity={canSelect ? 0.95 : 1}
-                onPress={() => { if (canSelect) setCurrentIdx(idx); }}
-                disabled={!canSelect}
-                style={isSelected ? { borderWidth: 3, borderColor: '#FF6B00' } : {}}
+            {/* Letter Grid */}
+            <View className="flex-row flex-wrap justify-between mb-1">
+              {alphabetSigns.map((item, idx) => {
+                const isCompleted = doneLetters.includes(item.letter);
+                const isSelected = currentIdx === idx;
+                const canSelect = canSelectLetter(idx);
+
+
+                return (
+                  <TouchableOpacity
+                    key={item.letter}
+                    className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
+                      isCompleted
+                        ? 'border-accent bg-secondary'
+                        : isDark
+                          ? 'border-darkhover bg-darksurface'
+                          : 'border-neutral bg-lighthover'
+                    }`}
+                    activeOpacity={canSelect ? 0.95 : 1}
+                    onPress={() => { if (canSelect) setCurrentIdx(idx); }}
+                    disabled={!canSelect}
+                    style={isSelected ? { borderWidth: 3, borderColor: '#FF6B00' } : {}}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: 'Fredoka-SemiBold',
+                        fontSize: 24,
+                        color: isCompleted
+                          ? '#FF6B00'
+                          : canSelect
+                            ? (isDark ? '#E5E7EB' : '#6B7280')
+                            : (isDark ? '#4B5563' : '#D1D5DB'),
+                      }}
+                    >
+                      {item.letter}
+                    </Text>
+                    {isCompleted && (
+                      <View className="absolute top-1 right-1">
+                        <MaterialIcons name="check-circle" size={16} color="#FF6B00" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+
+            {/* --- Practice Section --- */}
+            <Text
+              className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Practice: "{letterData.letter}"
+            </Text>
+
+
+            {/* Letter Video with RECORD/VIDEO Icon */}
+            <View style={{ position: 'relative', marginBottom: 20 }}>
+              <View
+                style={{
+                  width: '100%',
+                  aspectRatio: 16 / 9,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? '#222' : '#fffcfa',
+                  borderWidth: 2,
+                  borderColor: isDark ? '#FFB366' : '#FF6B00',
+                  shadowColor: isDark ? '#FFB366' : '#FF6B00',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 7,
+                  elevation: 4,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
               >
-                <Text
+                <Video
+                  source={letterData.videos[0]}
                   style={{
-                    fontFamily: 'Fredoka-SemiBold',
-                    fontSize: 24,
-                    color: isCompleted
-                      ? '#FF6B00'
-                      : canSelect
-                        ? (isDark ? '#E5E7EB' : '#6B7280')
-                        : (isDark ? '#4B5563' : '#D1D5DB'),
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 20,
+                    backgroundColor: isDark ? '#1a1a1a' : '#fff'
                   }}
-                >
-                  {item.letter}
-                </Text>
-                {isCompleted && (
-                  <View className="absolute top-1 right-1">
-                    <MaterialIcons name="check-circle" size={16} color="#FF6B00" />
+                  resizeMode={ResizeMode.COVER}
+                  useNativeControls
+                />
+              </View>
+
+
+              {/* Video/Recorder-style Toggle Icon */}
+              <TouchableOpacity
+                onPress={handleToggleCameraPanel}
+                activeOpacity={0.8}
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                  backgroundColor: '#FF6B00',
+                  borderRadius: 20,
+                  padding: 10,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.28,
+                  shadowRadius: 6,
+                  elevation: 5,
+                  zIndex: 12,
+                }}
+              >
+                <MaterialIcons 
+                  name={isCameraPanelVisible ? "videocam-off" : "videocam"}
+                  size={20}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+
+            </View>
+
+
+            {/* Camera Panel - slide below video panel */}
+            {isCameraPanelVisible && (
+              <Animated.View
+                style={{
+                  width: '100%',
+                  height: CAMERA_PANEL_HEIGHT,
+                  transform: [{ translateY }],
+                  marginBottom: 20,
+                  position: 'relative',
+                  borderRadius: 22,
+                  backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
+                  borderWidth: 2,
+                  borderColor: '#FF6B00',
+                  shadowColor: '#FF6B00',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.16,
+                  shadowRadius: 11,
+                  elevation: 8,
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+                pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
+              >
+                {hasPermission && device && allowCameraInteraction ? (
+                  <>
+                    <Camera
+                      ref={cameraRef}
+                      style={{ flex: 1, borderRadius: 20 }}
+                      device={device}
+                      isActive={isCameraActive}
+                      photo={true}
+                      torch={facing === 'back' ? flash : 'off'}
+                      className="rounded-2xl"
+                    />
+                    
+                    {/* Camera controls and corners */}
+                    <View style={{
+                      position: 'absolute',
+                      top: 13,
+                      right: 16,
+                      flexDirection: 'row',
+                      backgroundColor: 'rgba(70,44,17,0.19)',
+                      borderRadius: 99,
+                      padding: 6,
+                      zIndex: 13,
+                    }}>
+                      <TouchableOpacity onPress={flipCamera} style={{ paddingHorizontal: 6 }}>
+                        <MaterialIcons name="flip-camera-ios" size={26} color="white" />
+                      </TouchableOpacity>
+                      {/* Optionally show flash when back camera */}
+                      {facing === 'back' && (
+                        <TouchableOpacity onPress={toggleFlash} style={{ paddingHorizontal: 6 }}>
+                          <MaterialIcons
+                            name={flash === 'on' ? 'flash-on' : 'flash-off'}
+                            size={26}
+                            color="white"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 24 }}>
+                    <ActivityIndicator size="large" color="#FF6B00" />
+                    <Text style={{
+                      color: isDark ? '#fff' : '#333',
+                      marginTop: 14,
+                      fontFamily: 'Fredoka-Regular',
+                    }}>
+                      {hasPermission ? "Loading camera..." : "No camera permission"}
+                    </Text>
                   </View>
                 )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
 
 
-        {/* --- Practice Section --- */}
-        <Text
-          className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
-          style={{ fontFamily: 'Audiowide-Regular' }}
-        >
-          Practice: "{letterData.letter}"
-        </Text>
-
-
-        {/* Letter Video with RECORD/VIDEO Icon */}
-        <View style={{ position: 'relative', marginBottom: 20 }}>
-          <View
-            style={{
-              width: '100%',
-              aspectRatio: 16 / 9,
-              borderRadius: 20,
-              backgroundColor: isDark ? '#222' : '#fffcfa',
-              borderWidth: 2,
-              borderColor: isDark ? '#FFB366' : '#FF6B00',
-              shadowColor: isDark ? '#FFB366' : '#FF6B00',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.15,
-              shadowRadius: 7,
-              elevation: 4,
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            <Video
-              source={letterData.videos[0]}
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 20,
-                backgroundColor: isDark ? '#1a1a1a' : '#fff'
-              }}
-              resizeMode={ResizeMode.COVER}
-              useNativeControls
-            />
-          </View>
-
-
-          {/* Video/Recorder-style Toggle Icon */}
-          <TouchableOpacity
-            onPress={handleToggleCameraPanel}
-            activeOpacity={0.8}
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              backgroundColor: '#FF6B00',
-              borderRadius: 20,
-              padding: 10,
-              shadowColor: '#000',
-              shadowOpacity: 0.28,
-              shadowRadius: 6,
-              elevation: 5,
-              zIndex: 12,
-            }}
-          >
-            <MaterialIcons 
-              name={isCameraPanelVisible ? "videocam-off" : "videocam"}
-              size={20}
-              color="white"
-            />
-          </TouchableOpacity>
-
-
-        </View>
-
-
-        {/* Camera Panel - slide below video panel */}
-        {isCameraPanelVisible && (
-          <Animated.View
-            style={{
-              width: '100%',
-              height: CAMERA_PANEL_HEIGHT,
-              transform: [{ translateY }],
-              marginBottom: 20,
-              position: 'relative',
-              borderRadius: 22,
-              backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
-              borderWidth: 2,
-              borderColor: '#FF6B00',
-              shadowColor: '#FF6B00',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.16,
-              shadowRadius: 11,
-              elevation: 8,
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-            pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
-          >
-            {hasPermission && device && allowCameraInteraction ? (
-              <>
-                <Camera
-                  ref={cameraRef}
-                  style={{ flex: 1, borderRadius: 20 }}
-                  device={device}
-                  isActive={isCameraActive}
-                  photo={true}
-                  torch={facing === 'back' ? flash : 'off'}
-                  className="rounded-2xl"
-                />
-                
-                {/* Camera controls and corners */}
+                {/* Prediction Area */}
                 <View style={{
-                  position: 'absolute',
-                  top: 13,
-                  right: 16,
-                  flexDirection: 'row',
-                  backgroundColor: 'rgba(70,44,17,0.19)',
-                  borderRadius: 99,
-                  padding: 6,
-                  zIndex: 13,
+                  backgroundColor: isDark ? '#181818' : '#f2f1efff',
+                  borderBottomLeftRadius: 20,
+                  borderBottomRightRadius: 20,
+                  borderTopWidth: 1,
+                  borderColor: '#FF6B00',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  minHeight: 65,
                 }}>
-                  <TouchableOpacity onPress={flipCamera} style={{ paddingHorizontal: 6 }}>
-                    <MaterialIcons name="flip-camera-ios" size={26} color="white" />
-                  </TouchableOpacity>
-                  {/* Optionally show flash when back camera */}
-                  {facing === 'back' && (
-                    <TouchableOpacity onPress={toggleFlash} style={{ paddingHorizontal: 6 }}>
-                      <MaterialIcons
-                        name={flash === 'on' ? 'flash-on' : 'flash-off'}
-                        size={26}
-                        color="white"
-                      />
-                    </TouchableOpacity>
-                  )}
+                  <Text style={{
+                    fontFamily: 'Audiowide-Regular',
+                    fontSize: 15,
+                    color: '#FF6B00',
+                    marginBottom: 4,
+                  }}>
+                    Detected Sign:
+                  </Text>
+                  <Text style={{
+                    fontFamily: 'Fredoka-SemiBold',
+                    fontSize: 20,
+                    color: isDark ? '#fff' : '#222',
+                    letterSpacing: 1,
+                  }}>
+                    {prediction}
+                  </Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 6,
+                  }}>
+                    <View style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: 5,
+                      backgroundColor: isCameraActive ? '#FF6B00' : '#b8bab9',
+                      marginRight: 7,
+                    }} />
+                    <Text style={{
+                      fontFamily: 'Montserrat-SemiBold',
+                      fontSize: 13,
+                      color: isDark ? '#ccc' : '#5e6272',
+                    }}>
+                      {isCameraActive ? 'LIVE' : 'Paused'}
+                    </Text>
+                  </View>
                 </View>
-              </>
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 24 }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
-                <Text style={{
-                  color: isDark ? '#fff' : '#333',
-                  marginTop: 14,
-                  fontFamily: 'Fredoka-Regular',
-                }}>
-                  {hasPermission ? "Loading camera..." : "No camera permission"}
-                </Text>
-              </View>
+              </Animated.View>
             )}
 
 
-            {/* Prediction Area */}
-            <View style={{
-              backgroundColor: isDark ? '#181818' : '#f2f1efff',
-              borderBottomLeftRadius: 20,
-              borderBottomRightRadius: 20,
-              borderTopWidth: 1,
-              borderColor: '#FF6B00',
-              paddingVertical: 10,
-              alignItems: 'center',
-              minHeight: 65,
-            }}>
-              <Text style={{
-                fontFamily: 'Audiowide-Regular',
-                fontSize: 15,
-                color: '#FF6B00',
-                marginBottom: 4,
-              }}>
-                Detected Sign:
-              </Text>
-              <Text style={{
-                fontFamily: 'Fredoka-SemiBold',
-                fontSize: 20,
-                color: isDark ? '#fff' : '#222',
-                letterSpacing: 1,
-              }}>
-                {prediction}
-              </Text>
-              <View style={{
+            {/* Tips Section - UPDATED TO MATCH phrase.tsx */}
+            <Text
+              style={{
+                marginVertical: 8,
+                paddingHorizontal: 4,
                 flexDirection: 'row',
-                alignItems: 'center',
-                marginTop: 6,
-              }}>
-                <View style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: 5,
-                  backgroundColor: isCameraActive ? '#FF6B00' : '#b8bab9',
-                  marginRight: 7,
-                }} />
-                <Text style={{
-                  fontFamily: 'Montserrat-SemiBold',
-                  fontSize: 13,
-                  color: isDark ? '#ccc' : '#5e6272',
-                }}>
-                  {isCameraActive ? 'LIVE' : 'Paused'}
-                </Text>
-              </View>
-            </View>
-          </Animated.View>
-        )}
-
-
-        {/* Tips Section - UPDATED TO MATCH phrase.tsx */}
-        <Text
-          style={{
-            marginVertical: 8,
-            paddingHorizontal: 4,
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-          }}
-        >
-          <Text
-            style={{
-              fontWeight: 'bold',
-              fontFamily: 'Montserrat-Bold',
-              fontSize: 14,
-              color: isDark ? '#FFA500' : '#FF6B00',
-            }}
-          >
-            Tips:
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'Montserrat-SemiBold',
-              color: isDark ? '#ccc' : '#333',
-              fontSize: 13,
-            }}
-          >
-            {' '}{letterData.tips}
-          </Text>
-        </Text>
-
-
-        {/* Practice Buttons */}
-        <View className="flex-row justify-between mb-4">
-          {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
-            <TouchableOpacity
-              key={label}
-              className={`flex-1 rounded-full py-3 mx-1 items-center border border-accent ${
-                isDark ? 'bg-darksurface' : 'bg-lighthover'
-              }`}
+                flexWrap: 'wrap',
+              }}
             >
               <Text
-                className={`${isDark ? 'text-secondary' : 'text-primary'}`}
-                style={{ fontFamily: 'Fredoka-Regular' }}
+                style={{
+                  fontWeight: 'bold',
+                  fontFamily: 'Montserrat-Bold',
+                  fontSize: 14,
+                  color: isDark ? '#FFA500' : '#FF6B00',
+                }}
               >
-                {label}
+                Tips:
+              </Text>
+              <Text
+                style={{
+                  fontFamily: 'Montserrat-SemiBold',
+                  color: isDark ? '#ccc' : '#333',
+                  fontSize: 13,
+                }}
+              >
+                {' '}{letterData.tips}
+              </Text>
+            </Text>
+
+
+            {/* Practice Buttons */}
+            <View className="flex-row justify-between mb-4">
+              {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
+                <TouchableOpacity
+                  key={label}
+                  className={`flex-1 rounded-full py-3 mx-1 items-center border border-accent ${
+                    isDark ? 'bg-darksurface' : 'bg-lighthover'
+                  }`}
+                >
+                  <Text
+                    className={`${isDark ? 'text-secondary' : 'text-primary'}`}
+                    style={{ fontFamily: 'Fredoka-Regular' }}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+
+            {/* Mark as Completed Button */}
+            <TouchableOpacity
+              className={`w-full bg-accent rounded-full py-4 items-center shadow-md ${completed ? 'opacity-60' : ''}`}
+              disabled={completed}
+              onPress={handleComplete}
+            >
+              <Text
+                className="text-secondary text-lg"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {completed ? 'Completed!' : 'Mark as Completed'}
               </Text>
             </TouchableOpacity>
-          ))}
+          </ScrollView>
         </View>
-
-
-        {/* Mark as Completed Button */}
-        <TouchableOpacity
-          className={`w-full bg-accent rounded-full py-4 items-center shadow-md ${completed ? 'opacity-60' : ''}`}
-          disabled={completed}
-          onPress={handleComplete}
-        >
-          <Text
-            className="text-secondary text-lg"
-            style={{ fontFamily: 'Fredoka-SemiBold' }}
-          >
-            {completed ? 'Completed!' : 'Mark as Completed'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+      </ImageBackground>
     </View>
   );
 };

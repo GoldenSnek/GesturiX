@@ -6,6 +6,7 @@ import {
   StatusBar,
   ActivityIndicator,
   PanResponder,
+  ImageBackground, // Added ImageBackground
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -161,149 +162,159 @@ export default function Translate() {
   }
 
   return (
-    <View
-      {...panResponder.panHandlers}
-      className={`flex-1 ${bgColor}`}
-      style={{ paddingTop: insets.top }}
-    >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <AppHeader />
-
-      {/* Camera View */}
-      <View className="px-5 pt-5 items-center">
+    // 1. Outer View sets the base background color
+    <View className={`flex-1 ${bgColor}`}>
+      <ImageBackground
+        source={require('../../assets/images/MainBG.png')}
+        className="flex-1" // Ensures the ImageBackground fills the parent View
+        resizeMode="cover" // Ensures the image covers the entire background
+      >
+        {/* 2. Inner View handles padding, swipe, and content */}
         <View
-          className={`w-full aspect-[1/1] ${
-            isDark ? "bg-darkhover" : "bg-primary"
-          } rounded-2xl overflow-hidden mb-5 relative`}
+          {...panResponder.panHandlers}
+          className="flex-1" // Use flex-1 to fill ImageBackground
+          style={{ paddingTop: insets.top }}
         >
-          {isCameraActive && (
-            <Camera
-              ref={cameraRef}
-              style={{ flex: 1 }}
-              device={device}
-              isActive={true}
-              photo={true}
-              torch={facing === "back" ? flash : "off"}
-            />
-          )}
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+          <AppHeader />
 
-          {/* Flip / Flash Buttons (always above overlay) */}
-          {isCameraActive && (
-            <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-2 z-50">
-              {facing === "back" && (
-                <TouchableOpacity onPress={toggleFlash} className="p-2">
+          {/* Camera View */}
+          <View className="px-5 pt-5 items-center">
+            <View
+              className={`w-full aspect-[1/1] ${
+                isDark ? "bg-darkhover" : "bg-primary"
+              } rounded-2xl overflow-hidden mb-5 relative`}
+            >
+              {isCameraActive && (
+                <Camera
+                  ref={cameraRef}
+                  style={{ flex: 1 }}
+                  device={device}
+                  isActive={true}
+                  photo={true}
+                  torch={facing === "back" ? flash : "off"}
+                />
+              )}
+
+              {/* Flip / Flash Buttons (always above overlay) */}
+              {isCameraActive && (
+                <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-2 z-50">
+                  {facing === "back" && (
+                    <TouchableOpacity onPress={toggleFlash} className="p-2">
+                      <MaterialIcons
+                        name={flash === "on" ? "flash-on" : "flash-off"}
+                        size={28}
+                        color="white"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={flipCamera} className="p-2">
+                    <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Overlay */}
+              {(!isCameraActive || !isTranslating) && (
+                <View className="absolute inset-0 justify-center items-center px-5 bg-black/50 z-40">
                   <MaterialIcons
-                    name={flash === "on" ? "flash-on" : "flash-off"}
-                    size={28}
+                    name={isCameraActive ? "pause-circle-outline" : "videocam-off"}
+                    size={80}
+                    color="white"
+                  />
+                  <Text className="text-xl font-audiowide text-white mt-4 mb-2 text-center">
+                    {isCameraActive ? "Ready for Recognition" : "Camera is Off"}
+                  </Text>
+                  <Text className="text-sm text-white/80 text-center leading-5 font-fredoka">
+                    {isCameraActive
+                      ? "Tap the button to begin signing and translation."
+                      : "Tap the button below to turn the camera on."}
+                  </Text>
+                </View>
+              )}
+
+              {/* Corners */}
+              <View className="absolute top-4 left-4 w-6 h-6 border-t-[3px] border-l-[3px] border-accent" />
+              <View className="absolute top-4 right-4 w-6 h-6 border-t-[3px] border-r-[3px] border-accent" />
+              <View className="absolute bottom-4 left-4 w-6 h-6 border-b-[3px] border-l-[3px] border-accent" />
+              <View className="absolute bottom-4 right-4 w-6 h-6 border-b-[3px] border-r-[3px] border-accent" />
+            </View>
+
+            {/* Buttons */}
+            {isCameraActive ? (
+              <View className="flex-row justify-between items-center w-full px-10 mt-2">
+                <TouchableOpacity
+                  onPress={stopCamera}
+                  className="w-[60px] h-[60px] rounded-full justify-center items-center bg-red-600/70"
+                >
+                  <MaterialIcons name="power-settings-new" size={28} color="white" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className={`w-[80px] h-[80px] rounded-full justify-center items-center shadow-lg shadow-black/30 ${
+                    isTranslating ? "bg-highlight" : "bg-accent"
+                  }`}
+                  onPress={toggleCamera}
+                >
+                  <MaterialIcons
+                    name={isTranslating ? "stop" : "play-arrow"}
+                    size={38}
                     color="white"
                   />
                 </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={flipCamera} className="p-2">
-                <MaterialIcons name="flip-camera-ios" size={28} color="white" />
-              </TouchableOpacity>
-            </View>
-          )}
 
-          {/* Overlay */}
-          {(!isCameraActive || !isTranslating) && (
-            <View className="absolute inset-0 justify-center items-center px-5 bg-black/50 z-40">
-              <MaterialIcons
-                name={isCameraActive ? "pause-circle-outline" : "videocam-off"}
-                size={80}
-                color="white"
-              />
-              <Text className="text-xl font-audiowide text-white mt-4 mb-2 text-center">
-                {isCameraActive ? "Ready for Recognition" : "Camera is Off"}
-              </Text>
-              <Text className="text-sm text-white/80 text-center leading-5 font-fredoka">
-                {isCameraActive
-                  ? "Tap the button to begin signing and translation."
-                  : "Tap the button below to turn the camera on."}
-              </Text>
-            </View>
-          )}
-
-          {/* Corners */}
-          <View className="absolute top-4 left-4 w-6 h-6 border-t-[3px] border-l-[3px] border-accent" />
-          <View className="absolute top-4 right-4 w-6 h-6 border-t-[3px] border-r-[3px] border-accent" />
-          <View className="absolute bottom-4 left-4 w-6 h-6 border-b-[3px] border-l-[3px] border-accent" />
-          <View className="absolute bottom-4 right-4 w-6 h-6 border-b-[3px] border-r-[3px] border-accent" />
-        </View>
-
-        {/* Buttons */}
-        {isCameraActive ? (
-          <View className="flex-row justify-between items-center w-full px-10 mt-2">
-            <TouchableOpacity
-              onPress={stopCamera}
-              className="w-[60px] h-[60px] rounded-full justify-center items-center bg-red-600/70"
-            >
-              <MaterialIcons name="power-settings-new" size={28} color="white" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className={`w-[80px] h-[80px] rounded-full justify-center items-center shadow-lg shadow-black/30 ${
-                isTranslating ? "bg-highlight" : "bg-accent"
-              }`}
-              onPress={toggleCamera}
-            >
-              <MaterialIcons
-                name={isTranslating ? "stop" : "play-arrow"}
-                size={38}
-                color="white"
-              />
-            </TouchableOpacity>
-
-            <View className="w-[60px]" />
+                <View className="w-[60px]" />
+              </View>
+            ) : (
+              <View className="flex-row justify-center items-center mt-2">
+                <TouchableOpacity
+                  className="w-[80px] h-[80px] rounded-full justify-center items-center bg-accent shadow-lg shadow-black/30"
+                  onPress={toggleCamera}
+                >
+                  <MaterialIcons name="videocam" size={34} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        ) : (
-          <View className="flex-row justify-center items-center mt-2">
-            <TouchableOpacity
-              className="w-[80px] h-[80px] rounded-full justify-center items-center bg-accent shadow-lg shadow-black/30"
-              onPress={toggleCamera}
+
+          {/* Output */}
+          <View className="px-5 pb-5">
+            <Text className={`text-base font-audiowide mb-3 ${textColor}`}>Output:</Text>
+            <View
+              className={`rounded-xl p-5 min-h-[80px] border border-accent shadow-sm ${surfaceColor}`}
             >
-              <MaterialIcons name="videocam" size={34} color="white" />
-            </TouchableOpacity>
+              <Text
+                className={`text-lg text-center leading-6 font-montserrat-bold ${textColor}`}
+              >
+                {translatedText}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center justify-center mt-3">
+              <View
+                className={`w-2 h-2 rounded-full mr-2 ${
+                  isTranslating
+                    ? "bg-accent"
+                    : isCameraActive
+                    ? "bg-green-500"
+                    : "bg-neutral"
+                }`}
+              />
+              <Text
+                className={`text-sm font-fredoka-medium ${
+                  isDark ? "text-secondary" : "text-neutral"
+                }`}
+              >
+                {isTranslating
+                  ? "TRANSLATING LIVE"
+                  : isCameraActive
+                  ? "Camera Active"
+                  : "Idle"}
+              </Text>
+            </View>
           </View>
-        )}
-      </View>
-
-      {/* Output */}
-      <View className="px-5 pb-5">
-        <Text className={`text-base font-audiowide mb-3 ${textColor}`}>Output:</Text>
-        <View
-          className={`rounded-xl p-5 min-h-[80px] border border-accent shadow-sm ${surfaceColor}`}
-        >
-          <Text
-            className={`text-lg text-center leading-6 font-montserrat-bold ${textColor}`}
-          >
-            {translatedText}
-          </Text>
         </View>
-
-        <View className="flex-row items-center justify-center mt-3">
-          <View
-            className={`w-2 h-2 rounded-full mr-2 ${
-              isTranslating
-                ? "bg-accent"
-                : isCameraActive
-                ? "bg-green-500"
-                : "bg-neutral"
-            }`}
-          />
-          <Text
-            className={`text-sm font-fredoka-medium ${
-              isDark ? "text-secondary" : "text-neutral"
-            }`}
-          >
-            {isTranslating
-              ? "TRANSLATING LIVE"
-              : isCameraActive
-              ? "Camera Active"
-              : "Idle"}
-          </Text>
-        </View>
-      </View>
+      </ImageBackground>
     </View>
   );
 }

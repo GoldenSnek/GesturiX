@@ -14,7 +14,6 @@ return (
         screenOptions={{
           animation: 'shift',
           headerShown: false,
-          sceneContainerStyle: { backgroundColor: isDark ? '#1A1A1A' : '#F8F8F8' },
         }}
       >
         <Tabs.Screen
