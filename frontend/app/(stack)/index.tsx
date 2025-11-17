@@ -96,7 +96,7 @@ const LandingPage = () => {
 
             {/* Logo (Placed higher via flex alignment) */}
             <Animated.View 
-              entering={FadeInUp.duration(2000).delay(500)}
+              entering={FadeInUp.duration(2000).delay(0)}
               className="z-10 items-center" 
             >
               <Image
@@ -109,7 +109,7 @@ const LandingPage = () => {
             {/* Buttons (Positioned lower with mb-8) and Scroll Indicator */}
             <View className="z-10 w-full mb-8 items-center">
               {/* Get Started */}
-              <Animated.View entering={FadeInRight.duration(500).delay(1500)} className="w-full">
+              <Animated.View entering={FadeInUp.duration(500).delay(1300)} className="w-full">
                 <TouchableOpacity
                   onPress={() => router.push('/(stack)/SignUp')}
                   className="w-full bg-accent rounded-full py-4 mb-4 items-center shadow-lg shadow-black/40"
@@ -121,7 +121,7 @@ const LandingPage = () => {
               </Animated.View>
 
               {/* Log In */}
-              <Animated.View entering={FadeInLeft.duration(500).delay(2000)} className="w-full">
+              <Animated.View entering={FadeInUp.duration(500).delay(1500)} className="w-full">
                 <TouchableOpacity
                   onPress={() => router.push('/(stack)/Login')}
                   className="w-full border-2 border-accent rounded-full py-4 items-center shadow-lg shadow-black/40 bg-black/20"

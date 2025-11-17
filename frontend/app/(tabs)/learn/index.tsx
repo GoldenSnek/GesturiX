@@ -150,7 +150,6 @@ const Learn = () => {
           className="flex-1"
           style={{ paddingTop: insets.top }}
         >
-          <AppHeader />
           <ScrollView
             className="flex-1 px-4 py-6"
             contentContainerStyle={{ paddingBottom: 150 }}

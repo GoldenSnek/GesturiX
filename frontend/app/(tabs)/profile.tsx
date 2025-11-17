@@ -229,7 +229,6 @@ const Profile = () => {
           style={{ paddingTop: insets.top }} 
           // pointerEvents="box-none" is no longer needed here as ImageBackground handles touch events
         >
-          <AppHeaderProfile />
 
           <ScrollView
             {...panResponder.panHandlers}

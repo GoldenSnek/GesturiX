@@ -1,3 +1,4 @@
+// File: app/compose.tsx
 import React, { useRef } from 'react';
 import {
   View,
@@ -6,21 +7,18 @@ import {
   TouchableOpacity,
   ScrollView,
   PanResponder,
-  ImageBackground, // Added ImageBackground import
+  ImageBackground, // ✅ Import ImageBackground
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../src/ThemeContext';
+import { useTheme } from '../../src/ThemeContext'; // ✅ Use your global theme
 import AppHeader from '../../components/AppHeader';
 
 const Compose = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isDark } = useTheme();
-
-  // 🧠 Theme colors
-  const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
+  const { isDark } = useTheme(); // ✅ Access current theme
 
   const panResponder = useRef(
     PanResponder.create({
@@ -37,22 +35,23 @@ const Compose = () => {
   ).current;
 
   return (
-    // 1. Outer View sets the base background color
-    <View className={`flex-1 ${bgColorClass}`}>
+    // The outermost container sets the theme color (which shows through the transparent PNG)
+    <View className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
+      
+      {/* 🏞️ ImageBackground for the background asset */}
       <ImageBackground
-        source={require('../../assets/images/MainBG.png')}
-        className="flex-1" // Ensures the ImageBackground fills the parent View
-        resizeMode="cover" // Ensures the image covers the entire background
+        source={require('../../assets/images/MainBG.png')} // ⬅️ ASSUMES YOUR IMAGE IS HERE
+        className="flex-1"
+        resizeMode="cover"
       >
-        {/* 2. Inner View handles padding, swipe, and content */}
-        <View
-          {...panResponder.panHandlers}
+        {/* Foreground Content Layer */}
+        <View 
           className="flex-1"
           style={{ paddingTop: insets.top }}
         >
-          <AppHeader />
 
           <ScrollView
+            {...panResponder.panHandlers}
             className="flex-1 p-4"
             contentContainerStyle={{ paddingBottom: 150 }}
           >
