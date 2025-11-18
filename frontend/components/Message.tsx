@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+// Import Animated from react-native-reanimated
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 // Import all necessary icons
 import { XCircle, AlertTriangle, CheckCircle, AlertOctagon, LucideIcon } from 'lucide-react-native'; 
 
@@ -10,9 +12,9 @@ export type MessageType = 'error' | 'warning' | 'success';
 
 // 1. Define the TypeScript Interface for the props
 interface MessageProps {
-  type: MessageType;        // The type of message: error, warning, or success
-  message: string;        // The message content
-  onClose: () => void;    // Function to close the message
+  type: MessageType;         // The type of message: error, warning, or success
+  message: string;         // The message content
+  onClose: () => void;     // Function to close the message
 }
 
 // Configuration map for styles and icons
@@ -54,10 +56,17 @@ const Message: React.FC<MessageProps> = ({ type, message, onClose }) => {
   const IconComponent = config.icon;
 
   return (
-    // Absolute position at the top
+    // Outer View for positioning (remains non-animated)
     <View className="absolute top-7 left-0 right-0 z-50 p-4">
-      {/* Dynamic styling based on type */}
-      <View 
+      
+      {/* 🎯 Animated Container */}
+      <Animated.View 
+        // FadeInUp: Slides up from below its final position while fading in
+        entering={FadeInUp.duration(500)}
+        // FadeOutUp: Slides up and fades out when the message is dismissed
+        exiting={FadeOutUp.duration(300)}
+        
+        // Dynamic styling based on type
         className={`flex-row items-center justify-between ${config.colors.bg} border-l-4 ${config.colors.border} p-4 rounded-lg shadow-md`}
       >
         <View className="flex-row items-center flex-1 pr-4">
@@ -67,10 +76,10 @@ const Message: React.FC<MessageProps> = ({ type, message, onClose }) => {
           </Text>
         </View>
         <TouchableOpacity onPress={onClose} className="p-1">
-          {/* Close button icon uses the error color for visibility */}
+          {/* Close button icon */}
           <XCircle color={config.colors.icon} size={20} /> 
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   );
 };
