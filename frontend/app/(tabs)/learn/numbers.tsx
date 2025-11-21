@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/numbers.tsx
 import React, { useEffect, useState } from 'react';
 import { 
   View, 
@@ -6,7 +5,8 @@ import {
   TouchableOpacity, 
   ScrollView, 
   ImageBackground,
-  Alert
+  Alert,
+  Modal // 💡 Imported Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,16 +19,65 @@ import { Video, ResizeMode } from 'expo-av';
 
 const STORAGE_LAST_NUMBER = 'numberscreen_last_number';
 
+// 💡 New: Feature Modal Component (Styled exactly like Translation Tips)
+const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
+  const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
+  const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
+  const textColor = isDark ? "text-secondary" : "text-primary";
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        className={`flex-1 justify-center items-center ${modalBg} p-8`}
+        onPress={onClose}
+        activeOpacity={1}
+      >
+        <View
+          className={`w-full rounded-2xl p-6 shadow-xl border border-accent ${surfaceColor}`}
+          style={{ maxHeight: '80%' }}
+        >
+          <Text className={`text-2xl font-audiowide text-center mb-4 color-accent ${textColor}`}>
+            Feature Coming Soon
+          </Text>
+          <View className="space-y-3">
+            <View className="flex-row items-start justify-center">
+              <Text className={`text-base font-montserrat-regular text-center leading-6 ${textColor}`}>
+                Our AI model is currently learning to recognize number signs efficiently. Stay tuned for updates!
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={onClose} className="mt-6 p-2 px-6 rounded-full bg-accent/20 self-center">
+            <Text className="text-accent text-center font-fredoka-bold">Got it!</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
 const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
 
   // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
+  const textColor = isDark ? 'text-secondary' : 'text-primary';
 
   const [doneNumbers, setDoneNumbers] = useState<number[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+  // 🕹️ Controls State
+  const [isSlowMotion, setIsSlowMotion] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(false);
+
+  // 💡 New State: Modal visibility
+  const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
   // Load progress
   useEffect(() => {
@@ -88,12 +137,9 @@ const Numbers = () => {
     setCurrentIdx(0);
   };
 
+  // 💡 Updated: Open the custom modal instead of Alert
   const handleCameraAlert = () => {
-    Alert.alert(
-      "Feature Coming Soon",
-      "Our AI model is currently learning to recognize number signs efficiently. Stay tuned for updates!",
-      [{ text: "OK" }]
-    );
+    setFeatureModalVisible(true);
   };
 
   const canSelectNumber = (idx: number) =>
@@ -212,36 +258,12 @@ const Numbers = () => {
                   style={{ width: '100%', height: '100%', borderRadius: 18 }}
                   resizeMode={ResizeMode.COVER}
                   shouldPlay={true}
-                  isLooping
+                  isLooping={isRepeating} // 🔁 Updated
                   useNativeControls
+                  rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Updated
                   isMuted={true}
                 />
               </View>
-
-              {/* "Coming Soon" Camera Button */}
-              <TouchableOpacity
-                onPress={handleCameraAlert}
-                activeOpacity={0.8}
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  backgroundColor: '#A8A8A8', // Greyed out to indicate inactive/coming soon
-                  borderRadius: 20,
-                  padding: 10,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.28,
-                  shadowRadius: 6,
-                  elevation: 5,
-                  zIndex: 12,
-                }}
-              >
-                <MaterialIcons 
-                  name="videocam-off"
-                  size={20}
-                  color="white"
-                />
-              </TouchableOpacity>
             </View>
 
             {/* Tips Section */}
@@ -274,23 +296,101 @@ const Numbers = () => {
               </Text>
             </Text>
 
-            {/* Buttons */}
+            {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
-              {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
-                <TouchableOpacity
-                  key={label}
-                  className={`flex-1 rounded-full py-3 mx-1 items-center border border-accent ${
-                    isDark ? 'bg-darksurface' : 'bg-lighthover'
-                  }`}
+              
+              {/* 1. Slow Motion */}
+              <TouchableOpacity
+                onPress={() => setIsSlowMotion(!isSlowMotion)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isSlowMotion 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="speed" 
+                  size={20} 
+                  color={isSlowMotion ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isSlowMotion ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
                 >
-                  <Text
-                    className={`${isDark ? 'text-secondary' : 'text-primary'}`}
-                    style={{ fontFamily: 'Fredoka-Regular' }}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  Slow Mo
+                </Text>
+              </TouchableOpacity>
+
+              {/* 2. Repeat */}
+              <TouchableOpacity
+                onPress={() => setIsRepeating(!isRepeating)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isRepeating 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="replay" 
+                  size={20} 
+                  color={isRepeating ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isRepeating ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Repeat
+                </Text>
+              </TouchableOpacity>
+
+              {/* 3. Practice (Triggers Custom Modal) */}
+              <TouchableOpacity
+                onPress={handleCameraAlert}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                }`}
+              >
+                <MaterialIcons 
+                  name="videocam" 
+                  size={20} 
+                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Practice
+                </Text>
+              </TouchableOpacity>
+
+              {/* 4. Save Sign */}
+              <TouchableOpacity
+                onPress={() => { /* Placeholder for save functionality */ }}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                }`}
+              >
+                <MaterialIcons 
+                  name="bookmark-outline" 
+                  size={20} 
+                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Save
+                </Text>
+              </TouchableOpacity>
+
             </View>
 
             {/* Completed Button */}
@@ -307,6 +407,13 @@ const Numbers = () => {
               </Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {/* 💡 New: Render the Feature Modal */}
+          <FeatureModal 
+            isVisible={isFeatureModalVisible}
+            onClose={() => setFeatureModalVisible(false)}
+            isDark={isDark}
+          />
         </View>
       </ImageBackground>
     </View>
