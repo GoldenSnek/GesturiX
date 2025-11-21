@@ -7,25 +7,23 @@ import {
   Animated, 
   Easing, 
   ActivityIndicator, 
-  ImageBackground // 💡 Added ImageBackground import
+  ImageBackground,
+  Image // ✅ Added Image import
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUserId } from '../../../utils/supabaseApi';
 import { alphabetSigns } from '../../../constants/alphabetSigns';
-import { Video, ResizeMode } from 'expo-av';
+// ❌ Removed expo-av imports
 import { markLetterCompleted, getCompletedLetters, resetLetterProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
 import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
 import axios from 'axios';
 
-
 const TOTAL_LETTERS = 26;
 const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
 const CAMERA_PANEL_HEIGHT = 370;
-
 
 const Letters = () => {
   const insets = useSafeAreaInsets();
@@ -34,11 +32,9 @@ const Letters = () => {
   // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
 
-
   const [doneLetters, setDoneLetters] = useState<string[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
-
 
   // Camera states
   const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
@@ -50,11 +46,9 @@ const Letters = () => {
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
 
-
   // Animation state
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [allowCameraInteraction, setAllowCameraInteraction] = useState(false);
-
 
   const cameraRef = useRef<Camera>(null);
   const devices = useCameraDevices();
@@ -62,7 +56,6 @@ const Letters = () => {
     devices.find((d) => d.position === facing) ??
     devices.find((d) => d.position === 'front') ??
     devices.find((d) => d.position === 'back');
-
 
   // Progress load
   useEffect(() => {
@@ -72,7 +65,6 @@ const Letters = () => {
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
 
-
       if (lastLetter) {
         const lastIdx = alphabetSigns.findIndex(l => l.letter === lastLetter);
         if (lastIdx !== -1) {
@@ -81,12 +73,10 @@ const Letters = () => {
         }
       }
 
-
       const nextIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
       setCurrentIdx(nextIdx === -1 ? TOTAL_LETTERS - 1 : nextIdx);
     })();
   }, []);
-
 
   useEffect(() => {
     if (alphabetSigns[currentIdx]) {
@@ -94,11 +84,9 @@ const Letters = () => {
     }
   }, [currentIdx]);
 
-
   useEffect(() => {
     setCompleted(doneLetters.includes(alphabetSigns[currentIdx].letter));
   }, [doneLetters, currentIdx]);
-
 
   // Camera permission
   useEffect(() => {
@@ -107,7 +95,6 @@ const Letters = () => {
       setHasPermission(status === 'granted');
     })();
   }, []);
-
 
   // Animate slide and set activation/interaction
   useEffect(() => {
@@ -125,7 +112,6 @@ const Letters = () => {
     });
   }, [isCameraPanelVisible]);
 
-
   // Camera detection and prediction
   useEffect(() => {
     if (!isCameraActive || !cameraRef.current) return;
@@ -142,12 +128,10 @@ const Letters = () => {
           name: 'frame.jpg',
         } as any);
 
-
         // NOTE: Hardcoded local IP address - for testing only!
-        const res = await axios.post('http://192.168.174.136:8000/predict', formData, {
+        const res = await axios.post('http://192.168.130.136:8000/predict', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-
 
         if (res.data.prediction && res.data.prediction !== 'None') {
           setPrediction(res.data.prediction.toUpperCase());
@@ -160,10 +144,8 @@ const Letters = () => {
       setIsSending(false);
     }, 200);
 
-
     return () => clearInterval(interval);
   }, [isCameraActive, isSending]);
-
 
   const handleComplete = async () => {
     await markLetterCompleted(alphabetSigns[currentIdx].letter);
@@ -179,19 +161,16 @@ const Letters = () => {
     }
   };
 
-
   const handleReset = async () => {
     await resetLetterProgress();
     setDoneLetters([]);
     setCurrentIdx(0);
   };
 
-
   const canSelectLetter = (idx: number) =>
     idx === 0 ||
     doneLetters.includes(alphabetSigns[idx - 1].letter) ||
     doneLetters.includes(alphabetSigns[idx].letter);
-
 
   // Camera toggling
   const handleToggleCameraPanel = async () => {
@@ -208,21 +187,17 @@ const Letters = () => {
     }
   };
 
-
   const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
   const toggleFlash = () => setFlash(flash === 'off' ? 'on' : 'off');
 
-
   const completedCount = doneLetters.length;
   const letterData = alphabetSigns[currentIdx];
-
 
   // Calculate slide up from below video panel
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [CAMERA_PANEL_HEIGHT + 16, 0],
   });
-
 
   return (
     // 1. Outer View sets the base background color
@@ -243,7 +218,6 @@ const Letters = () => {
             onResetProgress={handleReset}
           />
 
-
           <ScrollView
             className="flex-1 p-4"
             contentContainerStyle={{ paddingBottom: isCameraPanelVisible ? CAMERA_PANEL_HEIGHT + 170 : 150 }}
@@ -255,14 +229,12 @@ const Letters = () => {
               Select a Letter
             </Text>
 
-
             {/* Letter Grid */}
             <View className="flex-row flex-wrap justify-between mb-1">
               {alphabetSigns.map((item, idx) => {
                 const isCompleted = doneLetters.includes(item.letter);
                 const isSelected = currentIdx === idx;
                 const canSelect = canSelectLetter(idx);
-
 
                 return (
                   <TouchableOpacity
@@ -302,7 +274,6 @@ const Letters = () => {
               })}
             </View>
 
-
             {/* --- Practice Section --- */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
@@ -311,13 +282,12 @@ const Letters = () => {
               Practice: "{letterData.letter}"
             </Text>
 
-
-            {/* Letter Video with RECORD/VIDEO Icon */}
+            {/* Letter Image Container (Replaced Video) */}
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
                 style={{
                   width: '100%',
-                  aspectRatio: 16 / 9,
+                  aspectRatio: 16 / 9, // Keeps 16:9 ratio
                   borderRadius: 20,
                   backgroundColor: isDark ? '#222' : '#fffcfa',
                   borderWidth: 2,
@@ -332,19 +302,17 @@ const Letters = () => {
                   overflow: 'hidden',
                 }}
               >
-                <Video
-                  source={letterData.videos[0]}
+                <Image
+                  source={letterData.image} // ✅ Uses the updated image property
                   style={{
                     width: '100%',
                     height: '100%',
                     borderRadius: 20,
                     backgroundColor: isDark ? '#1a1a1a' : '#fff'
                   }}
-                  resizeMode={ResizeMode.COVER}
-                  useNativeControls
+                  resizeMode="cover"
                 />
               </View>
-
 
               {/* Video/Recorder-style Toggle Icon */}
               <TouchableOpacity
@@ -371,9 +339,7 @@ const Letters = () => {
                 />
               </TouchableOpacity>
 
-
             </View>
-
 
             {/* Camera Panel - slide below video panel */}
             {isCameraPanelVisible && (
@@ -449,7 +415,6 @@ const Letters = () => {
                   </View>
                 )}
 
-
                 {/* Prediction Area */}
                 <View style={{
                   backgroundColor: isDark ? '#181818' : '#f2f1efff',
@@ -501,7 +466,6 @@ const Letters = () => {
               </Animated.View>
             )}
 
-
             {/* Tips Section - UPDATED TO MATCH phrase.tsx */}
             <Text
               style={{
@@ -532,7 +496,6 @@ const Letters = () => {
               </Text>
             </Text>
 
-
             {/* Practice Buttons */}
             <View className="flex-row justify-between mb-4">
               {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
@@ -551,7 +514,6 @@ const Letters = () => {
                 </TouchableOpacity>
               ))}
             </View>
-
 
             {/* Mark as Completed Button */}
             <TouchableOpacity
@@ -572,6 +534,5 @@ const Letters = () => {
     </View>
   );
 };
-
 
 export default Letters;
