@@ -33,6 +33,7 @@ import {
     Camera,
     useCameraDevices,
     CameraDevice,
+    useCameraFormat,
 } from "react-native-vision-camera";
 
 // --- AnimatedCorner Component (No Change) ---
@@ -162,6 +163,12 @@ export default function Translate() {
         devices.find((d) => d.position === facing) ??
         devices.find((d) => d.position === "back");
 
+    // 💡 NEW: Force a smaller format (640x480 is perfect for AI/Speed)
+    const format = useCameraFormat(device, [
+        { photoResolution: { width: 640, height: 480 } },
+        { fps: 30 }
+    ]);
+
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { isDark } = useTheme();
@@ -235,14 +242,20 @@ export default function Translate() {
         if (!isTranslating || !cameraRef.current) return;
 
         const interval = setInterval(async () => {
-            if (isSending) return;
+            if (isSending) return; 
+
             setIsSending(true);
             try {
-                // Placeholder logic for sending frame
-                const photo = await cameraRef.current!.takePhoto({});
+                // ✅ FIXED: The only valid options for V4
+                const photo = await cameraRef.current!.takePhoto({
+                    flash: 'off',
+                    enableShutterSound: false, 
+                });
+
                 const uri = photo.path.startsWith("file://")
                     ? photo.path
                     : `file://${photo.path}`;
+                
                 const formData = new FormData();
                 formData.append("file", {
                     uri,
@@ -251,7 +264,7 @@ export default function Translate() {
                 } as any)
 
                 // Assuming the server endpoint and response structure remain the same
-                const res = await axios.post("http://192.168.1.4:8000/predict", formData, { 
+                const res = await axios.post("http://192.168.1.6:8000/predict", formData, { 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
 
@@ -302,7 +315,7 @@ export default function Translate() {
             }
 
             setIsSending(false);
-        }, 200);
+        }, 100);
 
         return () => clearInterval(interval);
     }, [isTranslating, isSending, lastTranslatedLetter, currentTranslation]); // Updated dependencies
@@ -347,7 +360,7 @@ export default function Translate() {
         setIsEnhancing(true);
         setEnhancedTranslation("AI is enhancing translation...");
         try {
-            const response = await axios.post("http://192.168.1.4:8000/enhance", {
+            const response = await axios.post("http://192.168.1.6:8000/enhance", {
                 raw_text: rawTextToEnhance,
             });
 
@@ -461,6 +474,7 @@ export default function Translate() {
                                     ref={cameraRef}
                                     style={{ flex: 1 }}
                                     device={device}
+                                    format={format} // <--- Add this line
                                     isActive={true}
                                     photo={true}
                                     torch={facing === "back" ? flash : "off"}

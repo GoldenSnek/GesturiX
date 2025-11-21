@@ -13,7 +13,6 @@ import {
   Linking,
   BackHandler,
   ImageBackground,
-  StyleSheet, // Import StyleSheet for absoluteFillObject
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, AntDesign } from '@expo/vector-icons';
@@ -24,8 +23,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import { useTheme } from '../../src/ThemeContext';
-import { useFocusEffect } from '@react-navigation/native'; // ADD THIS IMPORT
-import { fetchUserStatistics, getCurrentUserId } from '../../utils/supabaseApi'; // ADD THIS IMPORT
+import { useFocusEffect } from '@react-navigation/native';
+import { fetchUserStatistics, getCurrentUserId } from '../../utils/supabaseApi';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -49,10 +48,6 @@ const Profile = () => {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
-
-  const [isSoundEffectsEnabled, setSoundEffectsEnabled] = useState(false);
-  const [isVibrationEnabled, setVibrationEnabled] = useState(false);
-  const [areNotificationsEnabled, setNotificationsEnabled] = useState(false);
 
   // NEW: State for Supabase statistics
   const [userStats, setUserStats] = useState({
@@ -211,6 +206,8 @@ const Profile = () => {
     if (supported) await Linking.openURL(url);
     else Alert.alert('Unable to open link');
   };
+  
+  // NOTE: buttonSettings array has been removed.
 
   return (
     // The outermost container now sets the theme color (which shows through the transparent PNG)
@@ -421,7 +418,7 @@ const Profile = () => {
               </View>
             </View>
 
-            {/* ⚙️ Settings */}
+            {/* ⚙️ Settings - MODIFIED TO ONLY INCLUDE DARK MODE */}
             <Text
               className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -434,42 +431,27 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              {[
-                ['Sound Effects', isSoundEffectsEnabled, setSoundEffectsEnabled],
-                ['Vibration', isVibrationEnabled, setVibrationEnabled],
-                ['Notifications', areNotificationsEnabled, setNotificationsEnabled],
-                ['Dark Mode', isDark, 'darkMode'],
-              ].map(([label, value, setter], idx) => (
-                <View
-                  key={idx}
-                  className={`flex-row items-center justify-between py-3 ${
-                    idx !== 3 ? 'border-b border-accent' : ''
-                  }`}
-                >
-                  <Text
-                    className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
-                    style={{ fontFamily: 'Fredoka-Regular' }}
-                  >
-                  <Text>{String(label)}</Text>
-
-                  </Text>
+              {/* Dark Mode Switch (Retained) */}
+              <View
+                  className={`flex-row items-center justify-between py-3`} 
+              >
+                  <View className="flex-row items-center">
+                      <MaterialIcons name="dark-mode" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
+                      <Text
+                          className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
+                          style={{ fontFamily: 'Fredoka-Regular' }}
+                      >
+                          Dark Mode
+                      </Text>
+                  </View>
                   <Switch
-                    trackColor={{
-                      false: '#d1d5db',
-                      true: '#FF6B00',
-                    }}
-                    thumbColor={value ? '#fff' : '#f4f3f4'}
-                    onValueChange={() => {
-                      if (setter === 'darkMode') {
-                        toggleTheme();
-                      } else if (typeof setter === 'function') {
-                        (setter as any)(!value);
-                      }
-                    }}
-                    value={!!value}
+                      trackColor={{ false: '#d1d5db', true: '#FF6B00' }}
+                      thumbColor={isDark ? '#fff' : '#f4f3f4'}
+                      onValueChange={toggleTheme}
+                      value={isDark}
                   />
-                </View>
-              ))}
+              </View>
+              {/* NOTE: buttonSettings.map loop has been removed */}
             </View>
 
             <Text
@@ -568,16 +550,5 @@ const Profile = () => {
     </View>
   );
 };
-
-// Define the StyleSheet outside the component (no longer strictly needed but kept for cleanliness)
-const styles = StyleSheet.create({
-  absoluteFill: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-});
 
 export default Profile;
