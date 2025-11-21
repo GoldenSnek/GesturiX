@@ -5,24 +5,24 @@ import {
   TouchableOpacity,
   ScrollView,
   PanResponder,
-  ImageBackground, // 💡 Added ImageBackground
+  ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../../src/ThemeContext';
-import AppHeader from '../../../components/AppHeader';
 
 import { phrases } from '../../../constants/phrases';
 import { alphabetSigns } from '../../../constants/alphabetSigns';
-import { getCompletedPhrases, getCompletedLetters } from '../../../utils/progressStorage';
+import { numbersData } from '../../../constants/numbers';
+import { getCompletedPhrases, getCompletedLetters, getCompletedNumbers } from '../../../utils/progressStorage';
 import { useFocusEffect } from '@react-navigation/native';
 
-// NOTE: Assuming these utility functions are correctly implemented and available
 import { fetchUserStatistics, getCurrentUserId } from '../../../utils/supabaseApi';
 
 const totalPhrases = phrases.length;
 const totalLetters = alphabetSigns.length;
+const totalNumbers = numbersData.length;
 
 const quickActionsData = [
   { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz' },
@@ -39,15 +39,15 @@ const Learn = () => {
   // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
 
-  // State for phrase progress
+  // State for progress
   const [phrasesCompleted, setPhrasesCompleted] = useState(0);
   const [lettersCompleted, setLettersCompleted] = useState(0);
+  const [numbersCompleted, setNumbersCompleted] = useState(0);
 
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
       (async () => {
-        // NOTE: Mapped IDs/letters are passed to utility functions
         const donePhrases = await getCompletedPhrases(phrases.map(p => p.id));
         if (isActive) setPhrasesCompleted(donePhrases.length);
       })();
@@ -59,9 +59,19 @@ const Learn = () => {
     React.useCallback(() => {
       let isActive = true;
       (async () => {
-        // NOTE: Mapped IDs/letters are passed to utility functions
         const doneLetters = await getCompletedLetters(alphabetSigns.map(l => l.letter));
         if (isActive) setLettersCompleted(doneLetters.length);
+      })();
+      return () => { isActive = false; };
+    }, [])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const doneNumbers = await getCompletedNumbers(numbersData.map(n => n.number));
+        if (isActive) setNumbersCompleted(doneNumbers.length);
       })();
       return () => { isActive = false; };
     }, [])
@@ -109,10 +119,9 @@ const Learn = () => {
       title: 'Numbers',
       subtitle: 'Count in sign language',
       icon: 'format-list-numbered',
-      // Using hardcoded values for numbers category for demonstration
-      completed: 12,
-      total: 26,
-      progress: 12 / 26,
+      completed: numbersCompleted,
+      total: totalNumbers,
+      progress: totalNumbers > 0 ? numbersCompleted / totalNumbers : 0,
     },
     {
       id: 'phrases',
@@ -123,7 +132,7 @@ const Learn = () => {
       total: totalPhrases,
       progress: totalPhrases > 0 ? phrasesCompleted / totalPhrases : 0,
     },
-  ], [lettersCompleted, phrasesCompleted]);
+  ], [lettersCompleted, phrasesCompleted, numbersCompleted]);
 
   const panResponder = useRef(
     PanResponder.create({

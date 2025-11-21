@@ -233,7 +233,7 @@ export default function Translate() {
                     name: "frame.jpg",
                 } as any);
 
-                const res = await axios.post("http://192.168.130.136:8000/predict", formData, { 
+                const res = await axios.post("http://192.168.17.136:8000/predict", formData, { 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
 
