@@ -7,8 +7,7 @@ import {
   Animated, 
   Easing, 
   ActivityIndicator, 
-  ImageBackground,
-  Image // ✅ Added Image import
+  ImageBackground 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,10 +15,10 @@ import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { alphabetSigns } from '../../../constants/alphabetSigns';
-// ❌ Removed expo-av imports
 import { markLetterCompleted, getCompletedLetters, resetLetterProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
 import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
 import axios from 'axios';
+import { Video, ResizeMode } from 'expo-av';
 
 const TOTAL_LETTERS = 26;
 const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
@@ -29,12 +28,16 @@ const Letters = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
 
-  // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
+  const textColor = isDark ? 'text-secondary' : 'text-primary';
 
   const [doneLetters, setDoneLetters] = useState<string[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+  // 🕹️ Controls State
+  const [isSlowMotion, setIsSlowMotion] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(false);
 
   // Camera states
   const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
@@ -42,22 +45,20 @@ const Letters = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [prediction, setPrediction] = useState<string>('None');
   const [isSending, setIsSending] = useState(false);
-  // Always open with front camera by default
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
 
-  // Animation state
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [allowCameraInteraction, setAllowCameraInteraction] = useState(false);
 
   const cameraRef = useRef<Camera>(null);
   const devices = useCameraDevices();
   const device: CameraDevice | undefined =
-    devices.find((d) => d.position === facing) ??
-    devices.find((d) => d.position === 'front') ??
-    devices.find((d) => d.position === 'back');
+    devices.find(d => d.position === facing) ??
+    devices.find(d => d.position === 'front') ??
+    devices.find(d => d.position === 'back');
 
-  // Progress load
+  // Load progress on mount
   useEffect(() => {
     (async () => {
       const lastLetter = await AsyncStorage.getItem(STORAGE_LAST_LETTER);
@@ -72,7 +73,6 @@ const Letters = () => {
           return;
         }
       }
-
       const nextIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
       setCurrentIdx(nextIdx === -1 ? TOTAL_LETTERS - 1 : nextIdx);
     })();
@@ -88,7 +88,7 @@ const Letters = () => {
     setCompleted(doneLetters.includes(alphabetSigns[currentIdx].letter));
   }, [doneLetters, currentIdx]);
 
-  // Camera permission
+  // Camera permission & activation animations
   useEffect(() => {
     (async () => {
       const status = await Camera.requestCameraPermission();
@@ -96,7 +96,6 @@ const Letters = () => {
     })();
   }, []);
 
-  // Animate slide and set activation/interaction
   useEffect(() => {
     Animated.timing(slideAnim, {
       toValue: isCameraPanelVisible ? 1 : 0,
@@ -107,12 +106,10 @@ const Letters = () => {
       setIsCameraActive(isCameraPanelVisible);
       setAllowCameraInteraction(isCameraPanelVisible);
       if (!isCameraPanelVisible) setPrediction('None');
-      // Always reset to front when opened
       if (isCameraPanelVisible) setFacing('front');
     });
   }, [isCameraPanelVisible]);
 
-  // Camera detection and prediction
   useEffect(() => {
     if (!isCameraActive || !cameraRef.current) return;
     const interval = setInterval(async () => {
@@ -122,28 +119,20 @@ const Letters = () => {
         const photo = await cameraRef.current!.takePhoto({});
         const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
         const formData = new FormData();
-        formData.append('file', {
-          uri,
-          type: 'image/jpeg',
-          name: 'frame.jpg',
-        } as any);
-
-        // NOTE: Hardcoded local IP address - for testing only!
+        formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
         const res = await axios.post('http://192.168.17.136:8000/predict', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-
         if (res.data.prediction && res.data.prediction !== 'None') {
           setPrediction(res.data.prediction.toUpperCase());
         } else {
           setPrediction('No Hand Detected');
         }
-      } catch (err) {
+      } catch {
         setPrediction('Camera error');
       }
       setIsSending(false);
     }, 200);
-
     return () => clearInterval(interval);
   }, [isCameraActive, isSending]);
 
@@ -155,9 +144,7 @@ const Letters = () => {
     setDoneLetters(done);
     setCompleted(true);
     if (currentIdx < TOTAL_LETTERS - 1) {
-      setTimeout(() => {
-        setCurrentIdx(currentIdx + 1);
-      }, 200);
+      setTimeout(() => setCurrentIdx(currentIdx + 1), 200);
     }
   };
 
@@ -168,11 +155,10 @@ const Letters = () => {
   };
 
   const canSelectLetter = (idx: number) =>
-    idx === 0 ||
-    doneLetters.includes(alphabetSigns[idx - 1].letter) ||
+    idx === 0 || 
+    doneLetters.includes(alphabetSigns[idx - 1].letter) || 
     doneLetters.includes(alphabetSigns[idx].letter);
 
-  // Camera toggling
   const handleToggleCameraPanel = async () => {
     if (!isCameraPanelVisible) {
       if (!hasPermission) {
@@ -186,31 +172,25 @@ const Letters = () => {
       setTimeout(() => setCameraPanelVisible(false), 10);
     }
   };
-
   const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
   const toggleFlash = () => setFlash(flash === 'off' ? 'on' : 'off');
 
   const completedCount = doneLetters.length;
   const letterData = alphabetSigns[currentIdx];
 
-  // Calculate slide up from below video panel
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [CAMERA_PANEL_HEIGHT + 16, 0],
   });
 
   return (
-    // 1. Outer View sets the base background color
     <View className={`flex-1 ${bgColorClass}`}>
       <ImageBackground
         source={require('../../../assets/images/MainBG.png')}
         className="flex-1"
         resizeMode="cover"
       >
-        <View
-          className="flex-1"
-          style={{ paddingTop: insets.top }}
-        >
+        <View className="flex-1" style={{ paddingTop: insets.top }}>
           <AppHeaderLearn
             title="Learn Letters"
             completedCount={completedCount}
@@ -229,7 +209,6 @@ const Letters = () => {
               Select a Letter
             </Text>
 
-            {/* Letter Grid */}
             <View className="flex-row flex-wrap justify-between mb-1">
               {alphabetSigns.map((item, idx) => {
                 const isCompleted = doneLetters.includes(item.letter);
@@ -242,9 +221,7 @@ const Letters = () => {
                     className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
                       isCompleted
                         ? 'border-accent bg-secondary'
-                        : isDark
-                          ? 'border-darkhover bg-darksurface'
-                          : 'border-neutral bg-lighthover'
+                        : isDark ? 'border-darkhover bg-darksurface' : 'border-neutral bg-lighthover'
                     }`}
                     activeOpacity={canSelect ? 0.95 : 1}
                     onPress={() => { if (canSelect) setCurrentIdx(idx); }}
@@ -255,11 +232,7 @@ const Letters = () => {
                       style={{
                         fontFamily: 'Fredoka-SemiBold',
                         fontSize: 24,
-                        color: isCompleted
-                          ? '#FF6B00'
-                          : canSelect
-                            ? (isDark ? '#E5E7EB' : '#6B7280')
-                            : (isDark ? '#4B5563' : '#D1D5DB'),
+                        color: isCompleted ? '#FF6B00' : canSelect ? (isDark ? '#E5E7EB' : '#6B7280') : (isDark ? '#4B5563' : '#D1D5DB'),
                       }}
                     >
                       {item.letter}
@@ -274,7 +247,6 @@ const Letters = () => {
               })}
             </View>
 
-            {/* --- Practice Section --- */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -282,12 +254,12 @@ const Letters = () => {
               Practice: "{letterData.letter}"
             </Text>
 
-            {/* Letter Image Container (Replaced Video) */}
+            {/* Video Container */}
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
                 style={{
                   width: '100%',
-                  aspectRatio: 16 / 9, // Keeps 16:9 ratio
+                  aspectRatio: 16 / 9,
                   borderRadius: 20,
                   backgroundColor: isDark ? '#222' : '#fffcfa',
                   borderWidth: 2,
@@ -302,46 +274,21 @@ const Letters = () => {
                   overflow: 'hidden',
                 }}
               >
-                <Image
-                  source={letterData.image} // ✅ Uses the updated image property
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: 20,
-                    backgroundColor: isDark ? '#1a1a1a' : '#fff'
-                  }}
-                  resizeMode="cover"
+                <Video
+                  source={letterData.image} // Using image property as source (for video/gif)
+                  style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay
+                  isLooping={isRepeating} // 🔁 Repeat logic
+                  rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Slow motion logic
+                  useNativeControls
+                  isMuted
                 />
               </View>
-
-              {/* Video/Recorder-style Toggle Icon */}
-              <TouchableOpacity
-                onPress={handleToggleCameraPanel}
-                activeOpacity={0.8}
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  backgroundColor: '#FF6B00',
-                  borderRadius: 20,
-                  padding: 10,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.28,
-                  shadowRadius: 6,
-                  elevation: 5,
-                  zIndex: 12,
-                }}
-              >
-                <MaterialIcons 
-                  name={isCameraPanelVisible ? "videocam-off" : "videocam"}
-                  size={20}
-                  color="white"
-                />
-              </TouchableOpacity>
-
+              {/* Removed previous floating camera icon */}
             </View>
 
-            {/* Camera Panel - slide below video panel */}
+            {/* Camera Panel */}
             {isCameraPanelVisible && (
               <Animated.View
                 style={{
@@ -375,8 +322,6 @@ const Letters = () => {
                       torch={facing === 'back' ? flash : 'off'}
                       className="rounded-2xl"
                     />
-                    
-                    {/* Camera controls and corners */}
                     <View style={{
                       position: 'absolute',
                       top: 13,
@@ -390,7 +335,6 @@ const Letters = () => {
                       <TouchableOpacity onPress={flipCamera} style={{ paddingHorizontal: 6 }}>
                         <MaterialIcons name="flip-camera-ios" size={26} color="white" />
                       </TouchableOpacity>
-                      {/* Optionally show flash when back camera */}
                       {facing === 'back' && (
                         <TouchableOpacity onPress={toggleFlash} style={{ paddingHorizontal: 6 }}>
                           <MaterialIcons
@@ -415,7 +359,6 @@ const Letters = () => {
                   </View>
                 )}
 
-                {/* Prediction Area */}
                 <View style={{
                   backgroundColor: isDark ? '#181818' : '#f2f1efff',
                   borderBottomLeftRadius: 20,
@@ -466,7 +409,7 @@ const Letters = () => {
               </Animated.View>
             )}
 
-            {/* Tips Section - UPDATED TO MATCH phrase.tsx */}
+            {/* Tips Section */}
             <Text
               style={{
                 marginVertical: 8,
@@ -496,23 +439,101 @@ const Letters = () => {
               </Text>
             </Text>
 
-            {/* Practice Buttons */}
+            {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
-              {['Slow Motion', 'Repeat', 'Practice'].map((label) => (
-                <TouchableOpacity
-                  key={label}
-                  className={`flex-1 rounded-full py-3 mx-1 items-center border border-accent ${
-                    isDark ? 'bg-darksurface' : 'bg-lighthover'
-                  }`}
+              
+              {/* 1. Slow Motion */}
+              <TouchableOpacity
+                onPress={() => setIsSlowMotion(!isSlowMotion)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isSlowMotion 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="speed" 
+                  size={20} 
+                  color={isSlowMotion ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isSlowMotion ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
                 >
-                  <Text
-                    className={`${isDark ? 'text-secondary' : 'text-primary'}`}
-                    style={{ fontFamily: 'Fredoka-Regular' }}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  Slow Mo
+                </Text>
+              </TouchableOpacity>
+
+              {/* 2. Repeat */}
+              <TouchableOpacity
+                onPress={() => setIsRepeating(!isRepeating)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isRepeating 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="replay" 
+                  size={20} 
+                  color={isRepeating ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isRepeating ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Repeat
+                </Text>
+              </TouchableOpacity>
+
+              {/* 3. Practice (Opens Camera) */}
+              <TouchableOpacity
+                onPress={handleToggleCameraPanel}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isCameraPanelVisible ? 'bg-accent' : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name={isCameraPanelVisible ? "videocam-off" : "videocam"}
+                  size={20} 
+                  color={isCameraPanelVisible ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isCameraPanelVisible ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Practice
+                </Text>
+              </TouchableOpacity>
+
+              {/* 4. Save Sign */}
+              <TouchableOpacity
+                onPress={() => { /* Placeholder for save functionality */ }}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                }`}
+              >
+                <MaterialIcons 
+                  name="bookmark-outline" 
+                  size={20} 
+                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Save
+                </Text>
+              </TouchableOpacity>
+
             </View>
 
             {/* Mark as Completed Button */}

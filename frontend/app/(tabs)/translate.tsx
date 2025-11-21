@@ -264,7 +264,7 @@ export default function Translate() {
                 } as any)
 
                 // Assuming the server endpoint and response structure remain the same
-                const res = await axios.post("http://192.168.1.6:8000/predict", formData, { 
+                const res = await axios.post("http://192.168.17.136:8000/predict", formData, { 
 
                     headers: { "Content-Type": "multipart/form-data" },
                 });

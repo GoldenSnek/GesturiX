@@ -1,11 +1,13 @@
-// File: frontend/app/(tabs)/learn/phrases.tsx
+// File: src/screens/learn/phrases.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   ScrollView, 
-  ImageBackground
+  ImageBackground,
+  Alert,
+  Modal // 💡 Imported Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -25,6 +27,47 @@ const CATEGORIES = [
   { key: 'questions', label: 'Questions' },
 ];
 
+// 💡 New: Feature Modal Component (Styled exactly like Translation Tips)
+const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
+  const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
+  const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
+  const textColor = isDark ? "text-secondary" : "text-primary";
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        className={`flex-1 justify-center items-center ${modalBg} p-8`}
+        onPress={onClose}
+        activeOpacity={1}
+      >
+        <View
+          className={`w-full rounded-2xl p-6 shadow-xl border border-accent ${surfaceColor}`}
+          style={{ maxHeight: '80%' }}
+        >
+          <Text className={`text-2xl font-audiowide text-center mb-4 color-accent ${textColor}`}>
+            Feature Coming Soon
+          </Text>
+          <View className="space-y-3">
+            <View className="flex-row items-start justify-center">
+              <Text className={`text-base font-montserrat-regular text-center leading-6 ${textColor}`}>
+                Our AI model is currently learning to recognize phrases efficiently. Stay tuned for updates!
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={onClose} className="mt-6 p-2 px-6 rounded-full bg-accent/20 self-center">
+            <Text className="text-accent text-center font-fredoka-bold">Got it!</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
 export default function PhraseLearnScreen() {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
@@ -39,6 +82,17 @@ export default function PhraseLearnScreen() {
 
   const [selectedPhrase, setSelectedPhrase] = useState(phrasesForCategory[0]);
   const [completed, setCompleted] = useState(false);
+
+  // 🕹️ Controls State
+  const [isSlowMotion, setIsSlowMotion] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(false);
+  
+  // 💡 New State: Modal visibility
+  const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
+
+  // Define base color class for the outer container
+  const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
+  const textColor = isDark ? 'text-secondary' : 'text-primary';
 
   // scrollToStart triggers once when category changes
   useEffect(() => {
@@ -122,10 +176,11 @@ export default function PhraseLearnScreen() {
     setCompleted(false);
     setSelectedPhrase(phrases.filter(p => p.category === activeCategory)[0]);
   };
-  
-  // Define base color class for the outer container
-  const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
 
+  // 💡 Updated: Open the custom modal instead of Alert
+  const handleCameraAlert = () => {
+    setFeatureModalVisible(true);
+  };
 
   return (
     // 1. Outer View sets the base background color
@@ -287,6 +342,7 @@ export default function PhraseLearnScreen() {
                 );
               })}
             </ScrollView>
+            
             {/* Selected Phrase View */}
             <Text style={{
               fontSize: 24,
@@ -317,12 +373,12 @@ export default function PhraseLearnScreen() {
             >
               <Video
                 source={selectedPhrase.videoUrl}
-                rate={1.0}
+                rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Slow motion logic
                 volume={1.0}
-                isMuted={true} // Muted by default to match Numbers.tsx
-                resizeMode={ResizeMode.COVER} // Changed to COVER to match Numbers.tsx feel
-                shouldPlay={true} // Auto-play enabled
-                isLooping={true} // Loop enabled
+                isMuted={true}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={true}
+                isLooping={isRepeating} // 🔁 Repeat logic
                 useNativeControls
                 style={{
                   width: '100%',
@@ -363,7 +419,104 @@ export default function PhraseLearnScreen() {
               </Text>
             </Text>
 
-            {/* Mark as Completed Button - Updated to match Numbers.tsx */}
+            {/* 🛠️ Buttons Section */}
+            <View className="flex-row justify-between mb-4">
+              
+              {/* 1. Slow Motion */}
+              <TouchableOpacity
+                onPress={() => setIsSlowMotion(!isSlowMotion)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isSlowMotion 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="speed" 
+                  size={20} 
+                  color={isSlowMotion ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isSlowMotion ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Slow Mo
+                </Text>
+              </TouchableOpacity>
+
+              {/* 2. Repeat */}
+              <TouchableOpacity
+                onPress={() => setIsRepeating(!isRepeating)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isRepeating 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="replay" 
+                  size={20} 
+                  color={isRepeating ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isRepeating ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Repeat
+                </Text>
+              </TouchableOpacity>
+
+              {/* 3. Practice (Triggers Custom Modal) */}
+              <TouchableOpacity
+                onPress={handleCameraAlert}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                }`}
+              >
+                <MaterialIcons 
+                  name="videocam" 
+                  size={20} 
+                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Practice
+                </Text>
+              </TouchableOpacity>
+
+              {/* 4. Save Sign */}
+              <TouchableOpacity
+                onPress={() => { /* Placeholder for save functionality */ }}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                }`}
+              >
+                <MaterialIcons 
+                  name="bookmark-outline" 
+                  size={20} 
+                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Save
+                </Text>
+              </TouchableOpacity>
+
+            </View>
+
+            {/* Mark as Completed Button */}
             <TouchableOpacity 
               onPress={handleComplete}
               disabled={completed}
@@ -377,6 +530,13 @@ export default function PhraseLearnScreen() {
               </Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {/* 💡 New: Render the Feature Modal */}
+          <FeatureModal 
+            isVisible={isFeatureModalVisible}
+            onClose={() => setFeatureModalVisible(false)}
+            isDark={isDark}
+          />
         </View>
       </ImageBackground>
     </View>
