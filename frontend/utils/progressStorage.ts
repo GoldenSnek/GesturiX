@@ -1,9 +1,9 @@
-// File: utils/progressStorage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../src/supabaseClient';
 import { getCurrentUserId } from './supabaseApi';
 import { phrases } from '../constants/phrases';
 import { alphabetSigns } from '../constants/alphabetSigns';
+import { numbersData } from '../constants/numbers';
 
 // Helper to get user-specific key
 async function getUserKey(key: string): Promise<string | null> {
@@ -64,22 +64,53 @@ export async function getCompletedLetters(letters: string[]): Promise<string[]> 
   return completed;
 }
 
-// ----- SYNC TO SUPABASE (both phrases & letters) -----
+// ----- NUMBER PROGRESS -----
+export async function markNumberCompleted(numberVal: number) {
+  const userKey = await getUserKey(`number_${numberVal}_completed`);
+  if (!userKey) return;
+
+  await AsyncStorage.setItem(userKey, 'true');
+  await syncProgressToSupabase();
+  await updateStreakOnLessonComplete();
+}
+
+export async function isNumberCompleted(numberVal: number): Promise<boolean> {
+  const userKey = await getUserKey(`number_${numberVal}_completed`);
+  if (!userKey) return false;
+
+  const completed = await AsyncStorage.getItem(userKey);
+  return completed === 'true';
+}
+
+export async function getCompletedNumbers(numbers: number[]): Promise<number[]> {
+  const completed: number[] = [];
+  for (const n of numbers) {
+    if (await isNumberCompleted(n)) completed.push(n);
+  }
+  return completed;
+}
+
+// ----- SYNC TO SUPABASE (phrases, letters, & numbers) -----
 export async function syncProgressToSupabase() {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
   const letterIds = alphabetSigns.map(l => l.letter);
   const phraseIds = phrases.map(p => p.id);
+  const numberIds = numbersData.map(n => n.number);
+
   const completedLetters = await getCompletedLetters(letterIds);
   const completedPhrases = await getCompletedPhrases(phraseIds);
+  const completedNumbers = await getCompletedNumbers(numberIds);
+
+  const totalCompleted = completedLetters.length + completedPhrases.length + completedNumbers.length;
 
   await supabase
     .from('user_statistics')
     .upsert(
       [{
         user_id: userId,
-        lessons_completed: completedLetters.length + completedPhrases.length
+        lessons_completed: totalCompleted
       }],
       { onConflict: 'user_id' }
     );
@@ -90,17 +121,12 @@ export async function resetPhraseProgress() {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  // Remove all phrase completion keys
   const allKeys = await AsyncStorage.getAllKeys();
   const phraseKeys = allKeys.filter(k => k.includes('_phrase_') && k.startsWith(`user_${userId}_`));
   if (phraseKeys.length > 0) {
     await AsyncStorage.multiRemove(phraseKeys);
   }
-
-  // Remove last phrase tracker
   await AsyncStorage.removeItem('phrasescreen_last_phrase_id');
-
-  // Sync the updated count (phrases = 0, but letters remain)
   await syncProgressToSupabase();
 }
 
@@ -109,17 +135,26 @@ export async function resetLetterProgress() {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  // Remove all letter completion keys
   const allKeys = await AsyncStorage.getAllKeys();
   const letterKeys = allKeys.filter(k => k.includes('_letter_') && k.startsWith(`user_${userId}_`));
   if (letterKeys.length > 0) {
     await AsyncStorage.multiRemove(letterKeys);
   }
-
-  // Remove last letter tracker
   await AsyncStorage.removeItem('letterscreen_last_letter');
+  await syncProgressToSupabase();
+}
 
-  // Sync the updated count (letters = 0, but phrases remain)
+// ✅ NEW: Reset only numbers and sync correctly
+export async function resetNumberProgress() {
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+
+  const allKeys = await AsyncStorage.getAllKeys();
+  const numberKeys = allKeys.filter(k => k.includes('_number_') && k.startsWith(`user_${userId}_`));
+  if (numberKeys.length > 0) {
+    await AsyncStorage.multiRemove(numberKeys);
+  }
+  await AsyncStorage.removeItem('numberscreen_last_number');
   await syncProgressToSupabase();
 }
 
@@ -182,7 +217,6 @@ export async function clearUserProgressData() {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  // Get all AsyncStorage keys for this user
   const allKeys = await AsyncStorage.getAllKeys();
   const userKeys = allKeys.filter(key => key.startsWith(`user_${userId}_`));
   

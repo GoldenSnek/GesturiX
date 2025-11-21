@@ -1,10 +1,11 @@
+// File: frontend/app/(tabs)/learn/phrases.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   ScrollView, 
-  ImageBackground // 💡 Added ImageBackground import
+  ImageBackground
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -23,12 +24,6 @@ const CATEGORIES = [
   { key: 'courtesy', label: 'Courtesy' },
   { key: 'questions', label: 'Questions' },
 ];
-
-async function resetAllPhraseProgress() {
-  const keys = phrases.map((p) => `phrase_${p.id}_completed`);
-  await AsyncStorage.multiRemove(keys);
-  await AsyncStorage.removeItem(STORAGE_LAST_PHRASE);
-}
 
 export default function PhraseLearnScreen() {
   const insets = useSafeAreaInsets();
@@ -308,7 +303,7 @@ export default function PhraseLearnScreen() {
                 borderRadius: 20,
                 backgroundColor: isDark ? '#222' : '#fffcfa',
                 borderWidth: 2,
-                borderColor: isDark ? '#FFB366' : '#FF6B00', // a vibrant accent border
+                borderColor: isDark ? '#FFB366' : '#FF6B00',
                 shadowColor: isDark ? '#FFB366' : '#FF6B00',
                 shadowOffset: { width: 0, height: 3 },
                 shadowOpacity: 0.12,
@@ -324,9 +319,10 @@ export default function PhraseLearnScreen() {
                 source={selectedPhrase.videoUrl}
                 rate={1.0}
                 volume={1.0}
-                isMuted={false}
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={false}
+                isMuted={true} // Muted by default to match Numbers.tsx
+                resizeMode={ResizeMode.COVER} // Changed to COVER to match Numbers.tsx feel
+                shouldPlay={true} // Auto-play enabled
+                isLooping={true} // Loop enabled
                 useNativeControls
                 style={{
                   width: '100%',
@@ -366,22 +362,17 @@ export default function PhraseLearnScreen() {
                 {' '}{selectedPhrase.tips}
               </Text>
             </Text>
-            <TouchableOpacity
+
+            {/* Mark as Completed Button - Updated to match Numbers.tsx */}
+            <TouchableOpacity 
               onPress={handleComplete}
               disabled={completed}
-              style={{
-                backgroundColor: completed ? 'gray' : '#FF6B00',
-                padding: 16,
-                borderRadius: 24,
-                marginTop: 10,
-                alignItems: 'center'
-              }}
+              className={`w-full bg-accent rounded-full py-4 items-center shadow-md ${completed ? 'opacity-60' : ''}`}
             >
-              <Text style={{
-                color: 'white',
-                fontFamily: 'Fredoka-SemiBold',
-                fontSize: 17
-              }}>
+              <Text
+                className="text-secondary text-lg"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
                 {completed ? 'Completed!' : 'Mark as Completed'}
               </Text>
             </TouchableOpacity>

@@ -129,7 +129,7 @@ const Letters = () => {
         } as any);
 
         // NOTE: Hardcoded local IP address - for testing only!
-        const res = await axios.post('http://192.168.130.136:8000/predict', formData, {
+        const res = await axios.post('http://192.168.17.136:8000/predict', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
 
