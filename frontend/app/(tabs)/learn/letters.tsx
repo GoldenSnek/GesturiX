@@ -120,7 +120,7 @@ const Letters = () => {
         const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
         const formData = new FormData();
         formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
-        const res = await axios.post('http://192.168.17.136:8000/predict', formData, {
+        const res = await axios.post('http:// 192.168.108.136:8000/predict', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         if (res.data.prediction && res.data.prediction !== 'None') {
