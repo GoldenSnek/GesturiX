@@ -1,14 +1,15 @@
+// File: frontend/components/CustomTabBar.tsx
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Text, Image, Animated, Dimensions, Platform, ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { MaterialIcons } from '@expo/vector-icons'; // ✅ Added for Quiz icon
 
 // Define the type for our tab names
-type TabName = 'translate' | 'compose' | 'learn' | 'profile';
+type TabName = 'translate' | 'learn' | 'quiz' | 'profile';
 
-const { width } = Dimensions.get('window'); // Get screen width for positioning
+const { width } = Dimensions.get('window'); 
 
-// --- TabButton Component with Jiggle Animation ---
 interface TabButtonProps {
   route: BottomTabBarProps['state']['routes'][0];
   isFocused: boolean;
@@ -18,44 +19,41 @@ interface TabButtonProps {
 }
 
 const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, options, tabItemWidth }) => {
-  // ✅ FIX: Ensure iconSource is defined. We use the 'translate' icon as a fallback.
-  const iconSource: ImageSourcePropType = {
-    'translate': require('../assets/images/Translate-icon.png'),
-    'compose': require('../assets/images/Compose-icon.png'),
-    'learn': require('../assets/images/Learn-icon.png'),
-    'profile': require('../assets/images/Profile-icon.png'),
-  }[route.name as TabName] || require('../assets/images/Translate-icon.png'); // Fallback ensures it's never null
-
+  // Label comes from options.title (which we set to "Quiz" in _layout.tsx)
   const label = options.title || route.name;
 
-  // Animation value for subtle rotation
-  const rotationAnim = useRef(new Animated.Value(0)).current; // Rotation: 0 to 1
-
-  const iconTintColor = isFocused ? '#FF6B00' : '#F8F8F8'; // Direct colors for tintStyle
+  const rotationAnim = useRef(new Animated.Value(0)).current; 
+  const iconTintColor = isFocused ? '#FF6B00' : '#F8F8F8'; 
   const textClassName = isFocused ? 'text-accent' : 'text-secondary';
+
+  // ✅ Define icon source for image-based tabs only
+  const getIconSource = (): ImageSourcePropType | null => {
+    switch (route.name) {
+      case 'translate': return require('../assets/images/Translate-icon.png');
+      case 'learn': return require('../assets/images/Learn-icon.png');
+      case 'profile': return require('../assets/images/Profile-icon.png');
+      default: return null; // compose/quiz handled via MaterialIcons
+    }
+  };
+  
+  const iconSource = getIconSource();
 
   useEffect(() => {
     if (isFocused) {
-      // **Jiggle/Rotation Animation**: Quick left-right rotation
       rotationAnim.setValue(0);
       Animated.sequence([
-        // Jiggle left
         Animated.timing(rotationAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        // Jiggle right
         Animated.timing(rotationAnim, { toValue: -1, duration: 100, useNativeDriver: true }),
-        // Return to center
         Animated.timing(rotationAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-      
     } else {
-      // Ensure unfocused tabs are reset
       rotationAnim.setValue(0);
     }
   }, [isFocused]);
 
   const rotate = rotationAnim.interpolate({
     inputRange: [-1, 0, 1],
-    outputRange: ['-5deg', '0deg', '5deg'], // Jiggle range
+    outputRange: ['-5deg', '0deg', '5deg'],
   });
 
   return (
@@ -70,16 +68,20 @@ const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, option
     >
       <Animated.View 
         className="flex-col items-center justify-center"
-        // Apply only the rotation animation for the jiggle effect
         style={{ transform: [{ rotate }] }}
       >
-        <Image 
-          source={iconSource} 
-          className="w-6 h-6" 
-          style={{ tintColor: iconTintColor }} 
-        />
+        {/* ✅ Conditional Rendering: MaterialIcons for 'compose' (Quiz), Image for others */}
+        {route.name === 'quiz' ? (
+          <MaterialIcons name="quiz" size={26} color={iconTintColor} />
+        ) : (
+          <Image 
+            source={iconSource || require('../assets/images/Translate-icon.png')} 
+            className="w-6 h-6" 
+            style={{ tintColor: iconTintColor }} 
+          />
+        )}
+
         {isFocused && (
-          // FOCUSED: Show Text (Accent)
           <Text 
             className={`text-xs font-orbitron mt-1 ${textClassName}`}
             numberOfLines={1}
@@ -88,27 +90,17 @@ const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, option
           </Text>
         )}
       </Animated.View>
-      {/* For unfocused tabs, we keep the icon static inside the animated view 
-        which now only applies rotation on focus.
-        We no longer need a separate rendering view. 
-      */}
     </TouchableOpacity>
   );
 };
-// --- End TabButton Component ---
-
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  
-  // NOTE: Keeping the translateX animation logic, though it's not currently used
-  // in the visual appearance, as it was in the original code.
   const translateX = useRef(new Animated.Value(0)).current; 
   const tabItemWidth = useRef(width / state.routes.length).current;
 
   useEffect(() => {
     const toValue = state.index * tabItemWidth;
-
     Animated.spring(translateX, {
       toValue,
       stiffness: 1000,
@@ -120,20 +112,16 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
   return (
     <View
-      // Main floating container
       className={`absolute bottom-0 left-0 right-0 items-center`}
       style={{
-        // Add extra padding for iPhone X/notch devices for a 'floating' effect
         paddingBottom: insets.bottom + (Platform.OS === 'android' ? 0 : 20), 
       }}
     >
       <View
-        // The oval-shaped container for the tabs
         className="flex-row items-center justify-around bg-darkbg/80 rounded-full px-2 py-2 shadow-xl"
         style={{
           width: width * 0.9, 
           height: 65,
-          // Using a dark shadow to match the dark bar background
           shadowColor: '#1a1a1a', 
           shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.9,

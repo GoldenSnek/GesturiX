@@ -204,7 +204,7 @@ export default function Translate() {
             onPanResponderRelease: (_, g) => {
                 // Perform swipe navigation if significant horizontal drag to the left
                 if (g.dx < -30) {
-                    router.push("/compose");
+                    router.push("/learn");
                 }
             },
         })
@@ -264,7 +264,7 @@ export default function Translate() {
                 } as any)
 
                 // Assuming the server endpoint and response structure remain the same
-                const res = await axios.post("http://192.168.17.136:8000/predict", formData, { 
+                const res = await axios.post("http:// 192.168.108.136:8000/predict", formData, { 
 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
@@ -361,7 +361,7 @@ export default function Translate() {
         setIsEnhancing(true);
         setEnhancedTranslation("AI is enhancing translation...");
         try {
-            const response = await axios.post("http://192.168.1.6:8000/enhance", {
+            const response = await axios.post("http:// 192.168.108.136:8000/enhance", {
                 raw_text: rawTextToEnhance,
             });
 

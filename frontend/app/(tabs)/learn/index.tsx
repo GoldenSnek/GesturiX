@@ -134,13 +134,19 @@ const Learn = () => {
     },
   ], [lettersCompleted, phrasesCompleted, numbersCompleted]);
 
+  // 🧠 Updated Swipe Logic: Translate <-> Learn <-> Quiz
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) =>
         Math.abs(gestureState.dx) > 10,
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -30) router.push('/profile');
-        else if (gestureState.dx > 30) router.push('/compose');
+        if (gestureState.dx < -30) {
+            // Swipe Left (Next) -> Go to Quiz
+            router.push('/quiz');
+        } else if (gestureState.dx > 30) {
+            // Swipe Right (Prev) -> Go to Translate
+            router.push('/translate');
+        }
       },
     })
   ).current;

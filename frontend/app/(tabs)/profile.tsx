@@ -62,7 +62,7 @@ const Profile = () => {
         Math.abs(gestureState.dx) > 10,
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 30) {
-          router.push('/learn');
+          router.push('/quiz');
         }
       },
     })
