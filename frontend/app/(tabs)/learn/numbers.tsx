@@ -6,7 +6,6 @@ import {
   TouchableOpacity, 
   ScrollView, 
   ImageBackground,
-  Alert,
   Modal 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,9 +29,7 @@ import {
   SavedItem 
 } from '../../../utils/supabaseApi';
 import { Video, ResizeMode } from 'expo-av';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
-
-const STORAGE_LAST_NUMBER = 'numberscreen_last_number';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
   const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
@@ -77,7 +74,7 @@ const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onCl
 const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
-  const { initialNumber } = useLocalSearchParams<{ initialNumber?: string }>(); // Capture param
+  const { initialNumber } = useLocalSearchParams<{ initialNumber?: string }>(); 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
@@ -86,7 +83,6 @@ const Numbers = () => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
 
-  // Saved State
   const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -153,42 +149,51 @@ const Numbers = () => {
 
   useEffect(() => {
     (async () => {
-      const lastNumStr = await AsyncStorage.getItem(STORAGE_LAST_NUMBER);
+      const uid = await getCurrentUserId();
       const allNumbers = numbersData.map(n => n.number);
       const done = await getCompletedNumbers(allNumbers);
       setDoneNumbers(done);
 
-      // Priority 1: Navigation Param (Redirection from Saved Screen)
+      // Determine progress ceiling
+      const firstUncompletedIdx = numbersData.findIndex(n => !done.includes(n.number));
+      const maxAllowedIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
+
+      // Priority 1: Navigation Param
       if (initialNumber) {
         const numVal = parseInt(initialNumber, 10);
         const paramIdx = numbersData.findIndex(n => n.number === numVal);
-        if (paramIdx !== -1) {
+        if (paramIdx !== -1 && paramIdx <= maxAllowedIdx) {
           setCurrentIdx(paramIdx);
           return;
         }
       }
 
-      // Priority 2: Last saved state
-      if (lastNumStr) {
-        const lastNum = parseInt(lastNumStr, 10);
-        const lastIdx = numbersData.findIndex(n => n.number === lastNum);
-        if (lastIdx !== -1) {
-          setCurrentIdx(lastIdx);
-          return;
+      // Priority 2: Last saved state (User Specific)
+      if (uid) {
+        const storageKey = `user_${uid}_numbers_last_idx`;
+        const lastNumStr = await AsyncStorage.getItem(storageKey);
+        if (lastNumStr) {
+          const lastNum = parseInt(lastNumStr, 10);
+          const lastIdx = numbersData.findIndex(n => n.number === lastNum);
+          if (lastIdx !== -1 && lastIdx <= maxAllowedIdx) {
+            setCurrentIdx(lastIdx);
+            return;
+          }
         }
       }
 
-      // Priority 3: First uncompleted item
-      const nextIdx = numbersData.findIndex(n => !done.includes(n.number));
-      setCurrentIdx(nextIdx === -1 ? 0 : nextIdx);
+      // Priority 3: Sequential Default
+      setCurrentIdx(maxAllowedIdx);
     })();
-  }, [initialNumber]); // Added initialNumber to dependency array
+  }, [initialNumber]); 
 
+  // Save last state (User Specific)
   useEffect(() => {
-    if (numbersData[currentIdx]) {
-      AsyncStorage.setItem(STORAGE_LAST_NUMBER, numbersData[currentIdx].number.toString());
+    if (numbersData[currentIdx] && userId) {
+      const storageKey = `user_${userId}_numbers_last_idx`;
+      AsyncStorage.setItem(storageKey, numbersData[currentIdx].number.toString());
     }
-  }, [currentIdx]);
+  }, [currentIdx, userId]);
 
   useEffect(() => {
     setCompleted(doneNumbers.includes(numbersData[currentIdx].number));
@@ -370,7 +375,6 @@ const Numbers = () => {
               </Text>
             </Text>
 
-            {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
               
               <TouchableOpacity
