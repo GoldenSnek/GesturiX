@@ -31,21 +31,21 @@ export async function fetchUserStatistics(userId: string) {
 // --- Leaderboard Functions ---
 
 export async function fetchLeaderboard() {
-  // Fetches top 10 users ordered by lessons_completed
-  // Assumes a Foreign Key relationship between user_statistics.user_id and profiles.id
+  // Fetches ALL users ordered by lessons_completed.
+  // We use !inner to exclude any stats records that might not have a matching profile.
   const { data, error } = await supabase
     .from('user_statistics')
     .select(`
+      user_id,
       lessons_completed,
       days_streak,
       practice_hours,
-      profiles (
+      profiles!inner (
         username,
         photo_url
       )
     `)
-    .order('lessons_completed', { ascending: false })
-    .limit(10);
+    .order('lessons_completed', { ascending: false });
 
   if (error) {
     console.error('Error fetching leaderboard:', error);

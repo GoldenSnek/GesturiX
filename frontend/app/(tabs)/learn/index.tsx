@@ -44,9 +44,9 @@ const Learn = () => {
 
   // Quick Actions Data
   const quickActionsData = [
+    { id: 'leaderboard', title: 'Leaderboard', subtitle: 'Top learners', icon: 'leaderboard', route: '/(tabs)/learn/leaderboard' },
     { id: 'dictionary', title: 'Dictionary', subtitle: 'Browse all signs', icon: 'menu-book', route: '/(tabs)/learn/dictionary' },
     { id: 'video', title: 'Video Lessons', subtitle: 'Watch and Learn', icon: 'ondemand-video', route: '/(tabs)/learn/videos' }, 
-    { id: 'leaderboard', title: 'Leaderboard', subtitle: 'Top learners', icon: 'leaderboard', route: '/(tabs)/learn/leaderboard' },
     { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline', route: '/(tabs)/learn/saved' },
   ];
 
