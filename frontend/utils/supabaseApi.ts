@@ -32,7 +32,7 @@ export async function fetchUserStatistics(userId: string) {
 
 export async function fetchLeaderboard() {
   // Fetches ALL users ordered by lessons_completed.
-  // We use !inner to exclude any stats records that might not have a matching profile.
+  // Added created_at to fetch "Member since" data
   const { data, error } = await supabase
     .from('user_statistics')
     .select(`
@@ -42,7 +42,8 @@ export async function fetchLeaderboard() {
       practice_hours,
       profiles!inner (
         username,
-        photo_url
+        photo_url,
+        created_at
       )
     `)
     .order('lessons_completed', { ascending: false });
@@ -52,6 +53,56 @@ export async function fetchLeaderboard() {
     return [];
   }
   return data;
+}
+
+// --- Like / Popularity Functions ---
+
+export async function getProfileLikeCount(profileId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('profile_likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('liked_profile_id', profileId);
+  
+  if (error) {
+    console.error("Error fetching like count:", error);
+    return 0;
+  }
+  return count || 0;
+}
+
+export async function getHasUserLiked(likerId: string, profileId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('profile_likes')
+    .select('id')
+    .eq('liker_id', likerId)
+    .eq('liked_profile_id', profileId)
+    .maybeSingle();
+    
+  if (error) {
+    // Silent fail or log if needed
+    return false;
+  }
+  return !!data;
+}
+
+export async function likeProfile(likerId: string, profileId: string) {
+  const { error } = await supabase
+    .from('profile_likes')
+    .insert({ liker_id: likerId, liked_profile_id: profileId });
+    
+  if (error) console.error("Error liking profile:", error);
+  return error;
+}
+
+export async function unlikeProfile(likerId: string, profileId: string) {
+  const { error } = await supabase
+    .from('profile_likes')
+    .delete()
+    .eq('liker_id', likerId)
+    .eq('liked_profile_id', profileId);
+
+  if (error) console.error("Error unliking profile:", error);
+  return error;
 }
 
 // --- Saved Items Functions ---

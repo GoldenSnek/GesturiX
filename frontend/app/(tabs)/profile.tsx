@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+// File: frontend/app/(tabs)/profile.tsx
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,15 +17,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, AntDesign } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../src/supabaseClient';
-import AppHeaderProfile from '../../components/AppHeaderProfile';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import { useTheme } from '../../src/ThemeContext';
-import { useFocusEffect } from '@react-navigation/native';
-import { fetchUserStatistics, getCurrentUserId } from '../../utils/supabaseApi';
+import { 
+  fetchUserStatistics, 
+  getCurrentUserId, 
+  getProfileLikeCount 
+} from '../../utils/supabaseApi';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -49,12 +52,13 @@ const Profile = () => {
   const [newUsername, setNewUsername] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
 
-  // NEW: State for Supabase statistics
+  // State for Supabase statistics and Likes
   const [userStats, setUserStats] = useState({
     lessons_completed: 0,
     days_streak: 0,
     practice_hours: 0,
   });
+  const [likesCount, setLikesCount] = useState(0);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -68,17 +72,25 @@ const Profile = () => {
     })
   ).current;
 
-  // Fetch user statistics when screen is focused
+  // Fetch user statistics and likes when screen is focused
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       let isActive = true;
-      async function loadStats() {
+      async function loadData() {
         const userId = await getCurrentUserId();
         if (typeof userId !== 'string') return;
-        const stats = await fetchUserStatistics(userId);
-        if (isActive) setUserStats(stats);
+
+        const [stats, likes] = await Promise.all([
+          fetchUserStatistics(userId),
+          getProfileLikeCount(userId)
+        ]);
+
+        if (isActive) {
+          setUserStats(stats);
+          setLikesCount(likes);
+        }
       }
-      loadStats();
+      loadData();
       return () => { isActive = false; };
     }, [])
   );
@@ -122,7 +134,7 @@ const Profile = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.replace('/(stack)');
+    router.replace('/(stack)/Login');
   };
 
   const handleSaveUsername = async () => {
@@ -200,33 +212,23 @@ const Profile = () => {
     );
   }
 
-  // Helper for GitHub link open
   const openGitHub = async (url: string) => {
     const supported = await Linking.canOpenURL(url);
     if (supported) await Linking.openURL(url);
     else Alert.alert('Unable to open link');
   };
   
-  // NOTE: buttonSettings array has been removed.
-
   return (
-    // The outermost container now sets the theme color (which shows through the transparent PNG)
     <View className={`flex-1 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
-      
-      {/* Replaced absolute Views/Images with a single ImageBackground component */}
       <ImageBackground
         source={require('../../assets/images/MainBG.png')}
-        className="flex-1" // Ensures the ImageBackground fills the parent View
-        resizeMode="cover" // Ensures the image covers the entire background
+        className="flex-1"
+        resizeMode="cover"
       >
-
-        {/* Foreground Content Layer (Header and ScrollView) */}
         <View 
           className="flex-1" 
           style={{ paddingTop: insets.top }} 
-          // pointerEvents="box-none" is no longer needed here as ImageBackground handles touch events
         >
-
           <ScrollView
             {...panResponder.panHandlers}
             className="flex-1 p-4"
@@ -336,12 +338,12 @@ const Profile = () => {
               </View>
             </View>
 
-            {/* 🏆 Progress Section - UPDATED WITH LIVE DATA */}
+            {/* 🏆 Progress Section */}
             <Text
               className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
             >
-              My Progress
+              Achievements
             </Text>
 
             <View className="flex-row flex-wrap justify-between mb-8">
@@ -363,21 +365,25 @@ const Profile = () => {
                 </Text>
               </View>
 
+              {/* REPLACED "Signs Learned" with "Popularity" */}
               <View
                 className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
                   isDark ? 'bg-darksurface' : 'bg-white'
                 }`}
               >
-                <Text className="text-3xl text-accent mb-1" style={{ fontFamily: 'Fredoka-SemiBold' }}>
-                  0
-                </Text>
+                <View className="flex-row items-center mb-1">
+                  <MaterialIcons name="favorite" size={24} color="#FF6B00" style={{ marginRight: 6 }} />
+                  <Text className="text-3xl text-accent" style={{ fontFamily: 'Fredoka-SemiBold' }}>
+                    {likesCount}
+                  </Text>
+                </View>
                 <Text
                   className={`text-sm text-center capitalize ${
                     isDark ? 'text-neutral' : 'text-primary'
                   }`}
                   style={{ fontFamily: 'Montserrat-SemiBold' }}
                 >
-                  Signs Learned
+                  Popularity
                 </Text>
               </View>
 
@@ -418,7 +424,7 @@ const Profile = () => {
               </View>
             </View>
 
-            {/* ⚙️ Settings - MODIFIED TO ONLY INCLUDE DARK MODE */}
+            {/* ⚙️ Settings */}
             <Text
               className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -431,10 +437,7 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              {/* Dark Mode Switch (Retained) */}
-              <View
-                  className={`flex-row items-center justify-between py-3`} 
-              >
+              <View className={`flex-row items-center justify-between py-3`}>
                   <View className="flex-row items-center">
                       <MaterialIcons name="dark-mode" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
                       <Text
@@ -451,7 +454,6 @@ const Profile = () => {
                       value={isDark}
                   />
               </View>
-              {/* NOTE: buttonSettings.map loop has been removed */}
             </View>
 
             <Text
@@ -502,6 +504,7 @@ const Profile = () => {
                 </TouchableOpacity>
               ))}
             </View>
+            
             {/* 👤 Account */}
             <Text
               className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
@@ -515,7 +518,6 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              {/* Exit App */}
               <TouchableOpacity
                 onPress={() => BackHandler.exitApp()}
                 className="flex-row items-center justify-between py-2 border-b border-orange-400"
@@ -529,7 +531,6 @@ const Profile = () => {
                 <AntDesign name="closecircleo" size={22} color="#efc144ff" />
               </TouchableOpacity>
 
-              {/* Sign Out */}
               <TouchableOpacity
                 onPress={handleSignOut}
                 className="flex-row items-center justify-between py-2"
