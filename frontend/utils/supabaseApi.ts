@@ -28,6 +28,32 @@ export async function fetchUserStatistics(userId: string) {
   return data;
 }
 
+// --- Leaderboard Functions ---
+
+export async function fetchLeaderboard() {
+  // Fetches top 10 users ordered by lessons_completed
+  // Assumes a Foreign Key relationship between user_statistics.user_id and profiles.id
+  const { data, error } = await supabase
+    .from('user_statistics')
+    .select(`
+      lessons_completed,
+      days_streak,
+      practice_hours,
+      profiles (
+        username,
+        photo_url
+      )
+    `)
+    .order('lessons_completed', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error('Error fetching leaderboard:', error);
+    return [];
+  }
+  return data;
+}
+
 // --- Saved Items Functions ---
 
 export interface SavedItem {
@@ -51,7 +77,7 @@ export async function getUserSavedItems(userId: string): Promise<SavedItem[]> {
 }
 
 export async function saveItem(userId: string, itemType: string, itemIdentifier: string) {
-  // Check if already exists to avoid duplicates if unique constraint is missing or specific logic needed
+  // Check if already exists to avoid duplicates
   const { data: existing } = await supabase
     .from('user_saved_items')
     .select('id')

@@ -44,10 +44,9 @@ const Learn = () => {
 
   // Quick Actions Data
   const quickActionsData = [
-    { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz', route: '/quiz' },
-    // Updated route for Video Lessons
+    { id: 'dictionary', title: 'Dictionary', subtitle: 'Browse all signs', icon: 'menu-book', route: '/(tabs)/learn/dictionary' },
     { id: 'video', title: 'Video Lessons', subtitle: 'Watch and Learn', icon: 'ondemand-video', route: '/(tabs)/learn/videos' }, 
-    { id: 'review', title: 'Review', subtitle: 'Practice previous lessons', icon: 'autorenew', route: null }, // Placeholder
+    { id: 'leaderboard', title: 'Leaderboard', subtitle: 'Top learners', icon: 'leaderboard', route: '/(tabs)/learn/leaderboard' },
     { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline', route: '/(tabs)/learn/saved' },
   ];
 
@@ -58,6 +57,7 @@ const Learn = () => {
 
       const loadData = async () => {
         try {
+          // FIX: Corrected variable name here
           const progressPromise = Promise.all([
             getCompletedPhrases(phrases.map(p => p.id)),
             getCompletedLetters(alphabetSigns.map(l => l.letter)),
