@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import * as AuthSession from 'expo-auth-session';
+// Removed AuthSession import as it was only used for Google Sign Up
 import { supabase } from '../../src/supabaseClient';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 
 global.Buffer = global.Buffer || Buffer;
-const redirectUrl = AuthSession.makeRedirectUri();
+// Removed redirectUrl constant
 
 const SignUp: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -43,8 +43,6 @@ const SignUp: React.FC = () => {
     setTimeout(() => setMessage(''), 5000);
   };
 
-  const showError = (msg: string) => showStatus(msg, 'error');
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
@@ -55,7 +53,7 @@ const SignUp: React.FC = () => {
   };
 
   const handleSignUp = async () => {
-    // Fix: Trim inputs to remove trailing spaces (common issue with auto-complete/paste)
+    // Fix: Trim inputs to remove trailing spaces
     const cleanEmail = email.trim();
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
@@ -90,13 +88,7 @@ const SignUp: React.FC = () => {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: redirectUrl },
-    });
-    if (error) showError(`Google Sign Up Failed: ${error.message}`);
-  };
+  // Removed handleGoogleSignUp function
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
@@ -216,16 +208,10 @@ const SignUp: React.FC = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(750).duration(600)} style={{ backgroundColor: 'transparent' }}>
-          <TouchableOpacity
-            onPress={handleGoogleSignUp}
-            className="w-full bg-red-500 rounded-full py-4 items-center mt-4 shadow-lg"
-          >
-            <Text className="text-white text-lg font-audiowide">Sign Up with Google</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Google Sign Up Button Removed */}
 
-        <Animated.View entering={FadeInUp.delay(850).duration(600)} className="mt-6 flex-row items-center justify-center">
+        {/* Adjusted animation delay to 750 (was 850) since one item was removed */}
+        <Animated.View entering={FadeInUp.delay(750).duration(600)} className="mt-6 flex-row items-center justify-center">
           <Text className="text-black font-fredoka">Already have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>
             <Text className="text-highlight font-fredoka-semibold">Log In</Text>

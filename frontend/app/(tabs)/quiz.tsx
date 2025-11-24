@@ -20,6 +20,7 @@ import { useTheme } from '../../src/ThemeContext';
 import { alphabetSigns } from '../../constants/alphabetSigns';
 import { updateStreakOnLessonComplete } from '../../utils/progressStorage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { ENDPOINTS } from '../../constants/ApiConfig'; // 🔌 Import Config
 
 // --- Configuration ---
 const TOTAL_QUESTIONS = 10;
@@ -221,7 +222,7 @@ export default function QuizScreen() {
         const formData = new FormData();
         formData.append('file', { uri, type: 'image/jpeg', name: 'quiz.jpg' } as any);
 
-        const res = await axios.post('http://192.168.108.136:8000/predict', formData, {
+        const res = await axios.post(ENDPOINTS.PREDICT, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 2000,
         });

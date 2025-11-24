@@ -19,6 +19,7 @@ import { markLetterCompleted, getCompletedLetters, resetLetterProgress, updateSt
 import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
 import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
+import { ENDPOINTS } from '../../../constants/ApiConfig'; // 🔌 Import Config
 
 const TOTAL_LETTERS = 26;
 const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
@@ -120,9 +121,12 @@ const Letters = () => {
         const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
         const formData = new FormData();
         formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
-        const res = await axios.post('http:// 192.168.108.136:8000/predict', formData, {
+        
+        // 🔌 Updated: Use centralized config
+        const res = await axios.post(ENDPOINTS.PREDICT, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        
         if (res.data.prediction && res.data.prediction !== 'None') {
           setPrediction(res.data.prediction.toUpperCase());
         } else {
