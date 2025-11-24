@@ -12,17 +12,13 @@ import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../src/supabaseClient';
-// Removed duplicate router import
-// import { router } from 'expo-router'; 
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
-import uuid from 'react-native-uuid';
 import { Eye, EyeOff, Camera, ChevronLeft } from 'lucide-react-native';
 import Message, { MessageType } from '../../components/Message';
 import { useAuth } from '../../src/AuthContext';
 import { useRouter } from 'expo-router';
 
-// 🟦 Reanimated
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 
 global.Buffer = global.Buffer || Buffer;
@@ -38,7 +34,6 @@ const SignUp: React.FC = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('error');
   
-  // Use the updated signUp from context
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -49,8 +44,6 @@ const SignUp: React.FC = () => {
   };
 
   const showError = (msg: string) => showStatus(msg, 'error');
-  const showWarning = (msg: string) => showStatus(msg, 'warning');
-  const showSuccess = (msg: string) => showStatus(msg, 'success');
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -62,31 +55,37 @@ const SignUp: React.FC = () => {
   };
 
   const handleSignUp = async () => {
-    // 1. Validate Username is present
-    if (!email || !password || !username) {
+    // Fix: Trim inputs to remove trailing spaces (common issue with auto-complete/paste)
+    const cleanEmail = email.trim();
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword || !cleanUsername) {
       Alert.alert('Error', 'Please fill in all fields, including username.');
       return;
     }
 
-    if (username.length < 3) {
+    if (cleanUsername.length < 3) {
       Alert.alert('Error', 'Username must be at least 3 characters long.');
       return;
     }
 
-    setLoading(true); // Start loading state
+    setLoading(true);
 
-    // 2. Call Supabase Sign Up with USERNAME
-    const { error } = await signUp(email, password, username);
+    const { error } = await signUp(cleanEmail, cleanPassword, cleanUsername);
 
-    setLoading(false); // End loading state
+    setLoading(false);
 
     if (error) {
       Alert.alert('Sign Up Failed', error.message);
     } else {
-      // 3. On success, navigate to verify-code
+      // Pass the image URI to the verify screen
       router.push({
         pathname: '/(stack)/verify-code',
-        params: { email: email }
+        params: { 
+          email: cleanEmail,
+          image: image || '' // Pass empty string if no image selected
+        }
       });
     }
   };
@@ -121,12 +120,10 @@ const SignUp: React.FC = () => {
 
       <Message message={message} type={messageType} onClose={() => setMessage('')} />
 
-      {/* Card animation only */}
       <Animated.View
         entering={FadeInUp.duration(700).delay(150)}
         className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80"
       >
-        {/* Title */}
         <Animated.Text
           entering={FadeInDown.delay(200).duration(600)}
           className="text-4xl text-black mb-6 text-center font-audiowide"
@@ -134,7 +131,6 @@ const SignUp: React.FC = () => {
           Create Account
         </Animated.Text>
 
-        {/* Avatar */}
         <Animated.View entering={FadeInUp.delay(250).duration(600)} className="self-center mb-8">
           <TouchableOpacity onPress={pickImage} className="items-center justify-center">
             <View
@@ -168,7 +164,6 @@ const SignUp: React.FC = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Username */}
         <Animated.View entering={FadeInUp.delay(350).duration(600)}>
           <TextInput
             className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
@@ -180,7 +175,6 @@ const SignUp: React.FC = () => {
           />
         </Animated.View>
 
-        {/* Email */}
         <Animated.View entering={FadeInUp.delay(450).duration(600)}>
           <TextInput
             className="w-full border-2 border-accent rounded-lg p-4 mb-3 text-black text-lg font-montserrat-semibold bg-neutral"
@@ -193,7 +187,6 @@ const SignUp: React.FC = () => {
           />
         </Animated.View>
 
-        {/* Password */}
         <Animated.View entering={FadeInUp.delay(550).duration(600)}>
           <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
             <TextInput
@@ -211,7 +204,6 @@ const SignUp: React.FC = () => {
           </View>
         </Animated.View>
 
-        {/* Sign Up Button */}
         <Animated.View entering={FadeInUp.delay(650).duration(600)} style={{ backgroundColor: 'transparent' }}>
           <TouchableOpacity
             onPress={handleSignUp}
@@ -224,7 +216,6 @@ const SignUp: React.FC = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Google Sign Up */}
         <Animated.View entering={FadeInUp.delay(750).duration(600)} style={{ backgroundColor: 'transparent' }}>
           <TouchableOpacity
             onPress={handleGoogleSignUp}
@@ -234,7 +225,6 @@ const SignUp: React.FC = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Footer */}
         <Animated.View entering={FadeInUp.delay(850).duration(600)} className="mt-6 flex-row items-center justify-center">
           <Text className="text-black font-fredoka">Already have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>

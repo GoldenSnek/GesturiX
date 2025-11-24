@@ -1,3 +1,4 @@
+// File: frontend/src/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -7,8 +8,9 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
-  resendOtp: (email: string) => Promise<{ error: any }>; // <--- Added this
+  // Updated return type to include data
+  verifyOtp: (email: string, token: string) => Promise<{ data: any; error: any }>;
+  resendOtp: (email: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 };
 
@@ -17,8 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signUp: async () => ({ error: null }),
-  verifyOtp: async () => ({ error: null }),
-  resendOtp: async () => ({ error: null }), // <--- Added default
+  verifyOtp: async () => ({ data: null, error: null }),
+  resendOtp: async () => ({ error: null }),
   signOut: async () => {},
 });
 
@@ -58,16 +60,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
+  // Updated to return data
   const verifyOtp = async (email: string, token: string) => {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
       type: 'signup',
     });
-    return { error };
+    return { data, error };
   };
 
-  // New function to handle resending code
   const resendOtp = async (email: string) => {
     const { error } = await supabase.auth.resend({
       type: 'signup',
