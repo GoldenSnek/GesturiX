@@ -6,17 +6,21 @@ import {
   TextInput,
   ImageBackground,
   Image,
+  Alert, 
 } from 'react-native';
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../src/supabaseClient';
-import { router } from 'expo-router';
+// Removed duplicate router import
+// import { router } from 'expo-router'; 
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import uuid from 'react-native-uuid';
 import { Eye, EyeOff, Camera, ChevronLeft } from 'lucide-react-native';
 import Message, { MessageType } from '../../components/Message';
+import { useAuth } from '../../src/AuthContext';
+import { useRouter } from 'expo-router';
 
 // 🟦 Reanimated
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
@@ -33,6 +37,10 @@ const SignUp: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('error');
+  
+  // Use the updated signUp from context
+  const { signUp } = useAuth();
+  const router = useRouter();
 
   const showStatus = (msg: string, type: MessageType) => {
     setMessage(msg);
@@ -54,52 +62,32 @@ const SignUp: React.FC = () => {
   };
 
   const handleSignUp = async () => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
-    const cleanUsername = username.trim();
-
-    if (!cleanEmail || !cleanPassword || !cleanUsername) {
-      showWarning('Please fill in all required fields.');
-      return;
-    }
-    if (cleanUsername.length < 3) {
-      showWarning('Username must be at least 3 characters.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      showWarning('Please enter a valid email address.');
+    // 1. Validate Username is present
+    if (!email || !password || !username) {
+      Alert.alert('Error', 'Please fill in all fields, including username.');
       return;
     }
 
-    setLoading(true);
+    if (username.length < 3) {
+      Alert.alert('Error', 'Username must be at least 3 characters long.');
+      return;
+    }
 
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: cleanPassword,
-        options: { data: { username: cleanUsername } },
+    setLoading(true); // Start loading state
+
+    // 2. Call Supabase Sign Up with USERNAME
+    const { error } = await signUp(email, password, username);
+
+    setLoading(false); // End loading state
+
+    if (error) {
+      Alert.alert('Sign Up Failed', error.message);
+    } else {
+      // 3. On success, navigate to verify-code
+      router.push({
+        pathname: '/(stack)/verify-code',
+        params: { email: email }
       });
-
-      if (error) {
-        showError(`Sign Up Failed: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-
-      const user = data.user;
-      if (!user) {
-        setLoading(false);
-        showError('User creation failed. Please try again.');
-        return;
-      }
-
-      setLoading(false);
-      showSuccess('Account created successfully!');
-      router.replace('/(tabs)/translate');
-    } catch (err: any) {
-      showError('Unexpected signup error.');
-      setLoading(false);
     }
   };
 
