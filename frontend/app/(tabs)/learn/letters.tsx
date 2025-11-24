@@ -21,13 +21,20 @@ import {
   getCompletedLetters, 
   resetLetterProgress, 
   updateStreakOnLessonComplete,
-  updatePracticeTime // 🔌 Import
+  updatePracticeTime
 } from '../../../utils/progressStorage';
+import { 
+  getCurrentUserId, 
+  getUserSavedItems, 
+  saveItem, 
+  unsaveItem,
+  SavedItem 
+} from '../../../utils/supabaseApi';
 import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
 import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
 import { ENDPOINTS } from '../../../constants/ApiConfig';
-import { useFocusEffect } from '@react-navigation/native'; // 🔌 Import
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
 
 const TOTAL_LETTERS = 26;
 const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
@@ -36,6 +43,7 @@ const CAMERA_PANEL_HEIGHT = 370;
 const Letters = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
+  const { initialLetter } = useLocalSearchParams<{ initialLetter?: string }>(); // Capture param
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
@@ -43,6 +51,11 @@ const Letters = () => {
   const [doneLetters, setDoneLetters] = useState<string[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+  // Saved state
+  const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // 🕹️ Controls State
   const [isSlowMotion, setIsSlowMotion] = useState(false);
@@ -73,7 +86,6 @@ const Letters = () => {
       const startTime = Date.now();
       return () => {
         const durationMs = Date.now() - startTime;
-        // Only log if > 2 seconds to avoid accidental clicks
         if (durationMs > 2000) {
           updatePracticeTime(durationMs / 1000 / 60 / 60);
         }
@@ -81,7 +93,53 @@ const Letters = () => {
     }, [])
   );
 
-  // Load progress on mount
+  // Load User ID and Saved Items
+  useFocusEffect(
+    useCallback(() => {
+      const loadUserAndSaved = async () => {
+        const uid = await getCurrentUserId();
+        setUserId(uid);
+        if (uid) {
+          const items = await getUserSavedItems(uid);
+          setUserSavedItems(items);
+        }
+      };
+      loadUserAndSaved();
+    }, [])
+  );
+
+  // Check if current letter is saved
+  useEffect(() => {
+    const currentLetter = alphabetSigns[currentIdx]?.letter;
+    if (currentLetter) {
+      const found = userSavedItems.find(
+        i => i.item_type === 'letter' && i.item_identifier === currentLetter
+      );
+      setIsSaved(!!found);
+    }
+  }, [currentIdx, userSavedItems]);
+
+  // Toggle Save
+  const handleToggleSave = async () => {
+    const currentLetter = alphabetSigns[currentIdx]?.letter;
+    if (!userId || !currentLetter) return;
+
+    if (isSaved) {
+      setIsSaved(false); // optimistic
+      await unsaveItem(userId, 'letter', currentLetter);
+      // Refresh list silently
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    } else {
+      setIsSaved(true); // optimistic
+      await saveItem(userId, 'letter', currentLetter);
+      // Refresh list silently
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    }
+  };
+
+  // Load progress on mount AND handle redirection param
   useEffect(() => {
     (async () => {
       const lastLetter = await AsyncStorage.getItem(STORAGE_LAST_LETTER);
@@ -89,6 +147,16 @@ const Letters = () => {
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
 
+      // Priority 1: Navigation Param (Redirection from Saved Screen)
+      if (initialLetter) {
+        const paramIdx = alphabetSigns.findIndex(l => l.letter === initialLetter);
+        if (paramIdx !== -1) {
+          setCurrentIdx(paramIdx);
+          return;
+        }
+      }
+
+      // Priority 2: Last saved state
       if (lastLetter) {
         const lastIdx = alphabetSigns.findIndex(l => l.letter === lastLetter);
         if (lastIdx !== -1) {
@@ -96,10 +164,12 @@ const Letters = () => {
           return;
         }
       }
+
+      // Priority 3: First uncompleted item
       const nextIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
       setCurrentIdx(nextIdx === -1 ? TOTAL_LETTERS - 1 : nextIdx);
     })();
-  }, []);
+  }, [initialLetter]); // Added initialLetter to dependency array
 
   useEffect(() => {
     if (alphabetSigns[currentIdx]) {
@@ -538,23 +608,25 @@ const Letters = () => {
 
               {/* 4. Save Sign */}
               <TouchableOpacity
-                onPress={() => { /* Placeholder */ }}
+                onPress={handleToggleSave}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
-                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                  isSaved
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
                 }`}
               >
                 <MaterialIcons 
-                  name="bookmark-outline" 
+                  name={isSaved ? "bookmark" : "bookmark-outline"} 
                   size={20} 
-                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  color={isSaved ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
                   style={{ marginBottom: 2 }}
                 />
                 <Text
-                  className={`text-xs text-center ${textColor}`}
+                  className={`text-xs text-center ${isSaved ? 'text-secondary' : textColor}`}
                   style={{ fontFamily: 'Fredoka-Regular' }}
                   numberOfLines={1}
                 >
-                  Save
+                  {isSaved ? 'Saved' : 'Save'}
                 </Text>
               </TouchableOpacity>
 

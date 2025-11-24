@@ -25,13 +25,6 @@ const totalPhrases = phrases.length;
 const totalLetters = alphabetSigns.length;
 const totalNumbers = numbersData.length;
 
-const quickActionsData = [
-  { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz' },
-  { id: 'video', title: 'Video Lessons', subtitle: 'Watch and Learn', icon: 'ondemand-video' },
-  { id: 'review', title: 'Review', subtitle: 'Practice previous lessons', icon: 'autorenew' },
-  { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline' },
-];
-
 const Learn = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,6 +41,14 @@ const Learn = () => {
     days_streak: 0,
     practice_hours: 0,
   });
+
+  // Quick Actions Data
+  const quickActionsData = [
+    { id: 'quiz', title: 'Practice Quiz', subtitle: 'Test your knowledge', icon: 'quiz', route: '/quiz' },
+    { id: 'video', title: 'Video Lessons', subtitle: 'Watch and Learn', icon: 'ondemand-video', route: null }, // Placeholder
+    { id: 'review', title: 'Review', subtitle: 'Practice previous lessons', icon: 'autorenew', route: null }, // Placeholder
+    { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline', route: '/(tabs)/learn/saved' },
+  ];
 
   // ⚡ OPTIMIZED: Load all progress and stats in parallel
   useFocusEffect(
@@ -92,14 +93,11 @@ const Learn = () => {
     }, [])
   );
 
-  // 🕒 Smart Learning Time Display (Mins vs Hours)
   const getFormattedPracticeTime = (hours: number) => {
     if (hours < 1) {
-      // Less than 1 hour -> show minutes
       const mins = Math.round(hours * 60);
       return `${mins} mins`;
     } else {
-      // 1 hour or more -> show hours with 1 decimal
       return `${hours.toFixed(1)} hrs`;
     }
   };
@@ -109,7 +107,7 @@ const Learn = () => {
     { label: 'Streak', value: `${userStats.days_streak} days` },
     { 
       label: 'Learning Time', 
-      value: getFormattedPracticeTime(userStats.practice_hours) // ⚡ Apply formatting
+      value: getFormattedPracticeTime(userStats.practice_hours)
     },
   ];
 
@@ -156,6 +154,12 @@ const Learn = () => {
       },
     })
   ).current;
+
+  const handleQuickAction = (route: string | null) => {
+    if (route) {
+      router.push(route as any);
+    }
+  };
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -293,6 +297,7 @@ const Learn = () => {
               {quickActionsData.map((action) => (
                 <TouchableOpacity
                   key={action.id}
+                  onPress={() => handleQuickAction(action.route)}
                   className={`w-[48%] rounded-2xl p-4 mb-4 items-center justify-center h-32 shadow-sm border border-accent ${
                     isDark ? 'bg-darksurface' : 'bg-secondary'
                   }`}

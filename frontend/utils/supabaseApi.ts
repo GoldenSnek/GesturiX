@@ -1,3 +1,4 @@
+// File: frontend/utils/supabaseApi.ts
 import { supabase } from '../src/supabaseClient';
 
 /**
@@ -25,4 +26,52 @@ export async function fetchUserStatistics(userId: string) {
     };
   }
   return data;
+}
+
+// --- Saved Items Functions ---
+
+export interface SavedItem {
+  id: string;
+  item_type: 'letter' | 'number' | 'phrase';
+  item_identifier: string;
+  created_at: string;
+}
+
+export async function getUserSavedItems(userId: string): Promise<SavedItem[]> {
+  const { data, error } = await supabase
+    .from('user_saved_items')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error fetching saved items:', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function saveItem(userId: string, itemType: string, itemIdentifier: string) {
+  // Check if already exists to avoid duplicates if unique constraint is missing or specific logic needed
+  const { data: existing } = await supabase
+    .from('user_saved_items')
+    .select('id')
+    .match({ user_id: userId, item_type: itemType, item_identifier: itemIdentifier })
+    .maybeSingle();
+
+  if (existing) return; // Already saved
+
+  const { error } = await supabase
+    .from('user_saved_items')
+    .insert({ user_id: userId, item_type: itemType, item_identifier: itemIdentifier });
+
+  if (error) console.error('Error saving item:', error);
+}
+
+export async function unsaveItem(userId: string, itemType: string, itemIdentifier: string) {
+  const { error } = await supabase
+    .from('user_saved_items')
+    .delete()
+    .match({ user_id: userId, item_type: itemType, item_identifier: itemIdentifier });
+
+  if (error) console.error('Error unsaving item:', error);
 }
