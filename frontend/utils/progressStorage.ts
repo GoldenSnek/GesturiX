@@ -1,3 +1,4 @@
+// File: frontend/utils/progressStorage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../src/supabaseClient';
 import { getCurrentUserId } from './supabaseApi';
@@ -5,222 +6,301 @@ import { phrases } from '../constants/phrases';
 import { alphabetSigns } from '../constants/alphabetSigns';
 import { numbersData } from '../constants/numbers';
 
-// Helper to get user-specific key
+// --- HELPERS ---
+
+/**
+ * Efficiently retrieves the current user ID.
+ */
+async function getUserId(): Promise<string | null> {
+  return await getCurrentUserId();
+}
+
 async function getUserKey(key: string): Promise<string | null> {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return null;
   return `user_${userId}_${key}`;
 }
 
-// ----- PHRASE PROGRESS -----
-export async function markPhraseCompleted(phraseId: string) {
-  const userKey = await getUserKey(`phrase_${phraseId}_completed`);
-  if (!userKey) return;
+/**
+ * Batch fetches completion status for an array of IDs.
+ * Uses AsyncStorage.multiGet for performance (1 roundtrip vs N roundtrips).
+ */
+async function getCompletedItems(ids: string[], typePrefix: string): Promise<string[]> {
+  const userId = await getUserId();
+  if (!userId) return [];
 
-  await AsyncStorage.setItem(userKey, 'true');
-  await syncProgressToSupabase();
-  await updateStreakOnLessonComplete();
+  // Construct keys: user_{userId}_{typePrefix}_{id}_completed
+  const keys = ids.map(id => `user_${userId}_${typePrefix}_${id}_completed`);
+  
+  try {
+    const stores = await AsyncStorage.multiGet(keys);
+    const completed: string[] = [];
+    
+    // stores is an array of [key, value]
+    stores.forEach((result, i) => {
+      if (result[1] === 'true') {
+        // We use the original 'ids' array index to match because multiGet preserves order
+        completed.push(ids[i]);
+      }
+    });
+    
+    return completed;
+  } catch (error) {
+    console.error(`Error fetching ${typePrefix} progress:`, error);
+    return [];
+  }
+}
+
+// ----- PHRASE PROGRESS -----
+
+export async function markPhraseCompleted(phraseId: string) {
+  const userId = await getUserId();
+  if (!userId) return;
+  
+  const key = `user_${userId}_phrase_${phraseId}_completed`;
+
+  try {
+    // 1. Instant Local Update
+    await AsyncStorage.setItem(key, 'true');
+    
+    // 2. Background Cloud Sync (Don't await to unblock UI)
+    syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
+    updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
+  } catch (e) {
+    console.error("Error marking phrase completed:", e);
+  }
 }
 
 export async function isPhraseCompleted(phraseId: string): Promise<boolean> {
   const userKey = await getUserKey(`phrase_${phraseId}_completed`);
   if (!userKey) return false;
-
   const completed = await AsyncStorage.getItem(userKey);
   return completed === 'true';
 }
 
 export async function getCompletedPhrases(phraseIds: string[]): Promise<string[]> {
-  const completed: string[] = [];
-  for (const id of phraseIds) {
-    if (await isPhraseCompleted(id)) completed.push(id);
-  }
-  return completed;
+  return getCompletedItems(phraseIds, 'phrase');
 }
 
 // ----- LETTER PROGRESS -----
-export async function markLetterCompleted(letter: string) {
-  const userKey = await getUserKey(`letter_${letter}_completed`);
-  if (!userKey) return;
 
-  await AsyncStorage.setItem(userKey, 'true');
-  await syncProgressToSupabase();
-  await updateStreakOnLessonComplete();
+export async function markLetterCompleted(letter: string) {
+  const userId = await getUserId();
+  if (!userId) return;
+  
+  const key = `user_${userId}_letter_${letter}_completed`;
+
+  try {
+    await AsyncStorage.setItem(key, 'true');
+    // Background Sync
+    syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
+    updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
+  } catch (e) {
+    console.error("Error marking letter completed:", e);
+  }
 }
 
 export async function isLetterCompleted(letter: string): Promise<boolean> {
   const userKey = await getUserKey(`letter_${letter}_completed`);
   if (!userKey) return false;
-
   const completed = await AsyncStorage.getItem(userKey);
   return completed === 'true';
 }
 
 export async function getCompletedLetters(letters: string[]): Promise<string[]> {
-  const completed: string[] = [];
-  for (const l of letters) {
-    if (await isLetterCompleted(l)) completed.push(l);
-  }
-  return completed;
+  return getCompletedItems(letters, 'letter');
 }
 
 // ----- NUMBER PROGRESS -----
-export async function markNumberCompleted(numberVal: number) {
-  const userKey = await getUserKey(`number_${numberVal}_completed`);
-  if (!userKey) return;
 
-  await AsyncStorage.setItem(userKey, 'true');
-  await syncProgressToSupabase();
-  await updateStreakOnLessonComplete();
+export async function markNumberCompleted(numberVal: number) {
+  const userId = await getUserId();
+  if (!userId) return;
+  
+  const key = `user_${userId}_number_${numberVal}_completed`;
+
+  try {
+    await AsyncStorage.setItem(key, 'true');
+    // Background Sync
+    syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
+    updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
+  } catch (e) {
+    console.error("Error marking number completed:", e);
+  }
 }
 
 export async function isNumberCompleted(numberVal: number): Promise<boolean> {
   const userKey = await getUserKey(`number_${numberVal}_completed`);
   if (!userKey) return false;
-
   const completed = await AsyncStorage.getItem(userKey);
   return completed === 'true';
 }
 
 export async function getCompletedNumbers(numbers: number[]): Promise<number[]> {
-  const completed: number[] = [];
-  for (const n of numbers) {
-    if (await isNumberCompleted(n)) completed.push(n);
-  }
-  return completed;
+  const numberStringIds = numbers.map(n => n.toString());
+  const completedStrings = await getCompletedItems(numberStringIds, 'number');
+  return completedStrings.map(s => parseInt(s, 10));
 }
 
-// ----- SYNC TO SUPABASE (phrases, letters, & numbers) -----
+// ----- SYNC TO SUPABASE (Optimized) -----
+
 export async function syncProgressToSupabase() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const letterIds = alphabetSigns.map(l => l.letter);
-  const phraseIds = phrases.map(p => p.id);
-  const numberIds = numbersData.map(n => n.number);
-
-  const completedLetters = await getCompletedLetters(letterIds);
-  const completedPhrases = await getCompletedPhrases(phraseIds);
-  const completedNumbers = await getCompletedNumbers(numberIds);
+  // Parallelize local reads to calculate total
+  const [completedLetters, completedPhrases, completedNumbers] = await Promise.all([
+    getCompletedLetters(alphabetSigns.map(l => l.letter)),
+    getCompletedPhrases(phrases.map(p => p.id)),
+    getCompletedNumbers(numbersData.map(n => n.number))
+  ]);
 
   const totalCompleted = completedLetters.length + completedPhrases.length + completedNumbers.length;
 
-  await supabase
+  // Perform upsert
+  const { error } = await supabase
     .from('user_statistics')
     .upsert(
       [{
         user_id: userId,
-        lessons_completed: totalCompleted
+        lessons_completed: totalCompleted,
+        updated_at: new Date().toISOString()
       }],
       { onConflict: 'user_id' }
     );
+    
+  if (error) console.error("Supabase sync failed:", error.message);
 }
 
-// ✅ NEW: Reset only phrases and sync correctly
+// ----- RESET LOGIC (Optimized to use multiRemove) -----
+
 export async function resetPhraseProgress() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const allKeys = await AsyncStorage.getAllKeys();
-  const phraseKeys = allKeys.filter(k => k.includes('_phrase_') && k.startsWith(`user_${userId}_`));
-  if (phraseKeys.length > 0) {
-    await AsyncStorage.multiRemove(phraseKeys);
-  }
-  await AsyncStorage.removeItem('phrasescreen_last_phrase_id');
-  await syncProgressToSupabase();
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const phraseKeys = allKeys.filter(k => k.includes('_phrase_') && k.startsWith(`user_${userId}_`));
+    if (phraseKeys.length > 0) {
+      await AsyncStorage.multiRemove(phraseKeys);
+    }
+    await AsyncStorage.removeItem('phrasescreen_last_phrase_id');
+    syncProgressToSupabase();
+  } catch (e) { console.error(e); }
 }
 
-// ✅ NEW: Reset only letters and sync correctly
 export async function resetLetterProgress() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const allKeys = await AsyncStorage.getAllKeys();
-  const letterKeys = allKeys.filter(k => k.includes('_letter_') && k.startsWith(`user_${userId}_`));
-  if (letterKeys.length > 0) {
-    await AsyncStorage.multiRemove(letterKeys);
-  }
-  await AsyncStorage.removeItem('letterscreen_last_letter');
-  await syncProgressToSupabase();
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const letterKeys = allKeys.filter(k => k.includes('_letter_') && k.startsWith(`user_${userId}_`));
+    if (letterKeys.length > 0) {
+      await AsyncStorage.multiRemove(letterKeys);
+    }
+    await AsyncStorage.removeItem('letterscreen_last_letter');
+    syncProgressToSupabase();
+  } catch (e) { console.error(e); }
 }
 
-// ✅ NEW: Reset only numbers and sync correctly
 export async function resetNumberProgress() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const allKeys = await AsyncStorage.getAllKeys();
-  const numberKeys = allKeys.filter(k => k.includes('_number_') && k.startsWith(`user_${userId}_`));
-  if (numberKeys.length > 0) {
-    await AsyncStorage.multiRemove(numberKeys);
-  }
-  await AsyncStorage.removeItem('numberscreen_last_number');
-  await syncProgressToSupabase();
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const numberKeys = allKeys.filter(k => k.includes('_number_') && k.startsWith(`user_${userId}_`));
+    if (numberKeys.length > 0) {
+      await AsyncStorage.multiRemove(numberKeys);
+    }
+    await AsyncStorage.removeItem('numberscreen_last_number');
+    syncProgressToSupabase();
+  } catch (e) { console.error(e); }
 }
 
 // ----- STREAK LOGIC -----
+
 export async function updateStreakOnLessonComplete() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const { data: stats } = await supabase
-    .from('user_statistics')
-    .select('days_streak, last_activity_date')
-    .eq('user_id', userId)
-    .single();
+  try {
+    const { data: stats, error } = await supabase
+      .from('user_statistics')
+      .select('days_streak, last_activity_date')
+      .eq('user_id', userId)
+      .single();
 
-  let newStreak = 1;
-  const today = new Date().toISOString().slice(0, 10);
+    if (error && error.code !== 'PGRST116') {
+       console.error("Error fetching stats for streak:", error.message);
+       return;
+    }
 
-  if (stats && stats.last_activity_date) {
-    const lastDate = stats.last_activity_date;
-    if (lastDate === today) {
-      newStreak = stats.days_streak;
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yString = yesterday.toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    let newStreak = 1;
+    let shouldUpdate = true;
 
-      if (lastDate === yString) {
-        newStreak = stats.days_streak + 1;
+    if (stats && stats.last_activity_date) {
+      const lastDate = stats.last_activity_date;
+      
+      if (lastDate === today) {
+        // Already updated today, save the DB call
+        shouldUpdate = false; 
       } else {
-        newStreak = 1;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yString = yesterday.toISOString().slice(0, 10);
+
+        if (lastDate === yString) {
+          newStreak = (stats.days_streak || 0) + 1;
+        } else {
+          newStreak = 1;
+        }
       }
     }
-  }
 
-  await supabase
-    .from('user_statistics')
-    .upsert([{ user_id: userId, days_streak: newStreak, last_activity_date: today }], { onConflict: 'user_id' });
+    if (shouldUpdate) {
+      await supabase
+        .from('user_statistics')
+        .upsert([{ 
+            user_id: userId, 
+            days_streak: newStreak, 
+            last_activity_date: today 
+        }], { onConflict: 'user_id' });
+    }
+  } catch (e) {
+    console.error("Streak update exception:", e);
+  }
 }
 
-// ----- PRACTICE HOURS TRACKING -----
 export async function updatePracticeTime(hoursToAdd: number) {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
 
-  const { data: stats } = await supabase
-    .from('user_statistics')
-    .select('practice_hours')
-    .eq('user_id', userId)
-    .single();
+  try {
+    const { data: stats } = await supabase
+      .from('user_statistics')
+      .select('practice_hours')
+      .eq('user_id', userId)
+      .single();
 
-  const newHours = (stats?.practice_hours ?? 0) + hoursToAdd;
+    const newHours = (stats?.practice_hours ?? 0) + hoursToAdd;
 
-  await supabase
-    .from('user_statistics')
-    .upsert([{ user_id: userId, practice_hours: newHours }], { onConflict: 'user_id' });
+    await supabase
+      .from('user_statistics')
+      .upsert([{ user_id: userId, practice_hours: newHours }], { onConflict: 'user_id' });
+  } catch (e) { console.error(e); }
 }
 
-// ----- CLEAR ALL LOCAL PROGRESS -----
 export async function clearUserProgressData() {
-  const userId = await getCurrentUserId();
+  const userId = await getUserId();
   if (!userId) return;
-
-  const allKeys = await AsyncStorage.getAllKeys();
-  const userKeys = allKeys.filter(key => key.startsWith(`user_${userId}_`));
-  
-  if (userKeys.length > 0) {
-    await AsyncStorage.multiRemove(userKeys);
-  }
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const userKeys = allKeys.filter(key => key.startsWith(`user_${userId}_`));
+    if (userKeys.length > 0) {
+      await AsyncStorage.multiRemove(userKeys);
+    }
+  } catch (e) { console.error(e); }
 }
