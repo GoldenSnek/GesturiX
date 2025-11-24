@@ -8,9 +8,6 @@ import { numbersData } from '../constants/numbers';
 
 // --- HELPERS ---
 
-/**
- * Efficiently retrieves the current user ID.
- */
 async function getUserId(): Promise<string | null> {
   return await getCurrentUserId();
 }
@@ -21,29 +18,20 @@ async function getUserKey(key: string): Promise<string | null> {
   return `user_${userId}_${key}`;
 }
 
-/**
- * Batch fetches completion status for an array of IDs.
- * Uses AsyncStorage.multiGet for performance (1 roundtrip vs N roundtrips).
- */
 async function getCompletedItems(ids: string[], typePrefix: string): Promise<string[]> {
   const userId = await getUserId();
   if (!userId) return [];
 
-  // Construct keys: user_{userId}_{typePrefix}_{id}_completed
   const keys = ids.map(id => `user_${userId}_${typePrefix}_${id}_completed`);
   
   try {
     const stores = await AsyncStorage.multiGet(keys);
     const completed: string[] = [];
-    
-    // stores is an array of [key, value]
     stores.forEach((result, i) => {
       if (result[1] === 'true') {
-        // We use the original 'ids' array index to match because multiGet preserves order
         completed.push(ids[i]);
       }
     });
-    
     return completed;
   } catch (error) {
     console.error(`Error fetching ${typePrefix} progress:`, error);
@@ -60,10 +48,7 @@ export async function markPhraseCompleted(phraseId: string) {
   const key = `user_${userId}_phrase_${phraseId}_completed`;
 
   try {
-    // 1. Instant Local Update
     await AsyncStorage.setItem(key, 'true');
-    
-    // 2. Background Cloud Sync (Don't await to unblock UI)
     syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
     updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
   } catch (e) {
@@ -92,7 +77,6 @@ export async function markLetterCompleted(letter: string) {
 
   try {
     await AsyncStorage.setItem(key, 'true');
-    // Background Sync
     syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
     updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
   } catch (e) {
@@ -121,7 +105,6 @@ export async function markNumberCompleted(numberVal: number) {
 
   try {
     await AsyncStorage.setItem(key, 'true');
-    // Background Sync
     syncProgressToSupabase().catch(err => console.error("Background Sync Error:", err));
     updateStreakOnLessonComplete().catch(err => console.error("Background Streak Error:", err));
   } catch (e) {
@@ -142,37 +125,40 @@ export async function getCompletedNumbers(numbers: number[]): Promise<number[]> 
   return completedStrings.map(s => parseInt(s, 10));
 }
 
-// ----- SYNC TO SUPABASE (Optimized) -----
+// ----- SYNC TO SUPABASE -----
 
 export async function syncProgressToSupabase() {
   const userId = await getUserId();
   if (!userId) return;
 
-  // Parallelize local reads to calculate total
-  const [completedLetters, completedPhrases, completedNumbers] = await Promise.all([
-    getCompletedLetters(alphabetSigns.map(l => l.letter)),
-    getCompletedPhrases(phrases.map(p => p.id)),
-    getCompletedNumbers(numbersData.map(n => n.number))
-  ]);
+  try {
+    const [completedLetters, completedPhrases, completedNumbers] = await Promise.all([
+      getCompletedLetters(alphabetSigns.map(l => l.letter)),
+      getCompletedPhrases(phrases.map(p => p.id)),
+      getCompletedNumbers(numbersData.map(n => n.number))
+    ]);
 
-  const totalCompleted = completedLetters.length + completedPhrases.length + completedNumbers.length;
+    const totalCompleted = completedLetters.length + completedPhrases.length + completedNumbers.length;
 
-  // Perform upsert
-  const { error } = await supabase
-    .from('user_statistics')
-    .upsert(
-      [{
-        user_id: userId,
-        lessons_completed: totalCompleted,
-        updated_at: new Date().toISOString()
-      }],
-      { onConflict: 'user_id' }
-    );
-    
-  if (error) console.error("Supabase sync failed:", error.message);
+    // Upsert with specific columns to avoid overwriting other stats if row exists
+    const { error } = await supabase
+      .from('user_statistics')
+      .upsert(
+        {
+          user_id: userId,
+          lessons_completed: totalCompleted,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'user_id' }
+      );
+      
+    if (error) console.error("Supabase sync failed:", error.message);
+  } catch (e) {
+    console.error("Sync error:", e);
+  }
 }
 
-// ----- RESET LOGIC (Optimized to use multiRemove) -----
+// ----- RESET LOGIC -----
 
 export async function resetPhraseProgress() {
   const userId = await getUserId();
@@ -232,12 +218,11 @@ export async function updateStreakOnLessonComplete() {
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" which is fine for first time
        console.error("Error fetching stats for streak:", error.message);
-       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     let newStreak = 1;
     let shouldUpdate = true;
 
@@ -245,9 +230,10 @@ export async function updateStreakOnLessonComplete() {
       const lastDate = stats.last_activity_date;
       
       if (lastDate === today) {
-        // Already updated today, save the DB call
+        // User already practiced today, maintain streak, don't increment
         shouldUpdate = false; 
       } else {
+        // Check if last activity was yesterday
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yString = yesterday.toISOString().slice(0, 10);
@@ -255,42 +241,57 @@ export async function updateStreakOnLessonComplete() {
         if (lastDate === yString) {
           newStreak = (stats.days_streak || 0) + 1;
         } else {
+          // Streak broken (last activity was older than yesterday)
           newStreak = 1;
         }
       }
+    } else {
+      // No stats found, first time user
+      newStreak = 1;
     }
 
     if (shouldUpdate) {
       await supabase
         .from('user_statistics')
-        .upsert([{ 
+        .upsert({ 
             user_id: userId, 
             days_streak: newStreak, 
-            last_activity_date: today 
-        }], { onConflict: 'user_id' });
+            last_activity_date: today,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
     }
   } catch (e) {
     console.error("Streak update exception:", e);
   }
 }
 
+// ----- LEARNING TIME LOGIC -----
+
 export async function updatePracticeTime(hoursToAdd: number) {
   const userId = await getUserId();
-  if (!userId) return;
+  if (!userId || hoursToAdd <= 0 || isNaN(hoursToAdd)) return;
 
   try {
-    const { data: stats } = await supabase
+    const { data: stats, error } = await supabase
       .from('user_statistics')
       .select('practice_hours')
       .eq('user_id', userId)
       .single();
 
-    const newHours = (stats?.practice_hours ?? 0) + hoursToAdd;
+    if (error && error.code !== 'PGRST116') return;
+
+    const currentHours = stats?.practice_hours ?? 0;
+    const newHours = currentHours + hoursToAdd;
 
     await supabase
       .from('user_statistics')
-      .upsert([{ user_id: userId, practice_hours: newHours }], { onConflict: 'user_id' });
-  } catch (e) { console.error(e); }
+      .upsert({ 
+        user_id: userId, 
+        practice_hours: newHours,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      
+  } catch (e) { console.error("Error updating practice time:", e); }
 }
 
 export async function clearUserProgressData() {

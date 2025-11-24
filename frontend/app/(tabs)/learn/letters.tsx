@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+// File: frontend/app/(tabs)/learn/letters.tsx
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -15,11 +16,18 @@ import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { alphabetSigns } from '../../../constants/alphabetSigns';
-import { markLetterCompleted, getCompletedLetters, resetLetterProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
+import { 
+  markLetterCompleted, 
+  getCompletedLetters, 
+  resetLetterProgress, 
+  updateStreakOnLessonComplete,
+  updatePracticeTime // 🔌 Import
+} from '../../../utils/progressStorage';
 import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
 import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
-import { ENDPOINTS } from '../../../constants/ApiConfig'; // 🔌 Import Config
+import { ENDPOINTS } from '../../../constants/ApiConfig';
+import { useFocusEffect } from '@react-navigation/native'; // 🔌 Import
 
 const TOTAL_LETTERS = 26;
 const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
@@ -58,6 +66,20 @@ const Letters = () => {
     devices.find(d => d.position === facing) ??
     devices.find(d => d.position === 'front') ??
     devices.find(d => d.position === 'back');
+
+  // 🕒 LEARNING TIME TRACKER
+  useFocusEffect(
+    useCallback(() => {
+      const startTime = Date.now();
+      return () => {
+        const durationMs = Date.now() - startTime;
+        // Only log if > 2 seconds to avoid accidental clicks
+        if (durationMs > 2000) {
+          updatePracticeTime(durationMs / 1000 / 60 / 60);
+        }
+      };
+    }, [])
+  );
 
   // Load progress on mount
   useEffect(() => {
@@ -122,7 +144,6 @@ const Letters = () => {
         const formData = new FormData();
         formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
         
-        // 🔌 Updated: Use centralized config
         const res = await axios.post(ENDPOINTS.PREDICT, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -279,17 +300,16 @@ const Letters = () => {
                 }}
               >
                 <Video
-                  source={letterData.image} // Using image property as source (for video/gif)
+                  source={letterData.image}
                   style={{ width: '100%', height: '100%', borderRadius: 20 }}
                   resizeMode={ResizeMode.COVER}
                   shouldPlay
-                  isLooping={isRepeating} // 🔁 Repeat logic
-                  rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Slow motion logic
+                  isLooping={isRepeating}
+                  rate={isSlowMotion ? 0.5 : 1.0}
                   useNativeControls
                   isMuted
                 />
               </View>
-              {/* Removed previous floating camera icon */}
             </View>
 
             {/* Camera Panel */}
@@ -518,7 +538,7 @@ const Letters = () => {
 
               {/* 4. Save Sign */}
               <TouchableOpacity
-                onPress={() => { /* Placeholder for save functionality */ }}
+                onPress={() => { /* Placeholder */ }}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
                   isDark ? 'bg-darksurface' : 'bg-lighthover'
                 }`}

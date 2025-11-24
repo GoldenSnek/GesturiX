@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// File: frontend/app/(tabs)/learn/numbers.tsx
+import React, { useEffect, useState, useCallback } from 'react'; // 🔌 Added useCallback
 import { 
   View, 
   Text, 
@@ -6,7 +7,7 @@ import {
   ScrollView, 
   ImageBackground,
   Alert,
-  Modal // 💡 Imported Modal
+  Modal 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,12 +15,18 @@ import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { numbersData } from '../../../constants/numbers';
-import { getCompletedNumbers, markNumberCompleted, resetNumberProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
+import { 
+  getCompletedNumbers, 
+  markNumberCompleted, 
+  resetNumberProgress, 
+  updateStreakOnLessonComplete,
+  updatePracticeTime // 🔌 Import
+} from '../../../utils/progressStorage';
 import { Video, ResizeMode } from 'expo-av';
+import { useFocusEffect } from '@react-navigation/native'; // 🔌 Import
 
 const STORAGE_LAST_NUMBER = 'numberscreen_last_number';
 
-// 💡 New: Feature Modal Component (Styled exactly like Translation Tips)
 const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
   const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
   const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
@@ -64,7 +71,6 @@ const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
 
-  // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
 
@@ -72,14 +78,23 @@ const Numbers = () => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
 
-  // 🕹️ Controls State
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-
-  // 💡 New State: Modal visibility
   const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
-  // Load progress
+  // 🕒 LEARNING TIME TRACKER
+  useFocusEffect(
+    useCallback(() => {
+      const startTime = Date.now();
+      return () => {
+        const durationMs = Date.now() - startTime;
+        if (durationMs > 2000) {
+          updatePracticeTime(durationMs / 1000 / 60 / 60);
+        }
+      };
+    }, [])
+  );
+
   useEffect(() => {
     (async () => {
       const lastNumStr = await AsyncStorage.getItem(STORAGE_LAST_NUMBER);
@@ -95,21 +110,17 @@ const Numbers = () => {
           return;
         }
       }
-
-      // If no last saved state, find first incomplete or default to 0
       const nextIdx = numbersData.findIndex(n => !done.includes(n.number));
       setCurrentIdx(nextIdx === -1 ? 0 : nextIdx);
     })();
   }, []);
 
-  // Save state when index changes
   useEffect(() => {
     if (numbersData[currentIdx]) {
       AsyncStorage.setItem(STORAGE_LAST_NUMBER, numbersData[currentIdx].number.toString());
     }
   }, [currentIdx]);
 
-  // Check completion status
   useEffect(() => {
     setCompleted(doneNumbers.includes(numbersData[currentIdx].number));
   }, [doneNumbers, currentIdx]);
@@ -123,7 +134,6 @@ const Numbers = () => {
     setDoneNumbers(done);
     setCompleted(true);
 
-    // Auto-advance
     if (currentIdx < numbersData.length - 1) {
       setTimeout(() => {
         setCurrentIdx(currentIdx + 1);
@@ -137,7 +147,6 @@ const Numbers = () => {
     setCurrentIdx(0);
   };
 
-  // 💡 Updated: Open the custom modal instead of Alert
   const handleCameraAlert = () => {
     setFeatureModalVisible(true);
   };
@@ -172,7 +181,6 @@ const Numbers = () => {
             className="flex-1 p-4"
             contentContainerStyle={{ paddingBottom: 150 }}
           >
-            {/* Title */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -180,7 +188,6 @@ const Numbers = () => {
               Select a Number
             </Text>
 
-            {/* Grid */}
             <View className="flex-row flex-wrap justify-between mb-1">
               {numbersData.map((item, index) => {
                 const isCompleted = doneNumbers.includes(item.number);
@@ -225,7 +232,6 @@ const Numbers = () => {
               })}
             </View>
 
-            {/* Practice Section */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -233,7 +239,6 @@ const Numbers = () => {
               Practice: "{currentData.number}"
             </Text>
 
-            {/* Video Container */}
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
                 style={{
@@ -258,9 +263,9 @@ const Numbers = () => {
                   style={{ width: '100%', height: '100%', borderRadius: 18 }}
                   resizeMode={ResizeMode.COVER}
                   shouldPlay={true}
-                  isLooping={isRepeating} // 🔁 Updated
+                  isLooping={isRepeating}
                   useNativeControls
-                  rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Updated
+                  rate={isSlowMotion ? 0.5 : 1.0}
                   isMuted={true}
                 />
               </View>
@@ -299,7 +304,6 @@ const Numbers = () => {
             {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
               
-              {/* 1. Slow Motion */}
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -323,7 +327,6 @@ const Numbers = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Repeat */}
               <TouchableOpacity
                 onPress={() => setIsRepeating(!isRepeating)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -347,7 +350,6 @@ const Numbers = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 3. Practice (Triggers Custom Modal) */}
               <TouchableOpacity
                 onPress={handleCameraAlert}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -369,9 +371,8 @@ const Numbers = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 4. Save Sign */}
               <TouchableOpacity
-                onPress={() => { /* Placeholder for save functionality */ }}
+                onPress={() => { /* Placeholder */ }}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
                   isDark ? 'bg-darksurface' : 'bg-lighthover'
                 }`}
@@ -393,7 +394,6 @@ const Numbers = () => {
 
             </View>
 
-            {/* Completed Button */}
             <TouchableOpacity 
               onPress={handleComplete}
               disabled={completed}
@@ -408,7 +408,6 @@ const Numbers = () => {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* 💡 New: Render the Feature Modal */}
           <FeatureModal 
             isVisible={isFeatureModalVisible}
             onClose={() => setFeatureModalVisible(false)}

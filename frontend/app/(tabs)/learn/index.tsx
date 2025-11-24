@@ -49,21 +49,19 @@ const Learn = () => {
     practice_hours: 0,
   });
 
-  // ⚡ OPTIMIZED: Load all progress and stats in parallel when screen focuses
+  // ⚡ OPTIMIZED: Load all progress and stats in parallel
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
 
       const loadData = async () => {
         try {
-          // 1. Fetch local progress in parallel
           const progressPromise = Promise.all([
             getCompletedPhrases(phrases.map(p => p.id)),
             getCompletedLetters(alphabetSigns.map(l => l.letter)),
             getCompletedNumbers(numbersData.map(n => n.number))
           ]);
 
-          // 2. Fetch remote stats
           const statsPromise = (async () => {
             const userId = await getCurrentUserId();
             if (typeof userId === 'string') {
@@ -72,7 +70,6 @@ const Learn = () => {
             return null;
           })();
 
-          // Wait for all
           const [[donePhrases, doneLetters, doneNumbers], stats] = await Promise.all([
             progressPromise,
             statsPromise
@@ -95,10 +92,25 @@ const Learn = () => {
     }, [])
   );
 
+  // 🕒 Smart Learning Time Display (Mins vs Hours)
+  const getFormattedPracticeTime = (hours: number) => {
+    if (hours < 1) {
+      // Less than 1 hour -> show minutes
+      const mins = Math.round(hours * 60);
+      return `${mins} mins`;
+    } else {
+      // 1 hour or more -> show hours with 1 decimal
+      return `${hours.toFixed(1)} hrs`;
+    }
+  };
+
   const progressData = [
     { label: 'Lessons Completed', value: `${userStats.lessons_completed}` },
     { label: 'Streak', value: `${userStats.days_streak} days` },
-    { label: 'Learning Time', value: `${(userStats.practice_hours).toFixed(1)} hrs` },
+    { 
+      label: 'Learning Time', 
+      value: getFormattedPracticeTime(userStats.practice_hours) // ⚡ Apply formatting
+    },
   ];
 
   const categoriesData = useMemo(() => [

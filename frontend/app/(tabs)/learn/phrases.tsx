@@ -1,5 +1,5 @@
-// File: src/screens/learn/phrases.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+// File: frontend/app/(tabs)/learn/phrases.tsx
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -7,17 +7,17 @@ import {
   ScrollView, 
   ImageBackground,
   Alert,
-  Modal // 💡 Imported Modal
+  Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { Video, ResizeMode } from 'expo-av';
 import { phrases } from '../../../constants/phrases';
-import { markPhraseCompleted, getCompletedPhrases, resetPhraseProgress, updateStreakOnLessonComplete } from '../../../utils/progressStorage';
+import { markPhraseCompleted, getCompletedPhrases, resetPhraseProgress, updateStreakOnLessonComplete, updatePracticeTime } from '../../../utils/progressStorage';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useFocusEffect } from '@react-navigation/native';
 
 const STORAGE_LAST_PHRASE = 'phrasescreen_last_phrase_id';
 
@@ -27,7 +27,6 @@ const CATEGORIES = [
   { key: 'questions', label: 'Questions' },
 ];
 
-// 💡 New: Feature Modal Component (Styled exactly like Translation Tips)
 const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
   const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
   const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
@@ -90,46 +89,90 @@ export default function PhraseLearnScreen() {
   // 💡 New State: Modal visibility
   const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
-  // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
 
-  // scrollToStart triggers once when category changes
-  useEffect(() => {
-    if (phrasesForCategory.length > 0) {
-      setSelectedPhrase(phrasesForCategory[0]);
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTo({ x: 0, animated: true });
+  // 🕒 LEARNING TIME TRACKER
+  useFocusEffect(
+    useCallback(() => {
+      const startTime = Date.now();
+      
+      // Optional: Mark user as active immediately for streak purposes if desired, 
+      // but currently we only do it on lesson completion.
+      
+      return () => {
+        const endTime = Date.now();
+        const durationMs = endTime - startTime;
+        const durationHours = durationMs / 1000 / 60 / 60;
+        
+        // Only log if meaningful time spent (> 2 seconds)
+        if (durationMs > 2000) {
+          updatePracticeTime(durationHours);
         }
-      }, 80);
-    }
-    
-  }, [activeCategory, phrasesForCategory]);
+      };
+    }, [])
+  );
 
+  // 🧠 1. INITIAL LOAD: Restore state from storage
   useEffect(() => {
     (async () => {
       const lastId = await AsyncStorage.getItem(STORAGE_LAST_PHRASE);
       const match = phrases.find(p => p.id === lastId);
+      
       if (match) {
+        // Restore category AND phrase
         setActiveCategory(match.category);
         setSelectedPhrase(match);
       } else {
+        // Default
         setActiveCategory(CATEGORIES[0].key);
         setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
       }
+      
       const done = await getCompletedPhrases(phrases.map(p => p.id));
       setDoneIds(done);
     })();
   }, []);
 
+  // 🧠 2. CATEGORY CHANGE LOGIC (Optimized)
+  useEffect(() => {
+    if (phrasesForCategory.length > 0) {
+      // Logic: If the currently selected phrase IS NOT in the new category, 
+      // reset to the first one. This prevents overwriting the "restored" phrase
+      // on initial load (where activeCategory matches selectedPhrase).
+      const isPhraseInCurrentCat = phrasesForCategory.find(p => p.id === selectedPhrase?.id);
+
+      if (!isPhraseInCurrentCat) {
+        // New category selected manually by user -> Go to first item
+        setSelectedPhrase(phrasesForCategory[0]);
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({ x: 0, animated: true });
+          }
+        }, 50);
+      } else {
+        // We just loaded/restored a phrase that IS in this category.
+        // Scroll to it!
+        const index = phrasesForCategory.findIndex(p => p.id === selectedPhrase.id);
+        if (index > 0) {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              const itemWidth = 90 + 18 * 2; // Item width + padding
+              const gap = 12;
+              const scrollToX = (itemWidth + gap) * index;
+              scrollRef.current.scrollTo({ x: scrollToX, animated: true });
+            }
+          }, 100); // Slight delay for layout
+        }
+      }
+    }
+  }, [activeCategory, phrasesForCategory]); // Intentionally excludes selectedPhrase from deps
+
+  // Save state whenever selection changes
   useEffect(() => {
     if (selectedPhrase?.id) {
       AsyncStorage.setItem(STORAGE_LAST_PHRASE, selectedPhrase.id);
     }
-  }, [selectedPhrase]);
-
-  useEffect(() => {
     setCompleted(selectedPhrase && doneIds.includes(selectedPhrase.id));
   }, [selectedPhrase, doneIds]);
 
@@ -137,8 +180,10 @@ export default function PhraseLearnScreen() {
   const handleComplete = async () => {
     const allPhrasesInCat = phrases.filter(p => p.category === activeCategory);
     const currentIdx = allPhrasesInCat.findIndex(p => p.id === selectedPhrase.id);
+    
     await markPhraseCompleted(selectedPhrase.id);
-    await updateStreakOnLessonComplete();
+    await updateStreakOnLessonComplete(); // ✅ Updates streak
+    
     const done = await getCompletedPhrases(phrases.map(p => p.id));
     setDoneIds(done);
     setCompleted(true);
@@ -146,15 +191,12 @@ export default function PhraseLearnScreen() {
     if (currentIdx < allPhrasesInCat.length - 1) {
       setTimeout(() => {
         setSelectedPhrase(allPhrasesInCat[currentIdx + 1]);
+        // Auto scroll handled by useEffect potentially, but direct scrolling is smoother here
         if (scrollRef.current) {
-          if (currentIdx + 1 === allPhrasesInCat.length - 1) {
-            scrollRef.current.scrollToEnd({ animated: true });
-          } else if (currentIdx + 1 > 0 && currentIdx + 1 < allPhrasesInCat.length - 1) {
-            const itemWidth = 90 + 18 * 2;
-            const gap = 12;
-            const scrollToX = (itemWidth + gap) * (currentIdx + 1) - 1;
-            scrollRef.current.scrollTo({ x: scrollToX, animated: true });
-          }
+           const itemWidth = 90 + 18 * 2;
+           const gap = 12;
+           const scrollToX = (itemWidth + gap) * (currentIdx + 1);
+           scrollRef.current.scrollTo({ x: scrollToX, animated: true });
         }
       }, 200);
 
@@ -170,20 +212,18 @@ export default function PhraseLearnScreen() {
   };
 
   const handleResetProgress = async () => {
-    await resetPhraseProgress(); // ✅ Uses the new function
+    await resetPhraseProgress();
     const done = await getCompletedPhrases(phrases.map(p => p.id));
     setDoneIds(done);
     setCompleted(false);
     setSelectedPhrase(phrases.filter(p => p.category === activeCategory)[0]);
   };
 
-  // 💡 Updated: Open the custom modal instead of Alert
   const handleCameraAlert = () => {
     setFeatureModalVisible(true);
   };
 
   return (
-    // 1. Outer View sets the base background color
     <View className={`flex-1 ${bgColorClass}`}>
       <ImageBackground
         source={require('../../../assets/images/MainBG.png')}
@@ -202,7 +242,7 @@ export default function PhraseLearnScreen() {
           />
 
           <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 150 }}>
-            {/* Category Tabs Pill/Oval */}
+            {/* Category Tabs */}
             <View
               style={{
                 flexDirection: 'row',
@@ -237,10 +277,6 @@ export default function PhraseLearnScreen() {
                         : (isDark ? '#292822' : '#FAF3E7'),
                       marginHorizontal: 5,
                       transform: [{ scale: activeCategory === cat.key ? 1.05 : 1.0 }],
-                      shadowColor: activeCategory === cat.key ? '#FF6B00' : undefined,
-                      shadowOpacity: activeCategory === cat.key ? 0.14 : 0,
-                      shadowRadius: activeCategory === cat.key ? 6 : 0,
-                      elevation: activeCategory === cat.key ? 2 : 0,
                       borderWidth: activeCategory === cat.key ? 2 : 0,
                       borderColor: activeCategory === cat.key
                         ? (isDark ? '#FF6B00' : '#FF6B00')
@@ -373,12 +409,12 @@ export default function PhraseLearnScreen() {
             >
               <Video
                 source={selectedPhrase.videoUrl}
-                rate={isSlowMotion ? 0.5 : 1.0} // 🐢 Slow motion logic
+                rate={isSlowMotion ? 0.5 : 1.0}
                 volume={1.0}
                 isMuted={true}
                 resizeMode={ResizeMode.COVER}
                 shouldPlay={true}
-                isLooping={isRepeating} // 🔁 Repeat logic
+                isLooping={isRepeating}
                 useNativeControls
                 style={{
                   width: '100%',
@@ -389,7 +425,7 @@ export default function PhraseLearnScreen() {
               />
             </View>
 
-            {/* Tips Section */}
+            {/* Tips & Controls (Same as before) */}
             <Text
               style={{
                 marginVertical: 8,
@@ -419,10 +455,7 @@ export default function PhraseLearnScreen() {
               </Text>
             </Text>
 
-            {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
-              
-              {/* 1. Slow Motion */}
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -446,7 +479,6 @@ export default function PhraseLearnScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Repeat */}
               <TouchableOpacity
                 onPress={() => setIsRepeating(!isRepeating)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -470,7 +502,6 @@ export default function PhraseLearnScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* 3. Practice (Triggers Custom Modal) */}
               <TouchableOpacity
                 onPress={handleCameraAlert}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -492,9 +523,8 @@ export default function PhraseLearnScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* 4. Save Sign */}
               <TouchableOpacity
-                onPress={() => { /* Placeholder for save functionality */ }}
+                onPress={() => { /* Placeholder */ }}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
                   isDark ? 'bg-darksurface' : 'bg-lighthover'
                 }`}
@@ -513,10 +543,8 @@ export default function PhraseLearnScreen() {
                   Save
                 </Text>
               </TouchableOpacity>
-
             </View>
 
-            {/* Mark as Completed Button */}
             <TouchableOpacity 
               onPress={handleComplete}
               disabled={completed}
@@ -531,7 +559,6 @@ export default function PhraseLearnScreen() {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* 💡 New: Render the Feature Modal */}
           <FeatureModal 
             isVisible={isFeatureModalVisible}
             onClose={() => setFeatureModalVisible(false)}
