@@ -1,3 +1,4 @@
+// File: frontend/app/(tabs)/learn/index.tsx
 import React, { useRef, useState, useMemo } from 'react';
 import {
   View,
@@ -36,64 +37,60 @@ const Learn = () => {
   const router = useRouter();
   const { isDark } = useTheme();
 
-  // Define base color class for the outer container
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
 
-  // State for progress
   const [phrasesCompleted, setPhrasesCompleted] = useState(0);
   const [lettersCompleted, setLettersCompleted] = useState(0);
   const [numbersCompleted, setNumbersCompleted] = useState(0);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      let isActive = true;
-      (async () => {
-        const donePhrases = await getCompletedPhrases(phrases.map(p => p.id));
-        if (isActive) setPhrasesCompleted(donePhrases.length);
-      })();
-      return () => { isActive = false; };
-    }, [])
-  );
-
-  useFocusEffect(
-    React.useCallback(() => {
-      let isActive = true;
-      (async () => {
-        const doneLetters = await getCompletedLetters(alphabetSigns.map(l => l.letter));
-        if (isActive) setLettersCompleted(doneLetters.length);
-      })();
-      return () => { isActive = false; };
-    }, [])
-  );
-
-  useFocusEffect(
-    React.useCallback(() => {
-      let isActive = true;
-      (async () => {
-        const doneNumbers = await getCompletedNumbers(numbersData.map(n => n.number));
-        if (isActive) setNumbersCompleted(doneNumbers.length);
-      })();
-      return () => { isActive = false; };
-    }, [])
-  );
-
-  // State for Supabase statistics
   const [userStats, setUserStats] = useState({
     lessons_completed: 0,
     days_streak: 0,
     practice_hours: 0,
   });
 
+  // ⚡ OPTIMIZED: Load all progress and stats in parallel when screen focuses
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
-      async function loadStats() {
-        const userId = await getCurrentUserId();
-        if (typeof userId !== 'string') return;
-        const stats = await fetchUserStatistics(userId);
-        if (isActive) setUserStats(stats);
-      }
-      loadStats();
+
+      const loadData = async () => {
+        try {
+          // 1. Fetch local progress in parallel
+          const progressPromise = Promise.all([
+            getCompletedPhrases(phrases.map(p => p.id)),
+            getCompletedLetters(alphabetSigns.map(l => l.letter)),
+            getCompletedNumbers(numbersData.map(n => n.number))
+          ]);
+
+          // 2. Fetch remote stats
+          const statsPromise = (async () => {
+            const userId = await getCurrentUserId();
+            if (typeof userId === 'string') {
+              return await fetchUserStatistics(userId);
+            }
+            return null;
+          })();
+
+          // Wait for all
+          const [[donePhrases, doneLetters, doneNumbers], stats] = await Promise.all([
+            progressPromise,
+            statsPromise
+          ]);
+
+          if (isActive) {
+            setPhrasesCompleted(donePhrases.length);
+            setLettersCompleted(doneLetters.length);
+            setNumbersCompleted(doneNumbers.length);
+            if (stats) setUserStats(stats);
+          }
+        } catch (error) {
+          console.error("Failed to load progress:", error);
+        }
+      };
+
+      loadData();
+
       return () => { isActive = false; };
     }, [])
   );
@@ -134,17 +131,14 @@ const Learn = () => {
     },
   ], [lettersCompleted, phrasesCompleted, numbersCompleted]);
 
-  // 🧠 Updated Swipe Logic: Translate <-> Learn <-> Quiz
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) =>
         Math.abs(gestureState.dx) > 10,
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -30) {
-            // Swipe Left (Next) -> Go to Quiz
             router.push('/quiz');
         } else if (gestureState.dx > 30) {
-            // Swipe Right (Prev) -> Go to Translate
             router.push('/translate');
         }
       },
@@ -152,14 +146,12 @@ const Learn = () => {
   ).current;
 
   return (
-    // 1. Outer View sets the base background color
     <View className={`flex-1 ${bgColorClass}`}>
       <ImageBackground
         source={require('../../../assets/images/MainBG.png')}
-        className="flex-1" // Ensure the background covers the entire area
+        className="flex-1"
         resizeMode="cover"
       >
-        {/* 2. Inner View handles padding, swipe, and content */}
         <View
           {...panResponder.panHandlers}
           className="flex-1"
