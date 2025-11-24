@@ -23,6 +23,8 @@ const LearnStack = () => {
         <Stack.Screen name="numbers" options={{ title: 'Numbers' }} />
         <Stack.Screen name="phrases" options={{ title: 'Phrases' }} />
         <Stack.Screen name="saved" options={{ title: 'Saved Signs' }} />
+        {/* New Screen Added Below */}
+        <Stack.Screen name="videos" options={{ title: 'Video Lessons' }} />
       </Stack>
     </View>
   );

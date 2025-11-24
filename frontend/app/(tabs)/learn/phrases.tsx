@@ -105,7 +105,7 @@ export default function PhraseLearnScreen() {
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
 
-  // 🕒 LEARNING TIME TRACKER
+  // ðŸ•’ LEARNING TIME TRACKER
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
@@ -159,7 +159,7 @@ export default function PhraseLearnScreen() {
     }
   };
 
-  // 🧠 1. INITIAL LOAD: Restore state from storage and handle redirects
+  // ðŸ§  1. INITIAL LOAD: Restore state from storage and handle redirects
   useEffect(() => {
     (async () => {
       const uid = await getCurrentUserId();
@@ -217,7 +217,7 @@ export default function PhraseLearnScreen() {
     })();
   }, [initialPhraseId]);
 
-  // 🧠 2. CATEGORY CHANGE LOGIC
+  // ðŸ§  2. CATEGORY CHANGE LOGIC
   useEffect(() => {
     if (phrasesForCategory.length > 0) {
       const isPhraseInCurrentCat = phrasesForCategory.find(p => p.id === selectedPhrase?.id);
@@ -395,17 +395,6 @@ export default function PhraseLearnScreen() {
               contentContainerStyle={{ gap: 12, paddingRight: 8 }}
             >
               {phrasesForCategory.map((phrase, idx) => {
-                // Logic for `prevCompleted` determines if this specific phrase is clickable
-                // It is clickable if:
-                // 1. It is the very first phrase of the first category (Global Index 0)
-                // 2. OR The phrase strictly before it (in this category) is done.
-                // NOTE: This logic locks strictly within categories. To make it sequential across categories, 
-                // we would need global indexing, but for UI UX, per-category locking is usually sufficient 
-                // provided the user can't skip categories.
-                // However, since we allowed category switching, we should perhaps check if the *previous category* is done?
-                // For simplicity and better UX, we allow browsing categories, but lock individual items inside.
-                
-                // Check global previous completion
                 const globalIndex = phrases.findIndex(p => p.id === phrase.id);
                 const prevGlobalCompleted = globalIndex === 0 || doneIds.includes(phrases[globalIndex - 1].id);
                 
@@ -499,7 +488,9 @@ export default function PhraseLearnScreen() {
                 overflow: 'hidden',
               }}
             >
+              {/* Added key prop to force re-render when selectedPhrase changes */}
               <Video
+                key={selectedPhrase.id}
                 source={selectedPhrase.videoUrl}
                 rate={isSlowMotion ? 0.5 : 1.0}
                 volume={1.0}

@@ -382,7 +382,9 @@ const Letters = () => {
                   overflow: 'hidden',
                 }}
               >
+                {/* Added key prop to force re-render when currentIdx changes */}
                 <Video
+                  key={currentIdx}
                   source={letterData.image}
                   style={{ width: '100%', height: '100%', borderRadius: 20 }}
                   resizeMode={ResizeMode.COVER}
@@ -395,7 +397,7 @@ const Letters = () => {
               </View>
             </View>
 
-            {/* Camera Panel & Controls omitted for brevity, exact same as previous file */}
+            {/* Camera Panel */}
             {isCameraPanelVisible && (
               <Animated.View
                 style={{
