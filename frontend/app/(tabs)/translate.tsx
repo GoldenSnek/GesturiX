@@ -35,6 +35,7 @@ import {
     CameraDevice,
     useCameraFormat,
 } from "react-native-vision-camera";
+import { ENDPOINTS } from "../../constants/ApiConfig"; // 🔌 Import Config
 
 // --- AnimatedCorner Component (No Change) ---
 const AnimatedCorner = ({ isTranslating, borderStyle }: { isTranslating: boolean; borderStyle: any }) => {
@@ -263,9 +264,8 @@ export default function Translate() {
                     name: "frame.jpg",
                 } as any)
 
-                // Assuming the server endpoint and response structure remain the same
-                const res = await axios.post("http:// 192.168.108.136:8000/predict", formData, { 
-
+                // 🔌 Updated: Use centralized config
+                const res = await axios.post(ENDPOINTS.PREDICT, formData, { 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
 
@@ -361,7 +361,8 @@ export default function Translate() {
         setIsEnhancing(true);
         setEnhancedTranslation("AI is enhancing translation...");
         try {
-            const response = await axios.post("http:// 192.168.108.136:8000/enhance", {
+            // 🔌 Updated: Use centralized config
+            const response = await axios.post(ENDPOINTS.ENHANCE, {
                 raw_text: rawTextToEnhance,
             });
 
