@@ -14,10 +14,23 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { Video, ResizeMode } from 'expo-av';
 import { phrases } from '../../../constants/phrases';
-import { markPhraseCompleted, getCompletedPhrases, resetPhraseProgress, updateStreakOnLessonComplete, updatePracticeTime } from '../../../utils/progressStorage';
+import { 
+  markPhraseCompleted, 
+  getCompletedPhrases, 
+  resetPhraseProgress, 
+  updateStreakOnLessonComplete, 
+  updatePracticeTime 
+} from '../../../utils/progressStorage';
+import { 
+  getCurrentUserId, 
+  getUserSavedItems, 
+  saveItem, 
+  unsaveItem,
+  SavedItem 
+} from '../../../utils/supabaseApi';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
 
 const STORAGE_LAST_PHRASE = 'phrasescreen_last_phrase_id';
 
@@ -71,6 +84,7 @@ export default function PhraseLearnScreen() {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+  const { initialPhraseId } = useLocalSearchParams<{ initialPhraseId?: string }>(); // Capture param
 
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
@@ -82,11 +96,14 @@ export default function PhraseLearnScreen() {
   const [selectedPhrase, setSelectedPhrase] = useState(phrasesForCategory[0]);
   const [completed, setCompleted] = useState(false);
 
+  // Saved State
+  const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
   // 🕹️ Controls State
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-  
-  // 💡 New State: Modal visibility
   const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
@@ -96,35 +113,79 @@ export default function PhraseLearnScreen() {
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
-      
-      // Optional: Mark user as active immediately for streak purposes if desired, 
-      // but currently we only do it on lesson completion.
-      
       return () => {
-        const endTime = Date.now();
-        const durationMs = endTime - startTime;
-        const durationHours = durationMs / 1000 / 60 / 60;
-        
-        // Only log if meaningful time spent (> 2 seconds)
+        const durationMs = Date.now() - startTime;
         if (durationMs > 2000) {
-          updatePracticeTime(durationHours);
+          updatePracticeTime(durationMs / 1000 / 60 / 60);
         }
       };
     }, [])
   );
 
-  // 🧠 1. INITIAL LOAD: Restore state from storage
+  // Load Saved
+  useFocusEffect(
+    useCallback(() => {
+      const loadSaved = async () => {
+        const uid = await getCurrentUserId();
+        setUserId(uid);
+        if (uid) {
+          const items = await getUserSavedItems(uid);
+          setUserSavedItems(items);
+        }
+      };
+      loadSaved();
+    }, [])
+  );
+
+  // Check saved status
+  useEffect(() => {
+    if (selectedPhrase?.id) {
+      const found = userSavedItems.find(
+        i => i.item_type === 'phrase' && i.item_identifier === selectedPhrase.id
+      );
+      setIsSaved(!!found);
+    }
+  }, [selectedPhrase, userSavedItems]);
+
+  const handleToggleSave = async () => {
+    if (!userId || !selectedPhrase?.id) return;
+
+    if (isSaved) {
+      setIsSaved(false);
+      await unsaveItem(userId, 'phrase', selectedPhrase.id);
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    } else {
+      setIsSaved(true);
+      await saveItem(userId, 'phrase', selectedPhrase.id);
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    }
+  };
+
+  // 🧠 1. INITIAL LOAD: Restore state from storage and handle redirects
   useEffect(() => {
     (async () => {
       const lastId = await AsyncStorage.getItem(STORAGE_LAST_PHRASE);
-      const match = phrases.find(p => p.id === lastId);
       
+      // Priority 1: Navigation Param (Redirection from Saved Screen)
+      if (initialPhraseId) {
+        const match = phrases.find(p => p.id === initialPhraseId);
+        if (match) {
+          setActiveCategory(match.category);
+          setSelectedPhrase(match);
+          const done = await getCompletedPhrases(phrases.map(p => p.id));
+          setDoneIds(done);
+          return;
+        }
+      }
+
+      // Priority 2: Last saved state
+      const match = phrases.find(p => p.id === lastId);
       if (match) {
-        // Restore category AND phrase
         setActiveCategory(match.category);
         setSelectedPhrase(match);
       } else {
-        // Default
         setActiveCategory(CATEGORIES[0].key);
         setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
       }
@@ -132,18 +193,14 @@ export default function PhraseLearnScreen() {
       const done = await getCompletedPhrases(phrases.map(p => p.id));
       setDoneIds(done);
     })();
-  }, []);
+  }, [initialPhraseId]); // Added initialPhraseId dependency
 
-  // 🧠 2. CATEGORY CHANGE LOGIC (Optimized)
+  // 🧠 2. CATEGORY CHANGE LOGIC
   useEffect(() => {
     if (phrasesForCategory.length > 0) {
-      // Logic: If the currently selected phrase IS NOT in the new category, 
-      // reset to the first one. This prevents overwriting the "restored" phrase
-      // on initial load (where activeCategory matches selectedPhrase).
       const isPhraseInCurrentCat = phrasesForCategory.find(p => p.id === selectedPhrase?.id);
 
       if (!isPhraseInCurrentCat) {
-        // New category selected manually by user -> Go to first item
         setSelectedPhrase(phrasesForCategory[0]);
         setTimeout(() => {
           if (scrollRef.current) {
@@ -151,22 +208,20 @@ export default function PhraseLearnScreen() {
           }
         }, 50);
       } else {
-        // We just loaded/restored a phrase that IS in this category.
-        // Scroll to it!
         const index = phrasesForCategory.findIndex(p => p.id === selectedPhrase.id);
         if (index > 0) {
           setTimeout(() => {
             if (scrollRef.current) {
-              const itemWidth = 90 + 18 * 2; // Item width + padding
+              const itemWidth = 90 + 18 * 2; 
               const gap = 12;
               const scrollToX = (itemWidth + gap) * index;
               scrollRef.current.scrollTo({ x: scrollToX, animated: true });
             }
-          }, 100); // Slight delay for layout
+          }, 100);
         }
       }
     }
-  }, [activeCategory, phrasesForCategory]); // Intentionally excludes selectedPhrase from deps
+  }, [activeCategory, phrasesForCategory]);
 
   // Save state whenever selection changes
   useEffect(() => {
@@ -182,7 +237,7 @@ export default function PhraseLearnScreen() {
     const currentIdx = allPhrasesInCat.findIndex(p => p.id === selectedPhrase.id);
     
     await markPhraseCompleted(selectedPhrase.id);
-    await updateStreakOnLessonComplete(); // ✅ Updates streak
+    await updateStreakOnLessonComplete();
     
     const done = await getCompletedPhrases(phrases.map(p => p.id));
     setDoneIds(done);
@@ -191,7 +246,6 @@ export default function PhraseLearnScreen() {
     if (currentIdx < allPhrasesInCat.length - 1) {
       setTimeout(() => {
         setSelectedPhrase(allPhrasesInCat[currentIdx + 1]);
-        // Auto scroll handled by useEffect potentially, but direct scrolling is smoother here
         if (scrollRef.current) {
            const itemWidth = 90 + 18 * 2;
            const gap = 12;
@@ -201,7 +255,6 @@ export default function PhraseLearnScreen() {
       }, 200);
 
     } else {
-      // Finished this category: move to FIRST phrase in next category
       const currentCatIdx = CATEGORIES.findIndex(c => c.key === activeCategory);
       if (currentCatIdx < CATEGORIES.length - 1) {
         setTimeout(() => {
@@ -425,7 +478,7 @@ export default function PhraseLearnScreen() {
               />
             </View>
 
-            {/* Tips & Controls (Same as before) */}
+            {/* Tips & Controls */}
             <Text
               style={{
                 marginVertical: 8,
@@ -524,23 +577,25 @@ export default function PhraseLearnScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => { /* Placeholder */ }}
+                onPress={handleToggleSave}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
-                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                  isSaved
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
                 }`}
               >
                 <MaterialIcons 
-                  name="bookmark-outline" 
+                  name={isSaved ? "bookmark" : "bookmark-outline"} 
                   size={20} 
-                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  color={isSaved ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
                   style={{ marginBottom: 2 }}
                 />
                 <Text
-                  className={`text-xs text-center ${textColor}`}
+                  className={`text-xs text-center ${isSaved ? 'text-secondary' : textColor}`}
                   style={{ fontFamily: 'Fredoka-Regular' }}
                   numberOfLines={1}
                 >
-                  Save
+                  {isSaved ? 'Saved' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>

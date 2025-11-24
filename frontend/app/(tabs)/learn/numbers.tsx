@@ -1,5 +1,5 @@
 // File: frontend/app/(tabs)/learn/numbers.tsx
-import React, { useEffect, useState, useCallback } from 'react'; // 🔌 Added useCallback
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -20,10 +20,17 @@ import {
   markNumberCompleted, 
   resetNumberProgress, 
   updateStreakOnLessonComplete,
-  updatePracticeTime // 🔌 Import
+  updatePracticeTime
 } from '../../../utils/progressStorage';
+import { 
+  getCurrentUserId, 
+  getUserSavedItems, 
+  saveItem, 
+  unsaveItem,
+  SavedItem 
+} from '../../../utils/supabaseApi';
 import { Video, ResizeMode } from 'expo-av';
-import { useFocusEffect } from '@react-navigation/native'; // 🔌 Import
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
 
 const STORAGE_LAST_NUMBER = 'numberscreen_last_number';
 
@@ -70,6 +77,7 @@ const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onCl
 const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
+  const { initialNumber } = useLocalSearchParams<{ initialNumber?: string }>(); // Capture param
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
@@ -77,6 +85,11 @@ const Numbers = () => {
   const [doneNumbers, setDoneNumbers] = useState<number[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+  // Saved State
+  const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
@@ -95,6 +108,49 @@ const Numbers = () => {
     }, [])
   );
 
+  // Load user saved items
+  useFocusEffect(
+    useCallback(() => {
+      const loadSaved = async () => {
+        const uid = await getCurrentUserId();
+        setUserId(uid);
+        if (uid) {
+          const items = await getUserSavedItems(uid);
+          setUserSavedItems(items);
+        }
+      };
+      loadSaved();
+    }, [])
+  );
+
+  // Check saved status
+  useEffect(() => {
+    const currentNum = numbersData[currentIdx]?.number;
+    if (currentNum !== undefined) {
+      const found = userSavedItems.find(
+        i => i.item_type === 'number' && i.item_identifier === currentNum.toString()
+      );
+      setIsSaved(!!found);
+    }
+  }, [currentIdx, userSavedItems]);
+
+  const handleToggleSave = async () => {
+    const currentNum = numbersData[currentIdx]?.number;
+    if (!userId || currentNum === undefined) return;
+
+    if (isSaved) {
+      setIsSaved(false);
+      await unsaveItem(userId, 'number', currentNum.toString());
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    } else {
+      setIsSaved(true);
+      await saveItem(userId, 'number', currentNum.toString());
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       const lastNumStr = await AsyncStorage.getItem(STORAGE_LAST_NUMBER);
@@ -102,6 +158,17 @@ const Numbers = () => {
       const done = await getCompletedNumbers(allNumbers);
       setDoneNumbers(done);
 
+      // Priority 1: Navigation Param (Redirection from Saved Screen)
+      if (initialNumber) {
+        const numVal = parseInt(initialNumber, 10);
+        const paramIdx = numbersData.findIndex(n => n.number === numVal);
+        if (paramIdx !== -1) {
+          setCurrentIdx(paramIdx);
+          return;
+        }
+      }
+
+      // Priority 2: Last saved state
       if (lastNumStr) {
         const lastNum = parseInt(lastNumStr, 10);
         const lastIdx = numbersData.findIndex(n => n.number === lastNum);
@@ -110,10 +177,12 @@ const Numbers = () => {
           return;
         }
       }
+
+      // Priority 3: First uncompleted item
       const nextIdx = numbersData.findIndex(n => !done.includes(n.number));
       setCurrentIdx(nextIdx === -1 ? 0 : nextIdx);
     })();
-  }, []);
+  }, [initialNumber]); // Added initialNumber to dependency array
 
   useEffect(() => {
     if (numbersData[currentIdx]) {
@@ -372,23 +441,25 @@ const Numbers = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => { /* Placeholder */ }}
+                onPress={handleToggleSave}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
-                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                  isSaved 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
                 }`}
               >
                 <MaterialIcons 
-                  name="bookmark-outline" 
+                  name={isSaved ? "bookmark" : "bookmark-outline"}
                   size={20} 
-                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  color={isSaved ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
                   style={{ marginBottom: 2 }}
                 />
                 <Text
-                  className={`text-xs text-center ${textColor}`}
+                  className={`text-xs text-center ${isSaved ? 'text-secondary' : textColor}`}
                   style={{ fontFamily: 'Fredoka-Regular' }}
                   numberOfLines={1}
                 >
-                  Save
+                  {isSaved ? 'Saved' : 'Save'}
                 </Text>
               </TouchableOpacity>
 
