@@ -332,7 +332,9 @@ const Numbers = () => {
                   overflow: 'hidden',
                 }}
               >
+                {/* Added key prop to force re-render when currentIdx changes */}
                 <Video
+                  key={currentIdx}
                   source={currentData.video}
                   style={{ width: '100%', height: '100%', borderRadius: 18 }}
                   resizeMode={ResizeMode.COVER}
