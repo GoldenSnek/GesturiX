@@ -1,3 +1,4 @@
+// File: frontend/app/(stack)/verify-code.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -13,18 +14,24 @@ import { useAuth } from '../../src/AuthContext';
 import { ChevronLeft } from 'lucide-react-native';
 import Message, { MessageType } from '../../components/Message';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+import { supabase } from '../../src/supabaseClient';
+import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
+
+// Polyfill Buffer for image upload
+global.Buffer = global.Buffer || Buffer;
 
 const { width } = Dimensions.get('window');
-const BOX_SIZE = width / 8; // Dynamic box size based on screen width
+const BOX_SIZE = width / 8; 
 
 export default function VerifyCode() {
-  const { email } = useLocalSearchParams<{ email: string }>();
+  // Receive email AND image params
+  const { email, image } = useLocalSearchParams<{ email: string; image?: string }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('error');
   
-  // Resend Timer State
   const [resendTimer, setResendTimer] = useState(45);
   const [canResend, setCanResend] = useState(false);
   
@@ -33,8 +40,6 @@ export default function VerifyCode() {
   const inputRef = useRef<TextInput>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
-  // Timer Logic
   useEffect(() => {
     if (resendTimer > 0) {
       timerRef.current = setTimeout(() => {
@@ -62,31 +67,62 @@ export default function VerifyCode() {
     }
 
     setLoading(true);
-    const { error } = await verifyOtp(email, code);
-    setLoading(false);
+    const { data, error } = await verifyOtp(email, code);
 
     if (error) {
+      setLoading(false);
       showStatus(error.message, 'error');
-    } else {
-      showStatus('Email verified successfully!', 'success');
-      setTimeout(() => {
-        router.replace('/(tabs)/translate');
-      }, 1000);
+      return;
     }
+
+    // Verification successful, try to upload image if it exists
+    if (data?.user && image) {
+      try {
+        const userId = data.user.id;
+        const fileExt = image.split('.').pop();
+        const fileName = `${userId}/${Date.now()}.${fileExt}`;
+        
+        // Read file as Base64
+        const base64 = await FileSystem.readAsStringAsync(image, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+        const fileBytes = Buffer.from(base64, 'base64');
+
+        // Upload to 'avatars' bucket
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, fileBytes, { contentType: 'image/jpeg', upsert: true });
+
+        if (!uploadError) {
+          // Update profile with the new photo_url
+          await supabase
+            .from('profiles')
+            .update({ 
+              photo_url: fileName, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', userId);
+        } else {
+          console.log("Image upload failed:", uploadError.message);
+        }
+      } catch (err) {
+        console.log("Error processing profile image:", err);
+      }
+    }
+
+    setLoading(false);
+    showStatus('Email verified successfully!', 'success');
+    setTimeout(() => {
+      router.replace('/(tabs)/translate');
+    }, 1000);
   };
 
   const handleResendCode = async () => {
     if (!canResend) return;
-
-    // 1. Reset UI state immediately
     setCanResend(false);
     setResendTimer(45);
-
-    // 2. Call Supabase to resend
     const { error } = await resendOtp(email);
-
     if (error) {
-      // If error (e.g. rate limit), show error but timer continues to prevent spam
       showStatus(error.message, 'error');
     } else {
       showStatus('Verification code resent! Check your email.', 'success');
@@ -104,10 +140,8 @@ export default function VerifyCode() {
       className="flex-1 justify-center items-center"
       resizeMode="cover"
     >
-      {/* Dark Overlay */}
       <View className="absolute inset-0 bg-black opacity-40" />
 
-      {/* Back Button */}
       <TouchableOpacity
         onPress={handleGoBack}
         className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10"
@@ -115,15 +149,12 @@ export default function VerifyCode() {
         <ChevronLeft color="#1A1A1A" size={28} />
       </TouchableOpacity>
 
-      {/* Status Message */}
       <Message message={message} type={messageType} onClose={() => setMessage('')} />
 
-      {/* Main Card */}
       <Animated.View
         entering={FadeInUp.duration(700).delay(150)}
         className="w-[90%] max-w-md p-8 rounded-3xl bg-white/80 items-center"
       >
-        {/* Header */}
         <Animated.Text
           entering={FadeInDown.delay(200).duration(600)}
           className="text-3xl text-black mb-2 text-center font-audiowide"
@@ -139,17 +170,14 @@ export default function VerifyCode() {
           <Text className="font-fredoka-semibold text-accent">{email}</Text>
         </Animated.Text>
 
-        {/* OTP Input Section */}
         <Animated.View 
           entering={FadeInUp.delay(350).duration(600)}
           className="w-full mb-8 items-center justify-center"
         >
-          {/* Invisible Input overlay to handle typing */}
           <TextInput
             ref={inputRef}
             value={code}
             onChangeText={(text) => {
-              // Only allow numbers
               if (/^\d*$/.test(text)) {
                 setCode(text);
               }
@@ -160,7 +188,6 @@ export default function VerifyCode() {
             autoFocus
           />
 
-          {/* Visible Boxes */}
           <View style={styles.otpContainer}>
             {[0, 1, 2, 3, 4, 5].map((index) => (
               <TouchableOpacity
@@ -183,7 +210,6 @@ export default function VerifyCode() {
           </View>
         </Animated.View>
 
-        {/* Verify Button */}
         <Animated.View entering={FadeInUp.delay(450).duration(600)} className="w-full">
           <TouchableOpacity
             onPress={handleVerify}
@@ -191,12 +217,11 @@ export default function VerifyCode() {
             className="w-full bg-accent rounded-full py-4 items-center shadow-lg"
           >
             <Text className="text-white text-lg font-audiowide">
-              {loading ? 'Verifying...' : 'Verify Account'}
+              {loading ? (image ? 'Setting up profile...' : 'Verifying...') : 'Verify Account'}
             </Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Resend Code with Timer */}
         <Animated.View entering={FadeInUp.delay(550).duration(600)} className="mt-6 flex-row">
           <Text className="text-gray-600 font-fredoka">Didn't receive a code? </Text>
           <TouchableOpacity 
@@ -229,7 +254,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    // Small padding to prevent boxes from touching the container edges
     paddingHorizontal: 4, 
   },
   otpBox: {
