@@ -1,3 +1,4 @@
+// File: frontend/app/(tabs)/quiz.tsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -8,7 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   Dimensions,
-  PanResponder, // ✅ Added PanResponder
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -18,11 +19,10 @@ import * as Haptics from 'expo-haptics';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../../src/ThemeContext';
 import { alphabetSigns } from '../../constants/alphabetSigns';
-import { updateStreakOnLessonComplete } from '../../utils/progressStorage';
+import { updateStreakOnLessonComplete, updatePracticeTime } from '../../utils/progressStorage'; // 🔌 Import
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ENDPOINTS } from '../../constants/ApiConfig'; // 🔌 Import Config
+import { ENDPOINTS } from '../../constants/ApiConfig';
 
-// --- Configuration ---
 const TOTAL_QUESTIONS = 10;
 const DETECTION_INTERVAL = 600;
 const REQUIRED_MATCH_STREAK = 2;
@@ -43,7 +43,6 @@ export default function QuizScreen() {
   const { isDark } = useTheme();
   const router = useRouter();
 
-  // --- Colors ---
   const colors = {
     text: isDark ? '#F8F8F8' : '#2C2C2C',
     subText: isDark ? '#A8A8A8' : '#666666',
@@ -55,18 +54,15 @@ export default function QuizScreen() {
     activeBorder: isDark ? '#FF6B00' : '#FF6B00',
   };
 
-  // --- State ---
   const [hasPermission, setHasPermission] = useState(false);
   const [gameState, setGameState] = useState<GameState>('menu');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [score, setScore] = useState(0);
 
-  // Feedback State
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  // Camera State
   const [isDetecting, setIsDetecting] = useState(false);
   const [currentPrediction, setCurrentPrediction] = useState('...');
   const [matchStreak, setMatchStreak] = useState(0);
@@ -74,7 +70,6 @@ export default function QuizScreen() {
   const cameraRef = useRef<Camera>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  // --- Camera Setup ---
   const devices = useCameraDevices();
   const device = devices.find((d) => d.position === 'front') ?? devices.find((d) => d.position === 'back');
   const format = useCameraFormat(device, [
@@ -82,16 +77,13 @@ export default function QuizScreen() {
     { fps: 30 }
   ]);
 
-  // ✅ PanResponder for Swipe Navigation
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10,
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -30) {
-          // Swipe Left -> Go to Profile
           router.push('/profile');
         } else if (gestureState.dx > 30) {
-          // Swipe Right -> Go to Learn
           router.push('/learn');
         }
       },
@@ -104,6 +96,19 @@ export default function QuizScreen() {
       setHasPermission(status === 'granted');
     })();
   }, []);
+
+  // 🕒 LEARNING TIME TRACKER (Added separate hook for clarity)
+  useFocusEffect(
+    useCallback(() => {
+      const startTime = Date.now();
+      return () => {
+        const durationMs = Date.now() - startTime;
+        if (durationMs > 2000) {
+          updatePracticeTime(durationMs / 1000 / 60 / 60);
+        }
+      };
+    }, [])
+  );
 
   // Reset when leaving tab
   useFocusEffect(
@@ -210,7 +215,6 @@ export default function QuizScreen() {
     if (score > 0) await updateStreakOnLessonComplete();
   };
 
-  // --- Camera Loop ---
   useEffect(() => {
     if (!isDetecting || gameState !== 'playing' || answerState !== 'idle' || !cameraRef.current) return;
 
@@ -247,8 +251,6 @@ export default function QuizScreen() {
 
     return () => clearInterval(interval);
   }, [isDetecting, gameState, currentQIndex, answerState]);
-
-  // --- Renderers ---
 
   const renderMenu = () => (
     <View className="flex-1 justify-center items-center px-6">
@@ -307,7 +309,6 @@ export default function QuizScreen() {
 
     return (
       <View className="flex-1">
-        {/* Header Bar */}
         <View className="flex-row items-center px-6 mt-2 mb-4">
           <TouchableOpacity 
             onPress={() => setGameState('menu')} 
@@ -334,7 +335,6 @@ export default function QuizScreen() {
         </View>
 
         <View className="flex-1 px-6">
-          {/* === RECOGNITION === */}
           {!isPerformance && (
             <View className="flex-1">
               <Text className={`text-xl font-audiowide mb-6 text-center ${colors.text}`}>
@@ -358,20 +358,16 @@ export default function QuizScreen() {
                   let btnBorder = isDark ? '#444' : '#E5E5E5';
                   let btnText = colors.text;
 
-                  // Subtle Logic: Only change the specific buttons involved
                   if (answerState !== 'idle') {
                     if (opt === q.target.letter) {
-                      // Correct answer always turns green
                       btnBg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5';
                       btnBorder = colors.success;
                       btnText = colors.success;
                     } else if (opt === selectedOption && opt !== q.target.letter) {
-                      // Wrong selection turns red
                       btnBg = isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2';
                       btnBorder = colors.error;
                       btnText = colors.error;
                     } else {
-                      // Others fade out slightly
                       btnBorder = 'transparent';
                       btnBg = isDark ? '#222' : '#F9F9F9';
                     }
@@ -395,7 +391,6 @@ export default function QuizScreen() {
             </View>
           )}
 
-          {/* === PERFORMANCE === */}
           {isPerformance && (
             <View className="flex-1 items-center">
               <Text className={`text-lg font-audiowide mb-1 text-center ${colors.subText}`}>
@@ -410,7 +405,6 @@ export default function QuizScreen() {
                 style={{ 
                   maxHeight: '52%', 
                   borderWidth: 4,
-                  // Only the border changes color for feedback
                   borderColor: answerState === 'correct' ? colors.success : (answerState === 'incorrect' ? colors.error : colors.accent)
                 }}
               >
@@ -427,7 +421,6 @@ export default function QuizScreen() {
                   <View className="flex-1 justify-center items-center"><Text className="text-white">No Camera</Text></View>
                 )}
 
-                {/* Sleek Overlay for Success */}
                 {answerState === 'correct' && (
                   <View className="absolute inset-0 bg-black/40 justify-center items-center">
                     <View className="bg-white p-4 rounded-full">
@@ -436,7 +429,6 @@ export default function QuizScreen() {
                   </View>
                 )}
 
-                {/* Debug/Hint Text */}
                 {answerState === 'idle' && (
                   <View className="absolute bottom-3 right-3 bg-black/60 px-3 py-1 rounded-lg">
                     <Text className="text-white/80 font-mono text-xs">
@@ -446,7 +438,6 @@ export default function QuizScreen() {
                 )}
               </View>
 
-              {/* Skip Button - Closer to camera */}
               <View className="w-full mt-6 items-center">
                 <TouchableOpacity
                   onPress={skipQuestion}
@@ -472,7 +463,6 @@ export default function QuizScreen() {
         className="flex-1"
         resizeMode="cover"
       >
-        {/* ✅ Applied PanResponder Handlers here to catch swipes across the screen */}
         <View 
           className="flex-1" 
           style={{ paddingTop: insets.top }}
