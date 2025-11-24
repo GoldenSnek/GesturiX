@@ -1,18 +1,13 @@
 import { Stack } from 'expo-router';
-import React from 'react';
 
-const AuthStackLayout = () => {
+export default function StackLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false, animation: 'slide_from_right'
-      }}
-    >
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="Login" />
       <Stack.Screen name="SignUp" />
+      {/* Add this line: */}
+      <Stack.Screen name="verify-code" options={{ presentation: 'modal' }} />
     </Stack>
   );
-};
-
-export default AuthStackLayout;
+}

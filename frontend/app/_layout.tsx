@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import './global.css';
 import { ThemeProvider } from '../src/ThemeContext';
+import { AuthProvider } from '../src/AuthContext';
 
 import { useFonts } from 'expo-font';
 
@@ -79,10 +80,12 @@ const RootLayout = () => {
 
   return (
     <ThemeProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(stack)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(stack)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </AuthProvider>
     </ThemeProvider>
   );
 };
