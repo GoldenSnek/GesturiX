@@ -130,10 +130,10 @@ export default function SavedSignsScreen() {
               colors={['#FF6B00', '#FFAB7B']}
               className="py-3 px-4 flex-row items-center"
             >
-              <TouchableOpacity onPress={() => router.back()} className="p-1 mr-2">
+              <TouchableOpacity onPress={() => router.back()} className="p-1 absolute left-4 z-10">
                 <Ionicons name="arrow-back" size={24} color="black" />
               </TouchableOpacity>
-              <View>
+              <View className="flex-1 items-center">
                 <Text className="text-primary text-xl font-fredoka-semibold">Saved Signs</Text>
                 <Text className="text-primary text-xs font-fredoka">Your personal collection</Text>
               </View>

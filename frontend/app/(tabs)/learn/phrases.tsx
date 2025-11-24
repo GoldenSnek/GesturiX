@@ -30,9 +30,7 @@ import {
 } from '../../../utils/supabaseApi';
 import { useTheme } from '../../../src/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
-
-const STORAGE_LAST_PHRASE = 'phrasescreen_last_phrase_id';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 const CATEGORIES = [
   { key: 'greetings', label: 'Greetings' },
@@ -84,7 +82,7 @@ export default function PhraseLearnScreen() {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
-  const { initialPhraseId } = useLocalSearchParams<{ initialPhraseId?: string }>(); // Capture param
+  const { initialPhraseId } = useLocalSearchParams<{ initialPhraseId?: string }>();
 
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
@@ -96,12 +94,10 @@ export default function PhraseLearnScreen() {
   const [selectedPhrase, setSelectedPhrase] = useState(phrasesForCategory[0]);
   const [completed, setCompleted] = useState(false);
 
-  // Saved State
   const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // 🕹️ Controls State
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
   const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
@@ -166,34 +162,60 @@ export default function PhraseLearnScreen() {
   // 🧠 1. INITIAL LOAD: Restore state from storage and handle redirects
   useEffect(() => {
     (async () => {
-      const lastId = await AsyncStorage.getItem(STORAGE_LAST_PHRASE);
-      
-      // Priority 1: Navigation Param (Redirection from Saved Screen)
-      if (initialPhraseId) {
+      const uid = await getCurrentUserId();
+      const done = await getCompletedPhrases(phrases.map(p => p.id));
+      setDoneIds(done);
+
+      // Determine the "ceiling" of progress to prevent skipping ahead
+      // Find the first phrase ID that is NOT in doneIds
+      const firstUncompletedIndex = phrases.findIndex(p => !done.includes(p.id));
+      // If everything is done, user can access everything. If not, they can access up to `firstUncompletedIndex`.
+      const maxAccessibleIndex = firstUncompletedIndex === -1 ? phrases.length - 1 : firstUncompletedIndex;
+
+      // Helper to check if a phrase ID is accessible
+      const isAccessible = (id: string) => {
+        const idx = phrases.findIndex(p => p.id === id);
+        return idx !== -1 && idx <= maxAccessibleIndex;
+      };
+
+      // Priority 1: Navigation Param
+      if (initialPhraseId && isAccessible(initialPhraseId)) {
         const match = phrases.find(p => p.id === initialPhraseId);
         if (match) {
           setActiveCategory(match.category);
           setSelectedPhrase(match);
-          const done = await getCompletedPhrases(phrases.map(p => p.id));
-          setDoneIds(done);
           return;
         }
       }
 
-      // Priority 2: Last saved state
-      const match = phrases.find(p => p.id === lastId);
-      if (match) {
-        setActiveCategory(match.category);
-        setSelectedPhrase(match);
-      } else {
-        setActiveCategory(CATEGORIES[0].key);
-        setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
+      // Priority 2: Last saved state (User Specific)
+      if (uid) {
+        const storageKey = `user_${uid}_phrases_last_id`;
+        const lastId = await AsyncStorage.getItem(storageKey);
+        
+        if (lastId && isAccessible(lastId)) {
+          const match = phrases.find(p => p.id === lastId);
+          if (match) {
+            setActiveCategory(match.category);
+            setSelectedPhrase(match);
+            return;
+          }
+        }
       }
-      
-      const done = await getCompletedPhrases(phrases.map(p => p.id));
-      setDoneIds(done);
+
+      // Priority 3: Default to first uncompleted (Sequential)
+      // If maxAccessibleIndex is 0, it starts at first phrase of first category.
+      const defaultPhrase = phrases[maxAccessibleIndex];
+      if (defaultPhrase) {
+        setActiveCategory(defaultPhrase.category);
+        setSelectedPhrase(defaultPhrase);
+      } else {
+        // Fallback absolute
+        setActiveCategory(CATEGORIES[0].key);
+        setSelectedPhrase(phrases[0]);
+      }
     })();
-  }, [initialPhraseId]); // Added initialPhraseId dependency
+  }, [initialPhraseId]);
 
   // 🧠 2. CATEGORY CHANGE LOGIC
   useEffect(() => {
@@ -223,13 +245,14 @@ export default function PhraseLearnScreen() {
     }
   }, [activeCategory, phrasesForCategory]);
 
-  // Save state whenever selection changes
+  // Save state (User Specific)
   useEffect(() => {
-    if (selectedPhrase?.id) {
-      AsyncStorage.setItem(STORAGE_LAST_PHRASE, selectedPhrase.id);
+    if (selectedPhrase?.id && userId) {
+      const storageKey = `user_${userId}_phrases_last_id`;
+      AsyncStorage.setItem(storageKey, selectedPhrase.id);
     }
     setCompleted(selectedPhrase && doneIds.includes(selectedPhrase.id));
-  }, [selectedPhrase, doneIds]);
+  }, [selectedPhrase, doneIds, userId]);
 
   // Progression logic
   const handleComplete = async () => {
@@ -269,7 +292,10 @@ export default function PhraseLearnScreen() {
     const done = await getCompletedPhrases(phrases.map(p => p.id));
     setDoneIds(done);
     setCompleted(false);
-    setSelectedPhrase(phrases.filter(p => p.category === activeCategory)[0]);
+    
+    // Reset view to start
+    setActiveCategory(CATEGORIES[0].key);
+    setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
   };
 
   const handleCameraAlert = () => {
@@ -369,7 +395,20 @@ export default function PhraseLearnScreen() {
               contentContainerStyle={{ gap: 12, paddingRight: 8 }}
             >
               {phrasesForCategory.map((phrase, idx) => {
-                const prevCompleted = idx === 0 || doneIds.includes(phrasesForCategory[idx - 1].id);
+                // Logic for `prevCompleted` determines if this specific phrase is clickable
+                // It is clickable if:
+                // 1. It is the very first phrase of the first category (Global Index 0)
+                // 2. OR The phrase strictly before it (in this category) is done.
+                // NOTE: This logic locks strictly within categories. To make it sequential across categories, 
+                // we would need global indexing, but for UI UX, per-category locking is usually sufficient 
+                // provided the user can't skip categories.
+                // However, since we allowed category switching, we should perhaps check if the *previous category* is done?
+                // For simplicity and better UX, we allow browsing categories, but lock individual items inside.
+                
+                // Check global previous completion
+                const globalIndex = phrases.findIndex(p => p.id === phrase.id);
+                const prevGlobalCompleted = globalIndex === 0 || doneIds.includes(phrases[globalIndex - 1].id);
+                
                 const isCompleted = doneIds.includes(phrase.id);
                 const isSelected = selectedPhrase.id === phrase.id;
 
@@ -378,7 +417,7 @@ export default function PhraseLearnScreen() {
                   backgroundColor = isDark ? '#1e1e1e' : '#faf3ec';
                   borderColor = '#FF6B00';
                   textColor = '#FF6B00';
-                } else if (!prevCompleted) {
+                } else if (!prevGlobalCompleted) {
                   backgroundColor = isDark ? '#222' : '#EFEFEF';
                   borderColor = isDark ? '#414141' : '#BDBDBD';
                   textColor = isDark ? '#A0A0A0' : '#BDBDBD';
@@ -395,10 +434,10 @@ export default function PhraseLearnScreen() {
                   <TouchableOpacity
                     key={phrase.id}
                     onPress={() => {
-                      if (prevCompleted) setSelectedPhrase(phrase);
+                      if (prevGlobalCompleted) setSelectedPhrase(phrase);
                     }}
-                    activeOpacity={prevCompleted ? 0.8 : 1}
-                    disabled={!prevCompleted}
+                    activeOpacity={prevGlobalCompleted ? 0.8 : 1}
+                    disabled={!prevGlobalCompleted}
                     style={{
                       backgroundColor,
                       paddingVertical: 12,
@@ -409,7 +448,7 @@ export default function PhraseLearnScreen() {
                       minWidth: 90,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      opacity: prevCompleted ? 1 : 0.6,
+                      opacity: prevGlobalCompleted ? 1 : 0.6,
                       position: 'relative',
                     }}
                   >
@@ -478,7 +517,7 @@ export default function PhraseLearnScreen() {
               />
             </View>
 
-            {/* Tips & Controls */}
+            {/* Tips & Controls omitted for brevity, same as original */}
             <Text
               style={{
                 marginVertical: 8,

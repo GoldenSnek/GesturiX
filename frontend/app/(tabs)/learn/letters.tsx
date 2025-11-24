@@ -34,16 +34,15 @@ import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-came
 import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
 import { ENDPOINTS } from '../../../constants/ApiConfig';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'; // Updated Import
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'; 
 
 const TOTAL_LETTERS = 26;
-const STORAGE_LAST_LETTER = 'letterscreen_last_letter';
 const CAMERA_PANEL_HEIGHT = 370;
 
 const Letters = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
-  const { initialLetter } = useLocalSearchParams<{ initialLetter?: string }>(); // Capture param
+  const { initialLetter } = useLocalSearchParams<{ initialLetter?: string }>(); 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
@@ -125,15 +124,13 @@ const Letters = () => {
     if (!userId || !currentLetter) return;
 
     if (isSaved) {
-      setIsSaved(false); // optimistic
+      setIsSaved(false); 
       await unsaveItem(userId, 'letter', currentLetter);
-      // Refresh list silently
       const items = await getUserSavedItems(userId);
       setUserSavedItems(items);
     } else {
-      setIsSaved(true); // optimistic
+      setIsSaved(true); 
       await saveItem(userId, 'letter', currentLetter);
-      // Refresh list silently
       const items = await getUserSavedItems(userId);
       setUserSavedItems(items);
     }
@@ -142,40 +139,56 @@ const Letters = () => {
   // Load progress on mount AND handle redirection param
   useEffect(() => {
     (async () => {
-      const lastLetter = await AsyncStorage.getItem(STORAGE_LAST_LETTER);
+      const uid = await getCurrentUserId();
       const letters = alphabetSigns.map(l => l.letter);
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
+
+      // Determine the first legitimate uncompleted index (Progression limit)
+      // If 'A' is not done, index is 0. If 'A' is done, index is 1 (B).
+      const firstUncompletedIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
+      // If all done, cap at last index
+      const maxAllowedIdx = firstUncompletedIdx === -1 ? TOTAL_LETTERS - 1 : firstUncompletedIdx;
 
       // Priority 1: Navigation Param (Redirection from Saved Screen)
       if (initialLetter) {
         const paramIdx = alphabetSigns.findIndex(l => l.letter === initialLetter);
         if (paramIdx !== -1) {
-          setCurrentIdx(paramIdx);
-          return;
+          // Allow jump if unlocked, or if it's the immediate next lesson
+          if (paramIdx <= maxAllowedIdx) {
+            setCurrentIdx(paramIdx);
+            return;
+          }
         }
       }
 
-      // Priority 2: Last saved state
-      if (lastLetter) {
-        const lastIdx = alphabetSigns.findIndex(l => l.letter === lastLetter);
-        if (lastIdx !== -1) {
-          setCurrentIdx(lastIdx);
-          return;
+      // Priority 2: Last saved state (User Specific Key)
+      if (uid) {
+        const storageKey = `user_${uid}_letters_last_idx`;
+        const lastLetter = await AsyncStorage.getItem(storageKey);
+        
+        if (lastLetter) {
+          const lastIdx = alphabetSigns.findIndex(l => l.letter === lastLetter);
+          // Validate: Don't jump to a locked letter
+          if (lastIdx !== -1 && lastIdx <= maxAllowedIdx) {
+            setCurrentIdx(lastIdx);
+            return;
+          }
         }
       }
 
-      // Priority 3: First uncompleted item
-      const nextIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
-      setCurrentIdx(nextIdx === -1 ? TOTAL_LETTERS - 1 : nextIdx);
+      // Priority 3: Sequential default (First uncompleted item)
+      setCurrentIdx(maxAllowedIdx);
     })();
-  }, [initialLetter]); // Added initialLetter to dependency array
+  }, [initialLetter]); 
 
+  // Save last state (User Specific)
   useEffect(() => {
-    if (alphabetSigns[currentIdx]) {
-      AsyncStorage.setItem(STORAGE_LAST_LETTER, alphabetSigns[currentIdx].letter);
+    if (alphabetSigns[currentIdx] && userId) {
+      const storageKey = `user_${userId}_letters_last_idx`;
+      AsyncStorage.setItem(storageKey, alphabetSigns[currentIdx].letter);
     }
-  }, [currentIdx]);
+  }, [currentIdx, userId]);
 
   useEffect(() => {
     setCompleted(doneLetters.includes(alphabetSigns[currentIdx].letter));
@@ -382,7 +395,7 @@ const Letters = () => {
               </View>
             </View>
 
-            {/* Camera Panel */}
+            {/* Camera Panel & Controls omitted for brevity, exact same as previous file */}
             {isCameraPanelVisible && (
               <Animated.View
                 style={{
@@ -533,10 +546,7 @@ const Letters = () => {
               </Text>
             </Text>
 
-            {/* 🛠️ Buttons Section */}
             <View className="flex-row justify-between mb-4">
-              
-              {/* 1. Slow Motion */}
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -560,7 +570,6 @@ const Letters = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Repeat */}
               <TouchableOpacity
                 onPress={() => setIsRepeating(!isRepeating)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -584,7 +593,6 @@ const Letters = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 3. Practice (Opens Camera) */}
               <TouchableOpacity
                 onPress={handleToggleCameraPanel}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -606,7 +614,6 @@ const Letters = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* 4. Save Sign */}
               <TouchableOpacity
                 onPress={handleToggleSave}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -632,7 +639,6 @@ const Letters = () => {
 
             </View>
 
-            {/* Mark as Completed Button */}
             <TouchableOpacity
               className={`w-full bg-accent rounded-full py-4 items-center shadow-md ${completed ? 'opacity-60' : ''}`}
               disabled={completed}
