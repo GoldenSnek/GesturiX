@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import { useTheme } from '../../src/ThemeContext';
+import { useSettings } from '../../src/SettingsContext'; // <--- Import SettingsContext
 import { 
   fetchUserStatistics, 
   getCurrentUserId, 
@@ -44,6 +45,7 @@ const Profile = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
+  const { vibrationEnabled, toggleVibration } = useSettings(); // <--- Consume Context
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -440,7 +442,8 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              <View className={`flex-row items-center justify-between py-3`}>
+              {/* Dark Mode Toggle */}
+              <View className={`flex-row items-center justify-between py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                   <View className="flex-row items-center">
                       <MaterialIcons name="dark-mode" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
                       <Text
@@ -455,6 +458,25 @@ const Profile = () => {
                       thumbColor={isDark ? '#fff' : '#f4f3f4'}
                       onValueChange={toggleTheme}
                       value={isDark}
+                  />
+              </View>
+
+              {/* Vibration Toggle */}
+              <View className={`flex-row items-center justify-between py-3 pt-4`}>
+                  <View className="flex-row items-center">
+                      <MaterialIcons name="vibration" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
+                      <Text
+                          className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
+                          style={{ fontFamily: 'Fredoka-Regular' }}
+                      >
+                          Vibration
+                      </Text>
+                  </View>
+                  <Switch
+                      trackColor={{ false: '#d1d5db', true: '#FF6B00' }}
+                      thumbColor={isDark ? '#fff' : '#f4f3f4'}
+                      onValueChange={toggleVibration}
+                      value={vibrationEnabled}
                   />
               </View>
             </View>
