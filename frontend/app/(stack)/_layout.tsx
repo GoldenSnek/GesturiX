@@ -6,8 +6,9 @@ export default function StackLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="Login" />
       <Stack.Screen name="SignUp" />
-      {/* Add this line: */}
       <Stack.Screen name="verify-code" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="ForgotPassword" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="verify-reset" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

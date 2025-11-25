@@ -55,6 +55,7 @@ const Login = () => {
       return;
     }
 
+    // Check and create profile if needed (handled silently usually, but kept per your logic)
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')
@@ -89,7 +90,6 @@ const Login = () => {
     >
       <View className="absolute inset-0 bg-black opacity-40" />
 
-      {/* Back button */}
       <TouchableOpacity
         onPress={handleGoBack}
         className="absolute top-12 left-8 p-2 rounded-full bg-white/80 z-10"
@@ -103,7 +103,6 @@ const Login = () => {
         entering={FadeInUp.duration(700).delay(150)}
         className="relative w-full max-w-sm p-8 rounded-3xl bg-white/80"
       >
-        {/* Title */}
         <Animated.Text
           entering={FadeInUp.delay(200).duration(600)}
           className="text-4xl text-black mb-10 text-center font-audiowide"
@@ -111,7 +110,6 @@ const Login = () => {
           Welcome Back
         </Animated.Text>
 
-        {/* Email */}
         <Animated.View entering={FadeInUp.delay(300).duration(600)}>
           <TextInput
             className="w-full border-2 border-accent rounded-lg p-4 mb-4 text-black text-lg font-montserrat-semibold bg-neutral"
@@ -124,9 +122,8 @@ const Login = () => {
           />
         </Animated.View>
 
-        {/* Password */}
         <Animated.View entering={FadeInUp.delay(400).duration(600)}>
-          <View className="w-full border-2 border-accent rounded-lg mb-4 bg-neutral flex-row items-center">
+          <View className="w-full border-2 border-accent rounded-lg mb-2 bg-neutral flex-row items-center">
             <TextInput
               className="flex-1 p-4 text-black text-lg font-montserrat-semibold"
               placeholder="Password"
@@ -149,17 +146,24 @@ const Login = () => {
           </View>
         </Animated.View>
 
-        {/* Login Button */}
+        {/* 🔗 Forgot Password Link */}
+        <Animated.View entering={FadeInUp.delay(450).duration(600)} className="w-full items-end mb-4">
+          <TouchableOpacity onPress={() => router.push('/(stack)/ForgotPassword')} className="p-1">
+            <Text className="text-black font-fredoka-medium text-sm">
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
         <Animated.View entering={FadeInUp.delay(500).duration(600)}>
           <TouchableOpacity
             onPress={handleLogin}
-            className="w-full bg-accent rounded-full py-4 items-center mt-4 shadow-lg"
+            className="w-full bg-accent rounded-full py-4 items-center shadow-lg"
           >
             <Text className="text-white text-lg font-audiowide">Log In</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Footer (Sign Up link) */}
         <Animated.View entering={FadeInUp.delay(600).duration(600)} className="mt-6 flex-row items-center justify-center">
           <Text className="text-black font-fredoka">Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/SignUp')}>
