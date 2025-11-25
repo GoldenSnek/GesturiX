@@ -152,3 +152,28 @@ export async function unsaveItem(userId: string, itemType: string, itemIdentifie
 
   if (error) console.error('Error unsaving item:', error);
 }
+
+// --- Practice Session Functions ---
+
+export async function logPracticeSession(
+  userId: string,
+  durationMinutes: number,
+  gesturesPracticed: number,
+  accuracyScore: number
+) {
+  const { error } = await supabase
+    .from('practice_sessions')
+    .insert({
+      user_id: userId,
+      session_type: 'mixed_quiz',
+      duration_minutes: Math.max(1, Math.round(durationMinutes)),
+      gestures_practiced: gesturesPracticed,
+      accuracy_score: accuracyScore,
+      started_at: new Date(Date.now() - durationMinutes * 60000).toISOString(),
+      ended_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error("Error logging practice session:", error.message);
+  }
+}

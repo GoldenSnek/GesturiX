@@ -1,5 +1,5 @@
 // File: frontend/app/(tabs)/learn/leaderboard.tsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -12,7 +12,8 @@ import {
   Modal,
   Dimensions,
   Animated,
-  StyleSheet
+  StyleSheet,
+  PanResponder
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -63,8 +64,9 @@ export default function LeaderboardScreen() {
   const [profileLikes, setProfileLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
-  const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
-  const [fadeAnim] = useState(new Animated.Value(0));
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new Animated.Value(0)).current;
 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
@@ -107,9 +109,42 @@ export default function LeaderboardScreen() {
   );
 
 
+  // PanResponder for swipe-down gesture
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (dy > dx)
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward swipes
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 150px, close the modal
+        if (gestureState.dy > 150) {
+          closeModal();
+        } else {
+          // Otherwise, spring back to original position
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 65,
+            friction: 11,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+
   // Modal Animation
   useEffect(() => {
     if (modalVisible) {
+      panY.setValue(0); // Reset pan position when opening
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -166,9 +201,6 @@ export default function LeaderboardScreen() {
     if (!selectedUser || !currentUserId || likeLoading) return;
 
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-
     // Optimistic Update
     const previousLiked = isLiked;
     const previousCount = profileLikes;
@@ -202,13 +234,11 @@ export default function LeaderboardScreen() {
   const openProfile = (user: LeaderboardUser) => {
     setSelectedUser(user);
     setModalVisible(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
 
   const closeModal = () => {
     setModalVisible(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
 
@@ -362,14 +392,17 @@ export default function LeaderboardScreen() {
                 />
               </Animated.View>
               
-              {/* Modal Content */}
+              {/* Modal Content with Pan Responder */}
               <Animated.View 
                 style={[
                   styles.modalContainer,
                   {
-                    transform: [{ translateY: slideAnim }]
+                    transform: [
+                      { translateY: Animated.add(slideAnim, panY) }
+                    ]
                   }
                 ]}
+                {...panResponder.panHandlers}
               >
                 <View 
                   className={`rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#1E1E1E]' : 'bg-white'}`}
@@ -383,16 +416,6 @@ export default function LeaderboardScreen() {
                   
                   {/* Drag Handle */}
                   <View className="absolute top-2 self-center w-12 h-1.5 bg-white/40 rounded-full" />
-
-
-                  {/* Close Button */}
-                  <TouchableOpacity 
-                    className="absolute top-3 right-4 w-10 h-10 rounded-full bg-white/20 items-center justify-center z-10"
-                    onPress={closeModal}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close" size={24} color="white" />
-                  </TouchableOpacity>
 
 
                   {selectedUser && (
