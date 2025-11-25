@@ -519,14 +519,14 @@ export default function LeaderboardScreen() {
 
 
                           {/* Hours */}
-                          <View className={`flex-1 items-center p-4 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
+                          <View className={`flex-1 items-center p-3 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
                             <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
                               <MaterialIcons name="timer" size={26} color="#FF6B00" />
                             </View>
                             <Text className={`text-xl font-fredoka-bold ${textColor}`}>
                               {selectedUser.practice_hours.toFixed(1)}
                             </Text>
-                            <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Hours</Text>
+                            <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Practice Hours</Text>
                           </View>
                         </View>
                       </View>

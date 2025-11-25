@@ -16,7 +16,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, AntDesign } from '@expo/vector-icons';
+import { MaterialIcons, AntDesign, Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../src/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,6 +28,7 @@ import {
   getCurrentUserId, 
   getProfileLikeCount 
 } from '../../utils/supabaseApi';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -59,6 +60,9 @@ const Profile = () => {
     practice_hours: 0,
   });
   const [likesCount, setLikesCount] = useState(0);
+
+  // 🔒 Change Password Modal State
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -365,7 +369,6 @@ const Profile = () => {
                 </Text>
               </View>
 
-              {/* REPLACED "Signs Learned" with "Popularity" */}
               <View
                 className={`w-[48%] rounded-2xl p-4 mb-4 items-center border border-accent shadow-md ${
                   isDark ? 'bg-darksurface' : 'bg-white'
@@ -518,6 +521,20 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
+              {/* Change Password Button */}
+              <TouchableOpacity
+                onPress={() => setIsPasswordModalVisible(true)}
+                className="flex-row items-center justify-between py-2 border-b border-orange-400"
+              >
+                <Text
+                  className={`text-base ${isDark ? 'text-secondary' : 'text-primary'}`}
+                  style={{ fontFamily: 'Fredoka-SemiBold' }}
+                >
+                  Change Password
+                </Text>
+                <MaterialIcons name="lock-outline" size={22} color="#FF6B00" />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => BackHandler.exitApp()}
                 className="flex-row items-center justify-between py-2 border-b border-orange-400"
@@ -546,6 +563,13 @@ const Profile = () => {
             </View>
             
           </ScrollView>
+
+          {/* Change Password Modal */}
+          <ChangePasswordModal 
+            visible={isPasswordModalVisible}
+            onClose={() => setIsPasswordModalVisible(false)}
+          />
+
         </View>
       </ImageBackground>
     </View>
