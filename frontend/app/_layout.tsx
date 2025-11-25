@@ -4,7 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import './global.css';
 import { ThemeProvider } from '../src/ThemeContext';
 import { AuthProvider } from '../src/AuthContext';
-import { SettingsProvider } from '../src/SettingsContext'; // <--- Import
+import { SettingsProvider } from '../src/SettingsContext'; 
 
 import { useFonts } from 'expo-font';
 
