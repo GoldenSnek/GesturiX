@@ -20,6 +20,7 @@ import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../../src/ThemeContext';
+import { useSettings } from '../../src/SettingsContext'; // <--- 1. Import Settings Context
 import { alphabetSigns } from '../../constants/alphabetSigns';
 import { phrases } from '../../constants/phrases';
 import { updateStreakOnLessonComplete, updatePracticeTime } from '../../utils/progressStorage';
@@ -69,12 +70,13 @@ interface QuizSettings {
   questionsCount: number;
   timeLimit: number;
   soundEnabled: boolean;
-  hapticsEnabled: boolean;
+  // hapticsEnabled removed from here as we use global context now
 }
 
 export default function QuizScreen() {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
+  const { vibrationEnabled } = useSettings(); // <--- 2. Consume Global Vibration Setting
   const router = useRouter();
 
   // 🎨 Unified Theme Colors
@@ -123,7 +125,6 @@ export default function QuizScreen() {
     questionsCount: 10,
     timeLimit: 25,
     soundEnabled: true,
-    hapticsEnabled: true,
   });
 
   // Refs
@@ -158,19 +159,18 @@ export default function QuizScreen() {
       const status = await Camera.requestCameraPermission();
       setHasPermission(status === 'granted');
       
-      // Load settings from DB
+      // Load sound settings from DB (Vibration is handled by Context)
       const uid = await getCurrentUserId();
       if (uid) {
         const { data } = await supabase
           .from('user_settings')
-          .select('sound_effects_enabled, vibration_enabled')
+          .select('sound_effects_enabled')
           .eq('user_id', uid)
           .single();
         if (data) {
           setSettings(prev => ({
             ...prev,
             soundEnabled: data.sound_effects_enabled ?? true,
-            hapticsEnabled: data.vibration_enabled ?? true,
           }));
         }
       }
@@ -195,7 +195,8 @@ export default function QuizScreen() {
 
   // --- SOUND & HAPTICS ---
   const feedback = (type: 'success' | 'error' | 'tick') => {
-    if (settings.hapticsEnabled) {
+    // 3. Use global vibrationEnabled check
+    if (vibrationEnabled) {
       if (type === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       else if (type === 'error') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -331,8 +332,10 @@ export default function QuizScreen() {
           return 0;
         }
         const newVal = prev - 1;
+        const toValue = (newVal / seconds) * 100;
+        
         Animated.timing(timerAnim, {
-          toValue: (newVal / seconds) * 100,
+          toValue: isNaN(toValue) ? 0 : toValue, // Safety check
           duration: 1000,
           useNativeDriver: false,
         }).start();
@@ -377,8 +380,9 @@ export default function QuizScreen() {
       setAnswerState(timeout ? 'timeout' : 'incorrect');
       // If skipped, don't vibrate aggressively
       if (!skipped) {
-        feedback('error');
-        if (!timeout) Vibration.vibrate(100);
+        feedback('error'); // Triggers haptics if enabled
+        // 4. Use global vibrationEnabled check for React Native Vibration
+        if (vibrationEnabled && !timeout) Vibration.vibrate(100);
       }
     }
 
@@ -724,19 +728,19 @@ export default function QuizScreen() {
       
       {/* Hint Modal */}
       <Modal visible={showHint} transparent animationType="fade" onRequestClose={() => setShowHint(false)}>
-         <View className="flex-1 justify-center items-center bg-black/60 px-6">
-           <View className={`p-6 rounded-3xl w-full max-w-xs ${colors.cardBg}`}>
-             <Text className={`text-xl font-fredoka-bold mb-2 text-center`} style={{ color: colors.text }}>Hint</Text>
-             <Text className="text-center text-gray-500 mb-6">
-                {questions[currentQIndex]?.type === 'performance' 
+          <View className="flex-1 justify-center items-center bg-black/60 px-6">
+            <View className={`p-6 rounded-3xl w-full max-w-xs ${colors.cardBg}`}>
+              <Text className={`text-xl font-fredoka-bold mb-2 text-center`} style={{ color: colors.text }}>Hint</Text>
+              <Text className="text-center text-gray-500 mb-6">
+                 {questions[currentQIndex]?.type === 'performance' 
                   ? "Ensure your hand is well-lit and centered in the frame." 
                   : "Watch closely for hand shape and movement."}
-             </Text>
-             <TouchableOpacity onPress={() => setShowHint(false)} className="bg-accent/20 py-3 rounded-full">
-               <Text className="text-accent text-center font-bold">Close</Text>
-             </TouchableOpacity>
-           </View>
-         </View>
+              </Text>
+              <TouchableOpacity onPress={() => setShowHint(false)} className="bg-accent/20 py-3 rounded-full">
+                <Text className="text-accent text-center font-bold">Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
       </Modal>
     </View>
   );

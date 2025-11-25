@@ -177,3 +177,40 @@ export async function logPracticeSession(
     console.error("Error logging practice session:", error.message);
   }
 }
+
+// --- User Settings Functions ---
+
+export async function fetchUserSettings(userId: string) {
+  const { data, error } = await supabase
+    .from('user_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    // It's okay if no settings exist yet, we will use defaults
+    if (error.code !== 'PGRST116') { 
+      console.error('Error fetching user settings:', error.message);
+    }
+    return null;
+  }
+  return data;
+}
+
+export async function updateUserSetting(userId: string, column: string, value: boolean) {
+  // Upsert creates the row if it doesn't exist
+  const { error } = await supabase
+    .from('user_settings')
+    .upsert(
+      { 
+        user_id: userId, 
+        [column]: value,
+        updated_at: new Date().toISOString() 
+      }, 
+      { onConflict: 'user_id' }
+    );
+
+  if (error) {
+    console.error(`Error updating ${column}:`, error.message);
+  }
+}

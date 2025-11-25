@@ -4,6 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import './global.css';
 import { ThemeProvider } from '../src/ThemeContext';
 import { AuthProvider } from '../src/AuthContext';
+import { SettingsProvider } from '../src/SettingsContext'; // <--- Import
 
 import { useFonts } from 'expo-font';
 
@@ -30,7 +31,7 @@ import {
   Orbitron_700Bold,
 } from '@expo-google-fonts/orbitron';
 
-// 🧠 NEW: Fredoka
+// 🧠 Fredoka
 import {
   Fredoka_400Regular,
   Fredoka_500Medium,
@@ -38,7 +39,7 @@ import {
   Fredoka_700Bold,
 } from '@expo-google-fonts/fredoka';
 
-// 🧠 NEW: Audiowide
+// 🧠 Audiowide
 import { Audiowide_400Regular } from '@expo-google-fonts/audiowide';
 
 const RootLayout = () => {
@@ -81,10 +82,13 @@ const RootLayout = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(stack)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        {/* Wrap with SettingsProvider */}
+        <SettingsProvider> 
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(stack)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </SettingsProvider>
       </AuthProvider>
     </ThemeProvider>
   );
