@@ -11,7 +11,8 @@ import {
     GestureResponderEvent,
     ImageBackground,
     StyleSheet,
-    Modal, // 💡 Import Modal component
+    Modal,
+    Alert, // 💡 Added Alert for the placeholder
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,9 +36,9 @@ import {
     CameraDevice,
     useCameraFormat,
 } from "react-native-vision-camera";
-import { ENDPOINTS } from "../../constants/ApiConfig"; // 🔌 Import Config
+import { ENDPOINTS } from "../../constants/ApiConfig";
 
-// --- AnimatedCorner Component (No Change) ---
+// --- AnimatedCorner Component ---
 const AnimatedCorner = ({ isTranslating, borderStyle }: { isTranslating: boolean; borderStyle: any }) => {
     const opacity = useSharedValue(0);
     useEffect(() => {
@@ -63,9 +64,8 @@ const AnimatedCorner = ({ isTranslating, borderStyle }: { isTranslating: boolean
         />
     );
 };
-// ----------------------------------------------------
 
-// 💡 New: Help Modal Component (No Change)
+// --- TranslationHelpModal Component ---
 const TranslationHelpModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
     const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
     const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
@@ -125,21 +125,16 @@ const TranslationHelpModal = ({ isVisible, onClose, isDark }: { isVisible: boole
     );
 };
 
-
 export default function Translate() {
     // 🧠 States
-    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [isCameraActive, setIsCameraActive] = useState(true); // Default True
     const [isTranslating, setIsTranslating] = useState(false);
-    // RENAMED: Status message for UI feedback (replaces old `translatedText`)
-    const [statusMessage, setStatusMessage] = useState("Camera Off. Tap to begin."); 
+    const [statusMessage, setStatusMessage] = useState("Tap Play to begin recognition."); // Simplified message
     
-    // NEW STATE: Stores the actual translated word
+    // Output States
     const [currentTranslation, setCurrentTranslation] = useState("");
-    // NEW STATE: Stores the AI-enhanced version
     const [enhancedTranslation, setEnhancedTranslation] = useState(""); 
-    // NEW STATE: Loading state for AI enhancement
     const [isEnhancing, setIsEnhancing] = useState(false); 
-    // NEW STATE: Tracks the last successful letter added (for de-duplication)
     const [lastTranslatedLetter, setLastTranslatedLetter] = useState<string | null>(null);
 
     const [hasPermission, setHasPermission] = useState(false);
@@ -148,14 +143,12 @@ export default function Translate() {
     const [facing, setFacing] = useState<"front" | "back">("back");
     const [flash, setFlash] = useState<"on" | "off">("off");
     
-    // Zoom state (default 1x)
+    // Zoom state
     const [zoom, setZoom] = useState(1);
     
     // UI/UX Updates
     const [lastHandDetectionTime, setLastHandDetectionTime] = useState(Date.now());
     const [showGuidanceOverlay, setShowGuidanceOverlay] = useState(false);
-    
-    // 💡 New State: Modal visibility
     const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
 
     const cameraRef = useRef<Camera>(null);
@@ -164,7 +157,6 @@ export default function Translate() {
         devices.find((d) => d.position === facing) ??
         devices.find((d) => d.position === "back");
 
-    // 💡 NEW: Force a smaller format (640x480 is perfect for AI/Speed)
     const format = useCameraFormat(device, [
         { photoResolution: { width: 640, height: 480 } },
         { fps: 30 }
@@ -174,36 +166,26 @@ export default function Translate() {
     const router = useRouter();
     const { isDark } = useTheme();
 
-    // 🆕 Function to cycle zoom levels (1x -> 5x -> Max -> 1x) (No Change)
     const cycleZoom = () => {
         if (!device) return;
-
         const currentZoom = zoom;
-        let nextZoom = device.minZoom; // Default next step is 1x
+        let nextZoom = device.minZoom;
 
         if (currentZoom < 3) {
-            // If current is near 1x, go to 5x (or max if max is less than 5)
             nextZoom = Math.min(5, device.maxZoom); 
         } else if (currentZoom >= 3 && currentZoom < device.maxZoom) {
-            // If current is near 5x, go to max zoom
             nextZoom = device.maxZoom;
         }
-        
-        setZoom(nextZoom); // Set the new zoom level
+        setZoom(nextZoom);
     };
 
-    // 🪄 Simplified PanResponder for Swipe Navigation only (No Change)
     const panResponder = useRef(
         PanResponder.create({
-            // Allow responder if it's a drag (swipe)
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10,
-
             onPanResponderGrant: () => {},
             onPanResponderMove: () => {},
-
             onPanResponderRelease: (_, g) => {
-                // Perform swipe navigation if significant horizontal drag to the left
                 if (g.dx < -30) {
                     router.push("/learn");
                 }
@@ -211,7 +193,6 @@ export default function Translate() {
         })
     ).current;
 
-    // 🔐 Request camera permission (No Change) 
     useEffect(() => {
         (async () => {
             const status = await Camera.requestCameraPermission();
@@ -219,27 +200,23 @@ export default function Translate() {
         })();
     }, []);
 
-    // ➡️ useFocusEffect: Reset states on navigation (Updated to reset new states)
     useFocusEffect(
         React.useCallback(() => {
-            setIsCameraActive(false);
+            setIsCameraActive(true); // 💡 Force camera ON when entering tab
             setIsTranslating(false);
-            // Reset ALL output states
-            setStatusMessage("Camera Off. Tap to begin.");
+            setStatusMessage("Tap Play to begin recognition.");
             setCurrentTranslation(""); 
-            setEnhancedTranslation(""); // Reset enhanced text
+            setEnhancedTranslation("");
             setLastTranslatedLetter(null); 
             setZoom(1); 
             return () => {
-                setIsCameraActive(false);
+                setIsCameraActive(false); // Turn off when leaving tab to save battery
                 setIsTranslating(false);
             };
         }, [])
     );
 
-    // 📸 Send frames every 200ms (No Change to Core Logic)
     useEffect(() => { 
-        // IMPORTANT: Added lastTranslatedLetter to dependencies to ensure re-check
         if (!isTranslating || !cameraRef.current) return;
 
         const interval = setInterval(async () => {
@@ -247,7 +224,6 @@ export default function Translate() {
 
             setIsSending(true);
             try {
-                // ✅ FIXED: The only valid options for V4
                 const photo = await cameraRef.current!.takePhoto({
                     flash: 'off',
                     enableShutterSound: false, 
@@ -264,7 +240,6 @@ export default function Translate() {
                     name: "frame.jpg",
                 } as any)
 
-                // 🔌 Updated: Use centralized config
                 const res = await axios.post(ENDPOINTS.PREDICT, formData, { 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
@@ -272,44 +247,31 @@ export default function Translate() {
                 if (res.data.prediction) {
                     const newPrediction = res.data.prediction.toUpperCase();
                     setPrediction(newPrediction);
-
-                    // --- MODIFIED TRANSLATION LOGIC ---
                     
-                    // Regex to check if the prediction is a single uppercase letter A-Z
                     const isLetter = newPrediction.length === 1 && newPrediction.match(/[A-Z]/);
                     
                     if (isLetter) {
                         setStatusMessage(`Detected sign: ${newPrediction}`);
                         setLastHandDetectionTime(Date.now());
                         
-                        // Check if the current prediction is DIFFERENT from the last successful letter
-                        // This prevents duplicating letters when the sign is held steady.
                         if (newPrediction !== lastTranslatedLetter) {
                             setCurrentTranslation(prev => prev + newPrediction);
-                            setLastTranslatedLetter(newPrediction); // Record the successfully added letter
+                            setLastTranslatedLetter(newPrediction);
                         }
                     } else if (newPrediction.toUpperCase() === "NONE") {
                         setStatusMessage("No hand detected...");
-                        // When "None" is detected, reset the last translated letter state.
-                        // This allows the next letter (even if it's the same as the one before "None") 
-                        // to be registered, simulating the required movement/break in signing.
                         setLastTranslatedLetter(null);
                     } else if (newPrediction.toUpperCase() === "SPACE") {
-                        // Handle a dedicated 'SPACE' prediction (if your model supports it)
                         setStatusMessage("Detected: SPACE");
                         setLastHandDetectionTime(Date.now());
                         
-                        // Only add a space if the last character wasn't already a space
                         if (currentTranslation.slice(-1) !== ' ') {
                              setCurrentTranslation(prev => prev + ' ');
                         }
-                        // Reset lastTranslatedLetter to null after a space is added
                         setLastTranslatedLetter(null); 
                     } else {
-                           // Fallback for other non-letter predictions or debugging
                            setStatusMessage(`Model prediction: ${newPrediction}`);
                     }
-                    // --- END MODIFIED TRANSLATION LOGIC ---
                 }
             } catch (err) {
                 console.log("Error sending frame:", err);
@@ -319,16 +281,15 @@ export default function Translate() {
         }, 100);
 
         return () => clearInterval(interval);
-    }, [isTranslating, isSending, lastTranslatedLetter, currentTranslation]); // Updated dependencies
+    }, [isTranslating, isSending, lastTranslatedLetter, currentTranslation]);
 
-    // 2. Guidance Overlay Logic (No Change)
     useEffect(() => { 
         let guidanceInterval: number | undefined;
         
         if (isTranslating) {
             guidanceInterval = setInterval(() => {
                 const timeElapsed = Date.now() - lastHandDetectionTime;
-                const threshold = 3000; // 3 seconds
+                const threshold = 3000;
 
                 if (timeElapsed > threshold) {
                     setShowGuidanceOverlay(true);
@@ -345,12 +306,9 @@ export default function Translate() {
         };
     }, [isTranslating, lastHandDetectionTime]);
 
-    // 🆕 NEW: Function to call the AI enhancement endpoint
     const enhanceTranslationWithAI = async () => {
         if (!currentTranslation || isEnhancing) return;
         
-        // Remove spaces if the translation is just letters (HELLOWORLD)
-        // or clean up multiple spaces (H E L L O W O R L D)
         const rawTextToEnhance = currentTranslation.trim().replace(/\s+/g, ' '); 
         
         if (rawTextToEnhance.length < 2) {
@@ -361,7 +319,6 @@ export default function Translate() {
         setIsEnhancing(true);
         setEnhancedTranslation("AI is enhancing translation...");
         try {
-            // 🔌 Updated: Use centralized config
             const response = await axios.post(ENDPOINTS.ENHANCE, {
                 raw_text: rawTextToEnhance,
             });
@@ -379,52 +336,29 @@ export default function Translate() {
         }
     };
 
-    // --- Control Functions (No Change) ---
-    const toggleCamera = async () => { 
+    // 💡 Renamed from toggleCamera to toggleTranslation since camera is always on
+    const toggleTranslation = () => { 
         if (!hasPermission) {
-            const status = await Camera.requestCameraPermission();
-            setHasPermission(status === "granted");
-            return;
-        }
-        if (!isCameraActive) {
-            setIsCameraActive(true);
-            setStatusMessage("Camera On. Tap again to start recognition.");
-            // Reset output when enabling camera
-            setCurrentTranslation(""); 
-            setEnhancedTranslation(""); // Reset enhanced text
-            setLastTranslatedLetter(null); 
+            Alert.alert("Permission needed", "Camera permission is required.");
             return;
         }
 
         setIsTranslating((prev) => !prev);
-        if (!isTranslating) {
+        if (!isTranslating) { // Logic for STARTING translation
             setStatusMessage("Recognizing signs...");
             setLastHandDetectionTime(Date.now()); 
-        } else {
+        } else { // Logic for STOPPING translation
             setStatusMessage("Recognition paused. Tap to continue.");
         }
     };
 
-    const stopCamera = () => { 
-        setIsCameraActive(false);
-        setIsTranslating(false);
-        setStatusMessage("Camera Off. Tap to begin.");
-        setCurrentTranslation(""); // Reset final output
-        setEnhancedTranslation(""); // Reset enhanced text
-        setLastTranslatedLetter(null); // Reset last letter
-        setZoom(1); // Reset zoom on stop
-    };
-
     const flipCamera = () => setFacing(facing === "back" ? "front" : "back");
     const toggleFlash = () => setFlash(flash === "off" ? "on" : "off");
-    // --- End Control Functions ---
 
-    // 🧠 Theme colors
     const bgColor = isDark ? "bg-darkbg" : "bg-secondary";
     const textColor = isDark ? "text-secondary" : "text-primary";
     const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
 
-    // 🪟 Permission / loading state (No Change)
     if (!hasPermission || !device) {
         return (
             <View className={`flex-1 justify-center items-center ${bgColor}`}>
@@ -436,10 +370,8 @@ export default function Translate() {
         );
     }
 
-    // Display zoom value
     const maxZoomFactor = device.maxZoom;
     const zoomText = `Zoom: ${zoom.toFixed(1)}x`;
-
 
     return (
         <View className={`flex-1 ${bgColor}`}>
@@ -449,7 +381,7 @@ export default function Translate() {
                 resizeMode="cover"
             >
                 <ScrollView
-                    {...panResponder.panHandlers} // Pan responder applied to the whole screen view
+                    {...panResponder.panHandlers}
                     className="flex-1"
                     style={{ paddingTop: insets.top }}
                     contentContainerStyle={{ paddingBottom: 160 }}
@@ -460,12 +392,10 @@ export default function Translate() {
                         entering={FadeInUp.duration(600).delay(200)}
                         className="px-5 pt-5 items-center"
                     >
-                        {/* 1. 💡 New Feature: Small title above the camera (No Change) */}
                         <Text className={`text-2xl font-audiowide mb-6 ${textColor}`}>
                             GesturiX Translator
                         </Text>
                         
-                        {/* Camera container view (No Change) */}
                         <View
                             className={`w-full aspect-[1/1] ${
                                 isDark ? "bg-darkhover" : "bg-primary"
@@ -476,7 +406,7 @@ export default function Translate() {
                                     ref={cameraRef}
                                     style={{ flex: 1 }}
                                     device={device}
-                                    format={format} // <--- Add this line
+                                    format={format}
                                     isActive={true}
                                     photo={true}
                                     torch={facing === "back" ? flash : "off"}
@@ -484,10 +414,9 @@ export default function Translate() {
                                 />
                             )}
                             
-                            {/* Zoom Text Overlay (NOW A TOUCHABLE) (No Change) */}
                             {isCameraActive && (
                                 <TouchableOpacity 
-                                    onPress={cycleZoom} // <-- Cycle Zoom on Tap
+                                    onPress={cycleZoom}
                                     className="absolute top-6 left-6 p-2 bg-black/30 rounded-xl z-50"
                                 >
                                     <Text className="text-white text-sm font-fredoka-medium">
@@ -496,7 +425,6 @@ export default function Translate() {
                                 </TouchableOpacity>
                             )}
 
-                            {/* Flip / Flash Buttons (No Change) */}
                             {isCameraActive && (
                                 <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
                                     {facing === "back" && (
@@ -514,7 +442,6 @@ export default function Translate() {
                                 </View>
                             )}
 
-                            {/* Overlays (No Change) */}
                             {isTranslating && showGuidanceOverlay && (
                                 <View className="absolute inset-0 justify-center items-center px-5 bg-black/50 z-40">
                                     <MaterialIcons name="pan-tool" size={60} color="white" />
@@ -530,63 +457,59 @@ export default function Translate() {
                                 </View>
                             )}
 
-                            {/* Corners (No Change) */}
                             <AnimatedCorner isTranslating={isTranslating} borderStyle={{ top: 16, left: 16, borderTopWidth: 3, borderLeftWidth: 3 }} />
                             <AnimatedCorner isTranslating={isTranslating} borderStyle={{ top: 16, right: 16, borderTopWidth: 3, borderRightWidth: 3 }} />
                             <AnimatedCorner isTranslating={isTranslating} borderStyle={{ bottom: 16, left: 16, borderBottomWidth: 3, borderLeftWidth: 3 }} />
                             <AnimatedCorner isTranslating={isTranslating} borderStyle={{ bottom: 16, right: 16, borderBottomWidth: 3, borderRightWidth: 3 }} />
                         </View>
 
-                        {/* Buttons (Fixed) (No Change) */}
-                        {isCameraActive ? (
-                            <View className="flex-row justify-between items-center w-full px-10 mt-2">
-                                <TouchableOpacity
-                                    onPress={stopCamera}
-                                    className="w-[60px] h-[60px] rounded-full justify-center items-center bg-red-600/70"
-                                >
-                                    <MaterialIcons name="power-settings-new" size={28} color="white" />
-                                </TouchableOpacity>
+                        {/* Controls Container */}
+                        <View className="flex-row justify-between items-center w-full px-10 mt-2">
+                            
+                            {/* 💡 LEFT: Text-to-Speech Placeholder (Replaces Off Button) */}
+                            <TouchableOpacity
+                                onPress={() => Alert.alert("Coming Soon UwU", "Text-to-Speech feature will be available here!")}
+                                // Disabled look if no text, active look if text exists
+                                className={`w-[60px] h-[60px] rounded-full justify-center items-center ${
+                                    (currentTranslation.length > 0 || enhancedTranslation.length > 0) 
+                                    ? "bg-sky-500/80" 
+                                    : "bg-neutral-500/50"
+                                }`}
+                            >
+                                <MaterialIcons name="record-voice-over" size={28} color="white" />
+                            </TouchableOpacity>
 
-                                <TouchableOpacity
-                                    className={`w-[80px] h-[80px] rounded-full justify-center items-center shadow-lg shadow-black/30 ${
-                                        isTranslating ? "bg-highlight" : "bg-accent"
-                                    }`}
-                                    onPress={toggleCamera}
-                                >
-                                    <MaterialIcons
-                                        name={isTranslating ? "stop" : "play-arrow"}
-                                        size={38}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
+                            {/* CENTER: Play/Pause Button */}
+                            <TouchableOpacity
+                                className={`w-[80px] h-[80px] rounded-full justify-center items-center shadow-lg shadow-black/30 ${
+                                    isTranslating ? "bg-highlight" : "bg-accent"
+                                }`}
+                                onPress={toggleTranslation}
+                            >
+                                <MaterialIcons
+                                    name={isTranslating ? "stop" : "play-arrow"}
+                                    size={38}
+                                    color="white"
+                                />
+                            </TouchableOpacity>
 
-                                {/* AI Enhance Button (Right) - Sized to match the Power Off button */}
-                                <TouchableOpacity
-                                    onPress={enhanceTranslationWithAI}
-                                    disabled={!currentTranslation || isEnhancing}
-                                    className={`w-[60px] h-[60px] rounded-full justify-center items-center shadow-lg ${
-                                        !currentTranslation || isEnhancing
-                                            ? "bg-neutral-500/50" // Disabled color
-                                            : "bg-highlight/70" // Use highlight color for AI
-                                    }`}
-                                >
-                                    {isEnhancing ? (
-                                        <ActivityIndicator color="white" size="small" />
-                                    ) : (
-                                        <MaterialIcons name="auto-fix-high" size={28} color="white" />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View className="flex-row justify-center items-center mt-2">
-                                <TouchableOpacity
-                                    className="w-[80px] h-[80px] rounded-full justify-center items-center bg-accent shadow-lg shadow-black/30"
-                                    onPress={toggleCamera}
-                                >
-                                    <MaterialIcons name="videocam" size={34} color="white" />
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                            {/* RIGHT: AI Enhance Button */}
+                            <TouchableOpacity
+                                onPress={enhanceTranslationWithAI}
+                                disabled={!currentTranslation || isEnhancing}
+                                className={`w-[60px] h-[60px] rounded-full justify-center items-center shadow-lg ${
+                                    !currentTranslation || isEnhancing
+                                        ? "bg-neutral-500/50" 
+                                        : "bg-highlight/70"
+                                }`}
+                            >
+                                {isEnhancing ? (
+                                    <ActivityIndicator color="white" size="small" />
+                                ) : (
+                                    <MaterialIcons name="auto-fix-high" size={28} color="white" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
 
                     </Animated.View>
 
@@ -594,16 +517,14 @@ export default function Translate() {
                     <Animated.View entering={FadeInUp.duration(600).delay(400)} className="px-5 pb-5 mt-5">
                         <Text className={`text-base font-audiowide mb-3 ${textColor}`}>Raw Translation:</Text>
                         
-                        {/* Raw Output Box (Slightly smaller for the raw text) */}
-                        <View className={`rounded-xl p-5 min-h-[40px] border border-accent shadow-sm ${surfaceColor}`}>
+                        <View className={`w-full rounded-xl p-5 min-h-[40px] border border-accent shadow-sm ${surfaceColor}`}>
                             <Text className={`text-xl text-center leading-6 font-montserrat-bold ${textColor}`}>
                                 {currentTranslation.length > 0 ? currentTranslation : statusMessage}
                             </Text>
                         </View>
                         
-                        {/* AI Enhanced Output */}
                         {enhancedTranslation.length > 0 && (
-                             <View className={`rounded-xl p-5 pt-8 mt-4 min-h-[40px] border border-highlight shadow-md ${surfaceColor}`}>
+                             <View className={`w-full rounded-xl p-5 pt-8 mt-4 min-h-[40px] border border-highlight shadow-md ${surfaceColor}`}>
                                 <Text className={`text-base font-audiowide mb-2 ${textColor}`}>Enhanced Sentence:</Text>
                                 <Text className={`text-xl text-center leading-7 font-montserrat-bold text-highlight`}>
                                     {enhancedTranslation}
@@ -611,21 +532,16 @@ export default function Translate() {
                             </View>
                         )}
                         
-                        {/* Status Indicator and Help Button (No Change) */}
                         <View className="relative flex-row items-center justify-center mt-3">
-                            
-                            {/* Status Indicator (Centered Content) */}
                             <View className="flex-row items-center">
                                 <View className={`w-2 h-2 rounded-full mr-2 ${isTranslating ? "bg-accent" : isCameraActive ? "bg-green-500" : "bg-neutral"}`} />
                                 <Text className={`text-sm font-fredoka-medium ${isDark ? "text-secondary" : "text-neutral"}`}>
-                                    {isTranslating ? "TRANSLATING LIVE" : isCameraActive ? "Camera Active" : "Idle"}
+                                    {isTranslating ? "TRANSLATING LIVE" : "Ready"}
                                 </Text>
                             </View>
                             
-                            {/* Tips button (Absolutely Positioned to the Right) */}
                             <TouchableOpacity
                                 onPress={() => setIsHelpModalVisible(true)}
-                                // Place the button at the end of the line, even though the content is centered
                                 className="absolute right-0 top-1 p-2 bg-accent/20 rounded-xl"
                             >
                                 <MaterialIcons name="help-outline" size={26} color="rgb(255,107,0)" />
@@ -635,7 +551,6 @@ export default function Translate() {
                     </Animated.View>
                 </ScrollView>
 
-                {/* 3. 💡 New Feature: Simple Modal with Translation Tips (No Change) */}
                 <TranslationHelpModal 
                     isVisible={isHelpModalVisible} 
                     onClose={() => setIsHelpModalVisible(false)} 
