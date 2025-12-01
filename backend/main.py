@@ -7,29 +7,34 @@ import numpy as np
 import cv2
 import mediapipe as mp
 import os
-from dotenv import load_dotenv # <-- NEW IMPORT
+from dotenv import load_dotenv
 from google import genai
-from google.genai import types
 from google.genai.errors import APIError
 import uvicorn
 
-# ================= CONFIG (SAME AS BEFORE) =================
+# ================= CONFIG =================
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = 36
-model_path = "model1.pth"
+num_classes = 29  # UPDATED: Matches model2 (A-Z + del + nothing + space)
+model_path = "model2.pth" # UPDATED: Pointing to the new model file
 
-# ================= MODEL (SAME AS BEFORE) =================
+# ================= MODEL (UPDATED ARCHITECTURE) =================
+# This matches the architecture defined in webcammodel2.py
 class SignNet(nn.Module):
-    def __init__(self, num_classes=36):
+    def __init__(self, num_classes=29):
         super(SignNet, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(63, 256),
+            nn.Linear(63, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.2),
             nn.Linear(128, num_classes)
         )
 
@@ -37,16 +42,23 @@ class SignNet(nn.Module):
         return self.fc(x)
 
 model = SignNet(num_classes).to(device)
-model.load_state_dict(torch.load(model_path, map_location=device))
-model.eval()
 
-class_names = [str(i) for i in range(10)] + [chr(i) for i in range(ord('a'), ord('z')+1)]
+# Load the new model weights
+try:
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+    print(f"✅ Loaded {model_path} successfully")
+except FileNotFoundError:
+    print(f"❌ Error: {model_path} not found. Make sure the file is in the same directory.")
 
-# ================= MEDIAPIPE (SAME AS BEFORE) =================
+# UPDATED: Class names for model2
+class_names = [chr(i) for i in range(ord('A'), ord('Z')+1)] + ['del', 'nothing', 'space']
+
+# ================= MEDIAPIPE =================
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=1,
+    max_num_hands=2, # UPDATED: Increased to 2 to match webcam script
     min_detection_confidence=0.7
 )
 
@@ -56,21 +68,18 @@ def normalize_landmarks(coords):
     coords /= np.max(np.abs(coords) + 1e-6)
     return coords
 
-# ================= GEMINI SETUP (NEW) =================
+# ================= GEMINI SETUP =================
 load_dotenv() 
 
 try:
-    # 2. Get the key from the environment
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-         raise ValueError("GEMINI_API_KEY not found in environment or .env file.")
-
-    # 3. Initialize client using the key
-    client = genai.Client(api_key=api_key)
-    print("Gemini Client initialized successfully.")
+         print("Warning: GEMINI_API_KEY not found in environment.")
+    else:
+        client = genai.Client(api_key=api_key)
+        print("Gemini Client initialized successfully.")
 except Exception as e:
     print(f"Failed to initialize Gemini Client: {e}")
-    # You might want to handle this error more gracefully in a production environment
 
 class EnhanceRequest(BaseModel):
     raw_text: str
@@ -78,7 +87,6 @@ class EnhanceRequest(BaseModel):
 # ================= FASTAPI =================
 app = FastAPI()
 
-# Your existing /predict endpoint (no change needed)
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     # Read image
@@ -91,19 +99,27 @@ async def predict(file: UploadFile = File(...)):
     if not results.multi_hand_landmarks:
         return {"prediction": "None"}
 
-    landmarks = results.multi_hand_landmarks[0]
+    # Process the first detected hand
+    # Note: Even if max_num_hands=2, we usually only predict one character 
+    # at a time for simple endpoints unless you want to return a list of predictions.
+    landmarks = results.multi_hand_landmarks[0] 
+    
     coords = np.array([[lm.x, lm.y, lm.z] for lm in landmarks.landmark], dtype=np.float32)
     coords = normalize_landmarks(coords)
     features = torch.tensor(coords.flatten(), dtype=torch.float32).unsqueeze(0).to(device)
 
     with torch.no_grad():
         outputs = model(features)
-        _, pred = torch.max(outputs, 1)
+        probabilities = torch.softmax(outputs, dim=1)
+        confidence, pred = torch.max(probabilities, 1)
+        
+        # Optional: Add a confidence threshold check here if desired
+        # if confidence.item() < 0.6: return {"prediction": "?"}
+        
         label = class_names[pred.item()]
 
     return {"prediction": label}
 
-# NEW: /enhance endpoint to use Gemini
 @app.post("/enhance")
 async def enhance_translation(request: EnhanceRequest):
     raw_text = request.raw_text.strip()
@@ -123,17 +139,17 @@ async def enhance_translation(request: EnhanceRequest):
     * **OUTPUT ONLY** the single, refined sentence.
     * The final output must be ready to be spoken or displayed immediately.
 
-    ### EXAMPLE:
-    Raw Translation: "I H U N G R Y NOW W A N T FOOD"
-    Refined Output: "I am hungry now, I want food."
-
     ### RAW INPUT TO REFINE:
     {raw_text}
     """
 
     try:
+        # Check if client exists (in case init failed)
+        if 'client' not in globals():
+            return {"enhanced_text": "AI Enhancement unavailable (API Key missing)."}
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash', # Fast and great for text editing tasks
+            model='gemini-2.0-flash', 
             contents=prompt
         )
         enhanced_text = response.text.strip()
@@ -144,7 +160,6 @@ async def enhance_translation(request: EnhanceRequest):
     except Exception as e:
         print(f"General Error during enhancement: {e}")
         return {"enhanced_text": "AI Enhancement failed. Please try again."}
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
