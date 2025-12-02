@@ -72,7 +72,7 @@ const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, option
       >
         {/* ✅ Conditional Rendering: MaterialIcons for 'compose' (Quiz), Image for others */}
         {route.name === 'quiz' ? (
-          <MaterialIcons name="quiz" size={26} color={iconTintColor} />
+          <MaterialIcons name="school" size={26} color={iconTintColor} />
         ) : (
           <Image 
             source={iconSource || require('../assets/images/Translate-icon.png')} 

@@ -57,7 +57,6 @@ const Learn = () => {
 
       const loadData = async () => {
         try {
-          // FIX: Corrected variable name here
           const progressPromise = Promise.all([
             getCompletedPhrases(phrases.map(p => p.id)),
             getCompletedLetters(alphabetSigns.map(l => l.letter)),
@@ -95,17 +94,32 @@ const Learn = () => {
   );
 
   const getFormattedPracticeTime = (hours: number) => {
+    // Handle very small values
+    if (hours < (1 / 60)) {
+       return "0 mins";
+    }
+
     if (hours < 1) {
       const mins = Math.round(hours * 60);
-      return `${mins} mins`;
-    } else {
+      return `${mins} ${mins === 1 ? 'min' : 'mins'}`;
+    } else if (hours < 100) {
+      // 1 decimal place for typical hours
       return `${hours.toFixed(1)} hrs`;
+    } else {
+      // Round to integer and use commas for large hours (e.g., 1,200 hrs)
+      return `${Math.round(hours).toLocaleString()} hrs`;
     }
   };
 
   const progressData = [
-    { label: 'Lessons Completed', value: `${userStats.lessons_completed}` },
-    { label: 'Streak', value: `${userStats.days_streak} days` },
+    { 
+      label: 'Lessons Completed', 
+      value: `${userStats.lessons_completed.toLocaleString()}` 
+    },
+    { 
+      label: 'Streak', 
+      value: `${userStats.days_streak.toLocaleString()} ${userStats.days_streak === 1 ? 'day' : 'days'}` 
+    },
     { 
       label: 'Learning Time', 
       value: getFormattedPracticeTime(userStats.practice_hours)
@@ -191,7 +205,8 @@ const Learn = () => {
               {progressData.map((item, index) => (
                 <View
                   key={index}
-                  className={`rounded-xl p-4 mr-3 items-center justify-center w-32 h-24 shadow-sm border border-accent ${
+                  // FIX: Changed w-32 to min-w-[8rem] so it grows for large text (e.g. "1,000 days")
+                  className={`rounded-xl p-4 mr-3 items-center justify-center min-w-[8rem] h-24 shadow-sm border border-accent ${
                     isDark ? 'bg-darksurface' : 'bg-secondary'
                   }`}
                 >
@@ -269,7 +284,7 @@ const Learn = () => {
                   >
                     <View
                       style={{ width: `${category.progress * 100}%` }}
-                      className="h-full bg-accent rounded-full"
+                      className="h-full bg-highlight rounded-full"
                     />
                   </View>
                   <Text

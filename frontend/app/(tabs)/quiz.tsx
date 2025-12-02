@@ -20,7 +20,7 @@ import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../../src/ThemeContext';
-import { useSettings } from '../../src/SettingsContext'; // <--- 1. Import Settings Context
+import { useSettings } from '../../src/SettingsContext'; 
 import { alphabetSigns } from '../../constants/alphabetSigns';
 import { phrases } from '../../constants/phrases';
 import { updateStreakOnLessonComplete, updatePracticeTime } from '../../utils/progressStorage';
@@ -49,10 +49,10 @@ type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 
 interface QuizQuestion {
   type: QuestionType;
-  target: QuizItem;               // Main target
-  sequenceTargets?: QuizItem[];   // For Sequence questions
-  options?: string[];             // Choices for multiple choice
-  correctAnswer: string;          // The correct string to match/select
+  target: QuizItem;               
+  sequenceTargets?: QuizItem[];   
+  options?: string[];             
+  correctAnswer: string;          
 }
 
 interface QuestionAttempt {
@@ -70,25 +70,26 @@ interface QuizSettings {
   questionsCount: number;
   timeLimit: number;
   soundEnabled: boolean;
-  // hapticsEnabled removed from here as we use global context now
 }
 
 export default function QuizScreen() {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
-  const { vibrationEnabled } = useSettings(); // <--- 2. Consume Global Vibration Setting
+  const { vibrationEnabled } = useSettings(); 
   const router = useRouter();
 
   // 🎨 Unified Theme Colors
   const colors = {
-    text: isDark ? '#F8F8F8' : '#2C2C2C',
-    subText: isDark ? '#A8A8A8' : '#666666',
+    text: isDark ? '#secondary' : '#primary', // mapped to Tailwind config colors basically
+    textColor: isDark ? '#E5E7EB' : '#1F2937', // Hex fallback
+    subText: isDark ? '#9CA3AF' : '#4B5563',
     accent: '#FF6B00',
     success: '#10B981',
     error: '#EF4444',
     warning: '#F59E0B',
-    surface: isDark ? '#333333' : '#FFFFFF',
-    border: isDark ? '#444444' : '#E5E5E5',
+    surface: isDark ? '#1F1F1F' : '#FFFFFF',
+    // FIX: Updated default border to match "highlight" feel if needed, but we mostly use explicit border-accent now
+    border: isDark ? '#374151' : '#E5E7EB', 
     bg: isDark ? 'bg-darkbg' : 'bg-secondary',
     cardBg: isDark ? 'bg-darksurface' : 'bg-white',
     optionBg: isDark ? '#2A2A2A' : '#FFFFFF',
@@ -159,7 +160,6 @@ export default function QuizScreen() {
       const status = await Camera.requestCameraPermission();
       setHasPermission(status === 'granted');
       
-      // Load sound settings from DB (Vibration is handled by Context)
       const uid = await getCurrentUserId();
       if (uid) {
         const { data } = await supabase
@@ -175,7 +175,6 @@ export default function QuizScreen() {
         }
       }
 
-      // Check tutorial
       const seen = await AsyncStorage.getItem('quiz_tutorial_seen');
       if (!seen) setShowTutorial(true);
     })();
@@ -195,7 +194,6 @@ export default function QuizScreen() {
 
   // --- SOUND & HAPTICS ---
   const feedback = (type: 'success' | 'error' | 'tick') => {
-    // 3. Use global vibrationEnabled check
     if (vibrationEnabled) {
       if (type === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       else if (type === 'error') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -215,18 +213,15 @@ export default function QuizScreen() {
   const generateQuestions = (difficulty: DifficultyLevel): QuizQuestion[] => {
     const count = difficulty === 'beginner' ? 5 : difficulty === 'intermediate' ? 10 : 15;
     
-    // Combine pool
     const fullPool = [...allLetters, ...allPhrases];
     const shuffled = fullPool.sort(() => 0.5 - Math.random()).slice(0, count);
     
     return shuffled.map(item => {
       let type: QuestionType = 'recognition';
       
-      // 🚨 CRITICAL: Phrases MUST be Recognition only (Video -> Multiple Choice)
       if (item.type === 'phrase') {
         type = 'recognition'; 
       } else {
-        // Letters can be any type
         const r = Math.random();
         if (difficulty === 'beginner') {
           type = r > 0.3 ? 'recognition' : 'performance';
@@ -240,7 +235,6 @@ export default function QuizScreen() {
       const q: QuizQuestion = { type, target: item, correctAnswer: item.label };
 
       if (type === 'recognition') {
-        // Get distractors of the SAME type (Phrases vs Phrases, Letters vs Letters)
         const sameTypeItems = item.type === 'phrase' ? allPhrases : allLetters;
         const distractors = sameTypeItems
           .filter(i => i.id !== item.id)
@@ -250,7 +244,6 @@ export default function QuizScreen() {
         q.options = [item.label, ...distractors.map(d => d.label)].sort(() => 0.5 - Math.random());
       } 
       else if (type === 'sequence') {
-        // Sequence is only for letters currently
         const seq = [item, ...allLetters.filter(i => i.id !== item.id).sort(()=>0.5-Math.random()).slice(0, 2)];
         q.sequenceTargets = seq;
         q.correctAnswer = seq.map(s => s.label).join('');
@@ -268,9 +261,9 @@ export default function QuizScreen() {
 
   const startGame = (difficulty: DifficultyLevel) => {
     const config = {
-      beginner: { time: 25, count: 5 }, // 25s for Beginner
-      intermediate: { time: 20, count: 10 }, // 20s for Intermediate
-      advanced: { time: 10, count: 15 }, // 10s for Advanced
+      beginner: { time: 25, count: 5 }, 
+      intermediate: { time: 20, count: 10 }, 
+      advanced: { time: 10, count: 15 }, 
     };
     
     setSettings(prev => ({ ...prev, difficulty, questionsCount: config[difficulty].count, timeLimit: config[difficulty].time }));
@@ -283,10 +276,8 @@ export default function QuizScreen() {
     
     setStartTime(Date.now());
     setGameState('playing');
-    // Note: loadQuestion will be triggered by useEffect when gameState becomes 'playing' and currentQIndex is 0
   };
 
-  // ⚡ FIXED: Use Effect to load question. This ensures we don't have stale closures in timer callbacks.
   useEffect(() => {
     if (gameState === 'playing' && questions.length > 0) {
       loadQuestion();
@@ -294,10 +285,8 @@ export default function QuizScreen() {
   }, [currentQIndex, gameState, questions]);
 
   const loadQuestion = () => {
-    // Cleanup previous
     if (timerInterval.current) clearInterval(timerInterval.current);
     
-    // Reset state for new question
     setAnswerState('idle');
     setSelectedOption(null);
     setMatchStreak(0);
@@ -310,7 +299,6 @@ export default function QuizScreen() {
 
     setIsDetecting(q.type === 'performance');
     
-    // Start Timer
     startTimer(settings.timeLimit);
 
     Animated.timing(progressAnim, {
@@ -328,14 +316,14 @@ export default function QuizScreen() {
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timerInterval.current);
-          handleTimeout(); // Now calls the function in the current scope
+          handleTimeout(); 
           return 0;
         }
         const newVal = prev - 1;
         const toValue = (newVal / seconds) * 100;
         
         Animated.timing(timerAnim, {
-          toValue: isNaN(toValue) ? 0 : toValue, // Safety check
+          toValue: isNaN(toValue) ? 0 : toValue, 
           duration: 1000,
           useNativeDriver: false,
         }).start();
@@ -378,10 +366,8 @@ export default function QuizScreen() {
       feedback('success');
     } else {
       setAnswerState(timeout ? 'timeout' : 'incorrect');
-      // If skipped, don't vibrate aggressively
       if (!skipped) {
-        feedback('error'); // Triggers haptics if enabled
-        // 4. Use global vibrationEnabled check for React Native Vibration
+        feedback('error'); 
         if (vibrationEnabled && !timeout) Vibration.vibrate(100);
       }
     }
@@ -389,7 +375,7 @@ export default function QuizScreen() {
     setTimeout(() => {
       const nextIdx = currentQIndex + 1;
       if (nextIdx < questions.length) {
-        setCurrentQIndex(nextIdx); // This triggers the useEffect to load next question
+        setCurrentQIndex(nextIdx); 
       } else {
         endGame();
       }
@@ -401,11 +387,9 @@ export default function QuizScreen() {
     const durationMinutes = (Date.now() - startTime) / 60000;
     const accuracy = Math.round((score / questions.length) * 100);
     
-    // Log stats
     const uid = await getCurrentUserId();
     if (uid) {
-        // We update generic practice time
-        await updatePracticeTime(durationMinutes / 60); // Convert mins to hours
+        await updatePracticeTime(durationMinutes / 60); 
         
         if (accuracy >= 70) {
             await updateStreakOnLessonComplete();
@@ -413,13 +397,11 @@ export default function QuizScreen() {
     }
   };
 
-  // --- CAMERA LOOP (Only for Letters) ---
   useEffect(() => {
     if (!isDetecting || gameState !== 'playing' || answerState !== 'idle' || !cameraRef.current) return;
 
     const loop = setInterval(async () => {
       try {
-        // Double check ref exists inside interval
         if (!cameraRef.current) return; 
 
         const photo = await cameraRef.current.takePhoto({ flash: 'off', enableShutterSound: false });
@@ -456,11 +438,12 @@ export default function QuizScreen() {
 
   const renderMenu = () => (
     <View className="flex-1 justify-center items-center px-6">
-      <View className={`w-full p-8 rounded-[32px] shadow-lg border ${colors.cardBg} ${colors.border}`}>
+      {/* FIX: Changed border to accent for Main Menu Card */}
+      <View className={`w-full p-8 rounded-[32px] shadow-lg border border-accent ${colors.cardBg}`}>
         <View className="items-center mb-6 bg-accent/10 p-6 rounded-full self-center">
           <MaterialIcons name="school" size={60} color={colors.accent} />
         </View>
-        <Text className={`text-3xl font-audiowide text-center mb-4`} style={{ color: colors.text }}>
+        <Text className={`text-3xl font-audiowide text-center mb-4`} style={{ color: colors.textColor }}>
           Sign Quiz
         </Text>
         <Text className={`text-center font-montserrat-regular mb-8`} style={{ color: colors.subText }}>
@@ -471,8 +454,8 @@ export default function QuizScreen() {
           <Text className="text-white text-center font-fredoka-bold text-lg">Start Quiz</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity onPress={() => setShowTutorial(true)} className={`py-4 rounded-full border-2 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-          <Text className={`text-center font-fredoka-medium`} style={{ color: colors.text }}>How to Play</Text>
+        <TouchableOpacity onPress={() => setShowTutorial(true)} className={`py-4 rounded-full border-2 ${isDark ? 'border-highlight' : 'border-highlight'}`}>
+          <Text className={`text-center font-fredoka-medium`} style={{ color: colors.textColor }}>How to Play</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -480,13 +463,14 @@ export default function QuizScreen() {
 
   const renderDifficulty = () => (
     <View className="flex-1 justify-center px-6">
-      <Text className={`text-2xl font-audiowide text-center mb-8`} style={{ color: colors.text }}>Select Difficulty</Text>
+      <Text className={`text-2xl font-audiowide text-center mb-8`} style={{ color: colors.textColor }}>Select Difficulty</Text>
       
       {(['beginner', 'intermediate', 'advanced'] as DifficultyLevel[]).map(level => (
         <TouchableOpacity 
           key={level} 
           onPress={() => startGame(level)}
-          className={`w-full py-5 rounded-2xl border-2 mb-4 items-center ${colors.cardBg} ${colors.border}`}
+          // FIX: Applied specific border colors to match "highlight" style (gray/dark-gray)
+          className={`w-full py-5 rounded-2xl border-2 mb-4 items-center ${colors.cardBg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
         >
           <Text className={`text-xl font-fredoka-bold capitalize text-accent`}>{level}</Text>
           <Text className="text-gray-500 text-xs mt-1 font-montserrat-regular">
@@ -496,7 +480,7 @@ export default function QuizScreen() {
       ))}
       
       <TouchableOpacity onPress={() => setGameState('menu')} className="mt-4 self-center p-2">
-        <Text className="text-gray-500 font-montserrat-medium">Cancel</Text>
+        <Text className="text-highlight font-montserrat-medium">Cancel</Text>
       </TouchableOpacity>
     </View>
   );
@@ -512,7 +496,7 @@ export default function QuizScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-6 py-4">
           <TouchableOpacity onPress={() => { stopGame(); router.back(); }} className="p-2">
-            <MaterialIcons name="close" size={24} color={colors.text} />
+            <MaterialIcons name="close" size={24} color={colors.textColor} />
           </TouchableOpacity>
           
           <View className="flex-1 mx-4 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -520,15 +504,15 @@ export default function QuizScreen() {
           </View>
 
           <View className={`flex-row items-center px-3 py-1 rounded-full ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-            <MaterialIcons name="timer" size={16} color={timeRemaining < 10 ? colors.error : colors.text} />
-            <Text className={`ml-1 font-fredoka-bold`} style={{ color: timeRemaining < 10 ? colors.error : colors.text }}>{timeRemaining}</Text>
+            <MaterialIcons name="timer" size={16} color={timeRemaining < 10 ? colors.error : colors.textColor} />
+            <Text className={`ml-1 font-fredoka-bold`} style={{ color: timeRemaining < 10 ? colors.error : colors.textColor }}>{timeRemaining}</Text>
           </View>
         </View>
 
         {/* Content */}
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }}>
           
-          <Text className={`text-xl font-audiowide text-center mb-6`} style={{ color: colors.text }}>
+          <Text className={`text-xl font-audiowide text-center mb-6`} style={{ color: colors.textColor }}>
             {q.type === 'performance' ? `Sign: ${q.target.label}` : 
              q.type === 'sequence' ? "Identify the Sequence" : 
              isPhrase ? "Identify the Phrase" : "Identify the Sign"}
@@ -538,7 +522,7 @@ export default function QuizScreen() {
           {q.type === 'sequence' && q.sequenceTargets && (
             <View className="flex-row justify-center gap-2 mb-6">
                {q.sequenceTargets.map((item, i) => (
-                 <View key={i} className="w-[30%] aspect-[4/5] bg-black rounded-xl overflow-hidden border border-gray-600 shadow-sm">
+                 <View key={i} className="w-[30%] aspect-[4/5] bg-black rounded-xl overflow-hidden border border-accent shadow-sm">
                    <Video source={item.video} style={{ flex: 1 }} resizeMode={ResizeMode.COVER} isLooping shouldPlay isMuted />
                  </View>
                ))}
@@ -547,7 +531,8 @@ export default function QuizScreen() {
 
           {/* Recognition Mode Visuals */}
           {q.type === 'recognition' && (
-            <View className="w-full aspect-video bg-black rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-700">
+            // FIX: Applied border-accent to main video container
+            <View className="w-full aspect-video bg-black rounded-2xl overflow-hidden mb-6 shadow-sm border-2 border-accent">
               <Video
                 source={q.target.video}
                 style={{ flex: 1 }}
@@ -557,9 +542,10 @@ export default function QuizScreen() {
             </View>
           )}
 
-          {/* Performance Mode Visuals (Camera) - ONLY for Letters */}
+          {/* Performance Mode Visuals (Camera) */}
           {q.type === 'performance' && (
-             <View className="w-full aspect-[3/4] bg-black rounded-3xl overflow-hidden mb-6 relative border-4" style={{ borderColor: isDetecting ? colors.accent : colors.border }}>
+             // FIX: Applied border-accent to camera container
+             <View className="w-full aspect-[3/4] bg-black rounded-3xl overflow-hidden mb-6 relative border-4 border-accent">
                {device && <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format} isActive={isDetecting} photo={true} />}
                
                <View className="absolute bottom-4 left-4 right-4 bg-black/70 p-3 rounded-xl flex-row justify-between items-center backdrop-blur-md">
@@ -606,7 +592,7 @@ export default function QuizScreen() {
                     disabled={answerState !== 'idle'}
                     onPress={() => handleAnswer(opt)}
                   >
-                    <Text className={`text-xl font-fredoka-bold text-center`} style={{ color: colors.text }}>{opt}</Text>
+                    <Text className={`text-xl font-fredoka-bold text-center`} style={{ color: colors.textColor }}>{opt}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -615,24 +601,22 @@ export default function QuizScreen() {
 
           {/* Controls: Skip & Hint */}
           <View className="mt-6 flex-row justify-center space-x-8">
-             {/* Hint */}
             <TouchableOpacity 
               onPress={() => setShowHint(true)} 
               className="flex-row items-center opacity-70"
               disabled={answerState !== 'idle'}
             >
-              <MaterialIcons name="lightbulb-outline" size={20} color={colors.text} />
-              <Text className={`ml-2 font-montserrat-medium text-sm`} style={{ color: colors.text }}>Hint</Text>
+              <MaterialIcons name="lightbulb-outline" size={20} color={colors.textColor} />
+              <Text className={`ml-2 font-montserrat-medium text-sm`} style={{ color: colors.textColor }}>Hint</Text>
             </TouchableOpacity>
 
-            {/* Skip Button */}
             <TouchableOpacity 
               onPress={() => processResult(false, false, true)} 
               className="flex-row items-center opacity-70"
               disabled={answerState !== 'idle'}
             >
-               <MaterialIcons name="skip-next" size={20} color={colors.text} />
-               <Text className={`ml-2 font-montserrat-medium text-sm underline`} style={{ color: colors.text }}>
+               <MaterialIcons name="skip-next" size={20} color={colors.textColor} />
+               <Text className={`ml-2 font-montserrat-medium text-sm underline`} style={{ color: colors.textColor }}>
                  I don't know this one
                </Text>
             </TouchableOpacity>
@@ -645,10 +629,11 @@ export default function QuizScreen() {
 
   const renderSummary = () => (
     <View className="flex-1 justify-center px-6">
-       <View className={`p-8 rounded-[32px] ${colors.cardBg} border ${colors.border} items-center`}>
+       {/* FIX: Changed border to accent for Summary Card */}
+       <View className={`p-8 rounded-[32px] ${colors.cardBg} border border-accent items-center`}>
          <MaterialIcons name={score > questions.length/2 ? "emoji-events" : "trending-up"} size={60} color={colors.accent} style={{marginBottom: 16}} />
          
-         <Text className={`text-3xl font-audiowide text-center mb-2`} style={{ color: colors.text }}>
+         <Text className={`text-3xl font-audiowide text-center mb-2`} style={{ color: colors.textColor }}>
            {score > questions.length / 2 ? "Great Job!" : "Keep Practicing"}
          </Text>
          
@@ -692,25 +677,25 @@ export default function QuizScreen() {
       {/* Tutorial Modal */}
       <Modal visible={showTutorial} transparent animationType="fade" onRequestClose={() => setShowTutorial(false)}>
         <View className="flex-1 justify-center items-center bg-black/60 px-6">
-          <View className={`p-8 rounded-3xl w-full max-w-sm ${colors.cardBg}`}>
-            <Text className={`text-2xl font-audiowide mb-6 text-center`} style={{ color: colors.text }}>Quiz Rules</Text>
+          <View className={`p-8 rounded-3xl w-full border border-accent max-w-sm ${colors.cardBg}`}>
+            <Text className={`text-2xl font-audiowide mb-6 text-center`} style={{ color: colors.textColor }}>Quiz Rules</Text>
             
             <View className="gap-4 mb-8">
               <View className="flex-row items-center">
                 <MaterialIcons name="visibility" size={24} color={colors.accent} />
-                <Text className={`ml-3 flex-1`} style={{ color: colors.text }}>
+                <Text className={`ml-3 flex-1`} style={{ color: colors.textColor }}>
                   <Text className="font-bold">Recognition:</Text> Watch the video and identify the correct letter or phrase.
                 </Text>
               </View>
               <View className="flex-row items-center">
                 <MaterialIcons name="videocam" size={24} color={colors.accent} />
-                <Text className={`ml-3 flex-1`} style={{ color: colors.text }}>
+                <Text className={`ml-3 flex-1`} style={{ color: colors.textColor }}>
                   <Text className="font-bold">Performance:</Text> Use your camera to sign the letter shown.
                 </Text>
               </View>
               <View className="flex-row items-center">
                 <MaterialIcons name="view-week" size={24} color={colors.accent} />
-                <Text className={`ml-3 flex-1`} style={{ color: colors.text }}>
+                <Text className={`ml-3 flex-1`} style={{ color: colors.textColor }}>
                   <Text className="font-bold">Sequence:</Text> Identify the sequence of letters shown.
                 </Text>
               </View>
@@ -730,7 +715,7 @@ export default function QuizScreen() {
       <Modal visible={showHint} transparent animationType="fade" onRequestClose={() => setShowHint(false)}>
           <View className="flex-1 justify-center items-center bg-black/60 px-6">
             <View className={`p-6 rounded-3xl w-full max-w-xs ${colors.cardBg}`}>
-              <Text className={`text-xl font-fredoka-bold mb-2 text-center`} style={{ color: colors.text }}>Hint</Text>
+              <Text className={`text-xl font-fredoka-bold mb-2 text-center`} style={{ color: colors.textColor }}>Hint</Text>
               <Text className="text-center text-gray-500 mb-6">
                  {questions[currentQIndex]?.type === 'performance' 
                   ? "Ensure your hand is well-lit and centered in the frame." 

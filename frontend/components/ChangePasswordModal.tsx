@@ -41,7 +41,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
   const bgColor = isDark ? 'bg-darksurface' : 'bg-white';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const inputBg = isDark ? 'bg-darkbg' : 'bg-secondary';
-  const borderColor = isDark ? 'border-neutral' : 'border-gray-300';
+  const borderColor = isDark ? 'border-highlight' : 'border-highlight';
   const placeholderColor = isDark ? '#A8A8A8' : '#888';
 
 
@@ -202,7 +202,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
               {/* New Password Fields */}
               <View className="space-y-3">
                 {/* New Password */}
-                <View className={`flex-row items-center border rounded-xl px-4 py-3 ${inputBg} ${borderColor}`}>
+                <View className={`flex-row items-center border rounded-xl mb-4 px-4 py-3 ${inputBg} ${borderColor}`}>
                   <MaterialIcons name="lock-outline" size={20} color="#FF6B00" style={{ marginRight: 10 }} />
                   <TextInput
                     placeholder="New Password"
@@ -216,7 +216,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
 
 
                 {/* Confirm Password */}
-                <View className={`flex-row items-center border rounded-xl px-4 py-3 ${inputBg} ${borderColor}`}>
+                <View className={`flex-row items-center border rounded-xl px-4 py-3 gap-y-3 ${inputBg} ${borderColor}`}>
                   <MaterialIcons name="lock-outline" size={20} color="#FF6B00" style={{ marginRight: 10 }} />
                   <TextInput
                     placeholder="Confirm New Password"

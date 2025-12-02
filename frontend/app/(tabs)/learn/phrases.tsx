@@ -105,7 +105,7 @@ export default function PhraseLearnScreen() {
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
 
-  // ðŸ•’ LEARNING TIME TRACKER
+  // 🕒 LEARNING TIME TRACKER
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
@@ -159,27 +159,15 @@ export default function PhraseLearnScreen() {
     }
   };
 
-  // ðŸ§  1. INITIAL LOAD: Restore state from storage and handle redirects
+  // 🧠 1. INITIAL LOAD: Restore state
   useEffect(() => {
     (async () => {
       const uid = await getCurrentUserId();
       const done = await getCompletedPhrases(phrases.map(p => p.id));
       setDoneIds(done);
 
-      // Determine the "ceiling" of progress to prevent skipping ahead
-      // Find the first phrase ID that is NOT in doneIds
-      const firstUncompletedIndex = phrases.findIndex(p => !done.includes(p.id));
-      // If everything is done, user can access everything. If not, they can access up to `firstUncompletedIndex`.
-      const maxAccessibleIndex = firstUncompletedIndex === -1 ? phrases.length - 1 : firstUncompletedIndex;
-
-      // Helper to check if a phrase ID is accessible
-      const isAccessible = (id: string) => {
-        const idx = phrases.findIndex(p => p.id === id);
-        return idx !== -1 && idx <= maxAccessibleIndex;
-      };
-
       // Priority 1: Navigation Param
-      if (initialPhraseId && isAccessible(initialPhraseId)) {
+      if (initialPhraseId) {
         const match = phrases.find(p => p.id === initialPhraseId);
         if (match) {
           setActiveCategory(match.category);
@@ -193,7 +181,7 @@ export default function PhraseLearnScreen() {
         const storageKey = `user_${uid}_phrases_last_id`;
         const lastId = await AsyncStorage.getItem(storageKey);
         
-        if (lastId && isAccessible(lastId)) {
+        if (lastId) {
           const match = phrases.find(p => p.id === lastId);
           if (match) {
             setActiveCategory(match.category);
@@ -203,21 +191,14 @@ export default function PhraseLearnScreen() {
         }
       }
 
-      // Priority 3: Default to first uncompleted (Sequential)
-      // If maxAccessibleIndex is 0, it starts at first phrase of first category.
-      const defaultPhrase = phrases[maxAccessibleIndex];
-      if (defaultPhrase) {
-        setActiveCategory(defaultPhrase.category);
-        setSelectedPhrase(defaultPhrase);
-      } else {
-        // Fallback absolute
-        setActiveCategory(CATEGORIES[0].key);
-        setSelectedPhrase(phrases[0]);
-      }
+      // Priority 3: Default to first
+      // FIX: Removed unlocking logic. Defaults to first item of first category.
+      setActiveCategory(CATEGORIES[0].key);
+      setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
     })();
   }, [initialPhraseId]);
 
-  // ðŸ§  2. CATEGORY CHANGE LOGIC
+  // 🧠 2. CATEGORY CHANGE LOGIC
   useEffect(() => {
     if (phrasesForCategory.length > 0) {
       const isPhraseInCurrentCat = phrasesForCategory.find(p => p.id === selectedPhrase?.id);
@@ -351,23 +332,21 @@ export default function PhraseLearnScreen() {
                       justifyContent: 'center',
                       borderRadius: 18,
                       paddingVertical: 1,
+                      // FIX: Use Accent Color for Active Background
                       backgroundColor: activeCategory === cat.key
-                        ? (isDark ? '#F7CD84' : '#FFD3A6')
+                        ? '#FF6B00' 
                         : (isDark ? '#292822' : '#FAF3E7'),
                       marginHorizontal: 5,
                       transform: [{ scale: activeCategory === cat.key ? 1.05 : 1.0 }],
-                      borderWidth: activeCategory === cat.key ? 2 : 0,
-                      borderColor: activeCategory === cat.key
-                        ? (isDark ? '#FF6B00' : '#FF6B00')
-                        : 'transparent',
                     }}
                   >
                     <Text style={{
                       fontFamily: 'Fredoka-SemiBold',
                       fontSize: 15,
+                      // FIX: Use White Text for Active State
                       color: activeCategory === cat.key
-                        ? (isDark ? '#A85600' : '#FF6B00')
-                        : (isDark ? '#FFD1A5' : '#A57D51'),
+                        ? '#FFFFFF'
+                        : (isDark ? '#B3B3B3' : '#8A8A8A'),
                       letterSpacing: 1.1,
                     }}>
                       {cat.label}
@@ -395,9 +374,6 @@ export default function PhraseLearnScreen() {
               contentContainerStyle={{ gap: 12, paddingRight: 8 }}
             >
               {phrasesForCategory.map((phrase, idx) => {
-                const globalIndex = phrases.findIndex(p => p.id === phrase.id);
-                const prevGlobalCompleted = globalIndex === 0 || doneIds.includes(phrases[globalIndex - 1].id);
-                
                 const isCompleted = doneIds.includes(phrase.id);
                 const isSelected = selectedPhrase.id === phrase.id;
 
@@ -406,10 +382,6 @@ export default function PhraseLearnScreen() {
                   backgroundColor = isDark ? '#1e1e1e' : '#faf3ec';
                   borderColor = '#FF6B00';
                   textColor = '#FF6B00';
-                } else if (!prevGlobalCompleted) {
-                  backgroundColor = isDark ? '#222' : '#EFEFEF';
-                  borderColor = isDark ? '#414141' : '#BDBDBD';
-                  textColor = isDark ? '#A0A0A0' : '#BDBDBD';
                 } else if (isSelected) {
                   backgroundColor = isDark ? '#FFAB7B' : '#FF6B00';
                   borderColor = '#FF6B00';
@@ -422,11 +394,9 @@ export default function PhraseLearnScreen() {
                 return (
                   <TouchableOpacity
                     key={phrase.id}
-                    onPress={() => {
-                      if (prevGlobalCompleted) setSelectedPhrase(phrase);
-                    }}
-                    activeOpacity={prevGlobalCompleted ? 0.8 : 1}
-                    disabled={!prevGlobalCompleted}
+                    onPress={() => setSelectedPhrase(phrase)}
+                    activeOpacity={0.8}
+                    // FIX: Removed disabled prop to allow selecting any phrase
                     style={{
                       backgroundColor,
                       paddingVertical: 12,
@@ -437,7 +407,8 @@ export default function PhraseLearnScreen() {
                       minWidth: 90,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      opacity: prevGlobalCompleted ? 1 : 0.6,
+                      // FIX: Removed opacity reduction
+                      opacity: 1, 
                       position: 'relative',
                     }}
                   >
@@ -476,7 +447,8 @@ export default function PhraseLearnScreen() {
                 borderRadius: 20,
                 backgroundColor: isDark ? '#222' : '#fffcfa',
                 borderWidth: 2,
-                borderColor: isDark ? '#FFB366' : '#FF6B00',
+                // FIX: Main video border is now always Accent color
+                borderColor: '#FF6B00',
                 shadowColor: isDark ? '#FFB366' : '#FF6B00',
                 shadowOffset: { width: 0, height: 3 },
                 shadowOpacity: 0.12,
@@ -488,7 +460,6 @@ export default function PhraseLearnScreen() {
                 overflow: 'hidden',
               }}
             >
-              {/* Added key prop to force re-render when selectedPhrase changes */}
               <Video
                 key={selectedPhrase.id}
                 source={selectedPhrase.videoUrl}
@@ -508,7 +479,7 @@ export default function PhraseLearnScreen() {
               />
             </View>
 
-            {/* Tips & Controls omitted for brevity, same as original */}
+            {/* Tips Section */}
             <Text
               style={{
                 marginVertical: 8,
@@ -538,6 +509,7 @@ export default function PhraseLearnScreen() {
               </Text>
             </Text>
 
+            {/* Controls */}
             <View className="flex-row justify-between mb-4">
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
