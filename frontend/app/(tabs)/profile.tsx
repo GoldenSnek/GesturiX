@@ -23,7 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 import { useTheme } from '../../src/ThemeContext';
-import { useSettings } from '../../src/SettingsContext'; // <--- Import SettingsContext
+import { useSettings } from '../../src/SettingsContext'; 
 import { 
   fetchUserStatistics, 
   getCurrentUserId, 
@@ -45,7 +45,7 @@ const Profile = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isDark, toggleTheme } = useTheme();
-  const { vibrationEnabled, toggleVibration } = useSettings(); // <--- Consume Context
+  const { vibrationEnabled, toggleVibration } = useSettings(); 
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -55,7 +55,6 @@ const Profile = () => {
   const [newUsername, setNewUsername] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
 
-  // State for Supabase statistics and Likes
   const [userStats, setUserStats] = useState({
     lessons_completed: 0,
     days_streak: 0,
@@ -63,7 +62,6 @@ const Profile = () => {
   });
   const [likesCount, setLikesCount] = useState(0);
 
-  // 🔒 Change Password Modal State
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
 
   const panResponder = useRef(
@@ -78,7 +76,6 @@ const Profile = () => {
     })
   ).current;
 
-  // Fetch user statistics and likes when screen is focused
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -218,10 +215,13 @@ const Profile = () => {
     );
   }
 
+  // FIX: Removed Linking.canOpenURL check which often fails on Android 11+
   const openGitHub = async (url: string) => {
-    const supported = await Linking.canOpenURL(url);
-    if (supported) await Linking.openURL(url);
-    else Alert.alert('Unable to open link');
+    try {
+      await Linking.openURL(url);
+    } catch (err) {
+      Alert.alert('Error', 'Unable to open link');
+    }
   };
   
   return (
@@ -243,7 +243,6 @@ const Profile = () => {
           >
             {/* 🧍 Profile Section */}
             <View className="items-center mt-10 mb-8 px-6">
-              {/* Profile Image Container */}
               <View className="relative items-center">
                 <Image
                   source={{
@@ -261,7 +260,6 @@ const Profile = () => {
                   }}
                 />
 
-                {/* Edit Photo Button */}
                 <TouchableOpacity
                   onPress={handleChangePhoto}
                   className={`absolute bottom-2 right-3 rounded-full p-2 shadow-lg active:opacity-80 ${
@@ -272,7 +270,6 @@ const Profile = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Username Section */}
               <View className="items-center mt-5 w-[260px]">
                 {!isEditingUsername ? (
                   <View className="flex-row items-center space-x-2">
@@ -307,7 +304,6 @@ const Profile = () => {
                       style={{ fontFamily: 'Montserrat-SemiBold' }}
                     />
 
-                    {/* Uniform Action Buttons */}
                     <View className="flex-row justify-center mt-4">
                       <TouchableOpacity
                         onPress={handleSaveUsername}
@@ -344,12 +340,12 @@ const Profile = () => {
               </View>
             </View>
 
-            {/* 🏆 Progress Section */}
+            {/* 🏆 User Stats Section (Renamed from Achievements) */}
             <Text
               className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
             >
-              Achievements
+              User Stats
             </Text>
 
             <View className="flex-row flex-wrap justify-between mb-8">
@@ -442,7 +438,6 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              {/* Dark Mode Toggle */}
               <View className={`flex-row items-center justify-between py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                   <View className="flex-row items-center">
                       <MaterialIcons name="dark-mode" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
@@ -461,7 +456,6 @@ const Profile = () => {
                   />
               </View>
 
-              {/* Vibration Toggle */}
               <View className={`flex-row items-center justify-between py-3 pt-4`}>
                   <View className="flex-row items-center">
                       <MaterialIcons name="vibration" size={24} color="#FF6B00" style={{ marginRight: 10 }} />
@@ -543,7 +537,6 @@ const Profile = () => {
                 isDark ? 'bg-darksurface' : 'bg-white'
               }`}
             >
-              {/* Change Password Button */}
               <TouchableOpacity
                 onPress={() => setIsPasswordModalVisible(true)}
                 className="flex-row items-center justify-between py-2 border-b border-orange-400"
@@ -586,7 +579,6 @@ const Profile = () => {
             
           </ScrollView>
 
-          {/* Change Password Modal */}
           <ChangePasswordModal 
             visible={isPasswordModalVisible}
             onClose={() => setIsPasswordModalVisible(false)}
