@@ -1,12 +1,14 @@
 // File: frontend/app/(tabs)/learn/numbers.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   ScrollView, 
   ImageBackground,
-  Modal 
+  Animated,
+  Easing,
+  ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -28,52 +30,20 @@ import {
   unsaveItem,
   SavedItem 
 } from '../../../utils/supabaseApi';
+import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
+import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
+import { ENDPOINTS } from '../../../constants/ApiConfig';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useSettings } from '../../../src/SettingsContext';
+import * as Haptics from 'expo-haptics';
 
-const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
-  const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
-  const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
-  const textColor = isDark ? "text-secondary" : "text-primary";
-
-  return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={isVisible}
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity
-        className={`flex-1 justify-center items-center ${modalBg} p-8`}
-        onPress={onClose}
-        activeOpacity={1}
-      >
-        <View
-          className={`w-full rounded-2xl p-6 shadow-xl border border-accent ${surfaceColor}`}
-          style={{ maxHeight: '80%' }}
-        >
-          <Text className={`text-2xl font-audiowide text-center mb-4 color-accent ${textColor}`}>
-            Feature Coming Soon
-          </Text>
-          <View className="space-y-3">
-            <View className="flex-row items-start justify-center">
-              <Text className={`text-base font-montserrat-regular text-center leading-6 ${textColor}`}>
-                Our AI model is currently learning to recognize number signs efficiently. Stay tuned for updates!
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={onClose} className="mt-6 p-2 px-6 rounded-full bg-accent/20 self-center">
-            <Text className="text-accent text-center font-fredoka-bold">Got it!</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-};
+const CAMERA_PANEL_HEIGHT = 370;
 
 const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
+  const { vibrationEnabled } = useSettings();
   const { initialNumber } = useLocalSearchParams<{ initialNumber?: string }>(); 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
@@ -89,9 +59,29 @@ const Numbers = () => {
 
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-  const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
-  // 🕒 LEARNING TIME TRACKER
+  const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [prediction, setPrediction] = useState<string>('None');
+  const [isSending, setIsSending] = useState(false);
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
+  const [flash, setFlash] = useState<'on' | 'off'>('off');
+
+  const [hasVibratedForCurrent, setHasVibratedForCurrent] = useState(false);
+
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [allowCameraInteraction, setAllowCameraInteraction] = useState(false);
+
+  const cameraRef = useRef<Camera>(null);
+  const devices = useCameraDevices();
+  const device: CameraDevice | undefined =
+    devices.find(d => d.position === facing) ??
+    devices.find(d => d.position === 'front') ??
+    devices.find(d => d.position === 'back');
+
+  const currentData = numbersData[currentIdx];
+
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
@@ -104,7 +94,6 @@ const Numbers = () => {
     }, [])
   );
 
-  // Load user saved items
   useFocusEffect(
     useCallback(() => {
       const loadSaved = async () => {
@@ -119,29 +108,27 @@ const Numbers = () => {
     }, [])
   );
 
-  // Check saved status
   useEffect(() => {
-    const currentNum = numbersData[currentIdx]?.number;
-    if (currentNum !== undefined) {
+    if (currentData?.number !== undefined) {
       const found = userSavedItems.find(
-        i => i.item_type === 'number' && i.item_identifier === currentNum.toString()
+        i => i.item_type === 'number' && i.item_identifier === currentData.number.toString()
       );
       setIsSaved(!!found);
     }
-  }, [currentIdx, userSavedItems]);
+    setHasVibratedForCurrent(false);
+  }, [currentIdx, userSavedItems, currentData]);
 
   const handleToggleSave = async () => {
-    const currentNum = numbersData[currentIdx]?.number;
-    if (!userId || currentNum === undefined) return;
+    if (!userId || currentData?.number === undefined) return;
 
     if (isSaved) {
       setIsSaved(false);
-      await unsaveItem(userId, 'number', currentNum.toString());
+      await unsaveItem(userId, 'number', currentData.number.toString());
       const items = await getUserSavedItems(userId);
       setUserSavedItems(items);
     } else {
       setIsSaved(true);
-      await saveItem(userId, 'number', currentNum.toString());
+      await saveItem(userId, 'number', currentData.number.toString());
       const items = await getUserSavedItems(userId);
       setUserSavedItems(items);
     }
@@ -154,11 +141,9 @@ const Numbers = () => {
       const done = await getCompletedNumbers(allNumbers);
       setDoneNumbers(done);
 
-      // Determine progress ceiling
       const firstUncompletedIdx = numbersData.findIndex(n => !done.includes(n.number));
       const maxAllowedIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
 
-      // Priority 1: Navigation Param
       if (initialNumber) {
         const numVal = parseInt(initialNumber, 10);
         const paramIdx = numbersData.findIndex(n => n.number === numVal);
@@ -168,7 +153,6 @@ const Numbers = () => {
         }
       }
 
-      // Priority 2: Last saved state (User Specific)
       if (uid) {
         const storageKey = `user_${uid}_numbers_last_idx`;
         const lastNumStr = await AsyncStorage.getItem(storageKey);
@@ -182,12 +166,10 @@ const Numbers = () => {
         }
       }
 
-      // Priority 3: Sequential Default
       setCurrentIdx(maxAllowedIdx);
     })();
   }, [initialNumber]); 
 
-  // Save last state (User Specific)
   useEffect(() => {
     if (numbersData[currentIdx] && userId) {
       const storageKey = `user_${userId}_numbers_last_idx`;
@@ -198,6 +180,76 @@ const Numbers = () => {
   useEffect(() => {
     setCompleted(doneNumbers.includes(numbersData[currentIdx].number));
   }, [doneNumbers, currentIdx]);
+
+  useEffect(() => {
+    (async () => {
+      const status = await Camera.requestCameraPermission();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: isCameraPanelVisible ? 1 : 0,
+      duration: 330,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setIsCameraActive(isCameraPanelVisible);
+      setAllowCameraInteraction(isCameraPanelVisible);
+      if (!isCameraPanelVisible) {
+        setPrediction('None');
+        setHasVibratedForCurrent(false);
+      }
+      if (isCameraPanelVisible) setFacing('front');
+    });
+  }, [isCameraPanelVisible]);
+
+  // 📹 Camera Prediction Loop
+  useEffect(() => {
+    if (!isCameraActive || !cameraRef.current) return;
+    
+    const interval = setInterval(async () => {
+      if (isSending) return;
+      setIsSending(true);
+      try {
+        const photo = await cameraRef.current!.takePhoto({});
+        const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+        const formData = new FormData();
+        formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
+        
+        const res = await axios.post(ENDPOINTS.PREDICT, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        if (res.data.prediction && res.data.prediction !== 'None') {
+          const pred = res.data.prediction.toUpperCase();
+          setPrediction(pred);
+
+          const target = currentData.number.toString();
+
+          if (pred === target && !hasVibratedForCurrent) {
+            if (vibrationEnabled) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            setHasVibratedForCurrent(true); 
+          } 
+          else if (pred !== target) {
+            setHasVibratedForCurrent(false);
+          }
+
+        } else {
+          setPrediction('No Hand Detected');
+          setHasVibratedForCurrent(false);
+        }
+      } catch (e) {
+        // FIX: Silent catch. Do NOT update state to "Camera error" to avoid UI flashes during switching.
+        // console.log("Camera transient error:", e);
+      }
+      setIsSending(false);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isCameraActive, isSending, currentData, hasVibratedForCurrent, vibrationEnabled]);
 
   const handleComplete = async () => {
     await markNumberCompleted(numbersData[currentIdx].number);
@@ -221,17 +273,34 @@ const Numbers = () => {
     setCurrentIdx(0);
   };
 
-  const handleCameraAlert = () => {
-    setFeatureModalVisible(true);
+  const handleToggleCameraPanel = async () => {
+    if (!isCameraPanelVisible) {
+      if (!hasPermission) {
+        const status = await Camera.requestCameraPermission();
+        setHasPermission(status === 'granted');
+        if (status !== 'granted') return;
+      }
+      setCameraPanelVisible(true);
+    } else {
+      setAllowCameraInteraction(false);
+      setTimeout(() => setCameraPanelVisible(false), 10);
+    }
   };
+
+  const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
+  const toggleFlash = () => setFlash(flash === 'off' ? 'on' : 'off');
 
   const canSelectNumber = (idx: number) =>
     idx === 0 ||
     doneNumbers.includes(numbersData[idx - 1].number) ||
     doneNumbers.includes(numbersData[idx].number);
 
-  const currentData = numbersData[currentIdx];
   const completedCount = doneNumbers.length;
+
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CAMERA_PANEL_HEIGHT + 16, 0],
+  });
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -262,7 +331,7 @@ const Numbers = () => {
               Select a Number
             </Text>
 
-            <View className="flex-row flex-wrap justify-between mb-1">
+            <View className="flex-row flex-wrap justify-between">
               {numbersData.map((item, index) => {
                 const isCompleted = doneNumbers.includes(item.number);
                 const isSelected = currentIdx === index;
@@ -315,13 +384,13 @@ const Numbers = () => {
 
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
+                className="border-accent"
                 style={{
                   width: '100%',
                   aspectRatio: 16 / 9,
                   borderRadius: 20,
                   backgroundColor: isDark ? '#222' : '#fffcfa',
                   borderWidth: 2,
-                  borderColor: isDark ? '#FFB366' : '#FF6B00',
                   shadowColor: isDark ? '#FFB366' : '#FF6B00',
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.15,
@@ -332,7 +401,6 @@ const Numbers = () => {
                   overflow: 'hidden',
                 }}
               >
-                {/* Added key prop to force re-render when currentIdx changes */}
                 <Video
                   key={currentIdx}
                   source={currentData.video}
@@ -347,7 +415,119 @@ const Numbers = () => {
               </View>
             </View>
 
-            {/* Tips Section */}
+            {/* Camera Panel */}
+            {isCameraPanelVisible && (
+              <Animated.View
+                style={{
+                  width: '100%',
+                  height: CAMERA_PANEL_HEIGHT,
+                  transform: [{ translateY }],
+                  marginBottom: 20,
+                  position: 'relative',
+                  borderRadius: 22,
+                  backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
+                  borderWidth: 2,
+                  borderColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  shadowColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.16,
+                  shadowRadius: 11,
+                  elevation: 8,
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+                pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
+              >
+                {hasPermission && device && allowCameraInteraction ? (
+                  <>
+                    <Camera
+                      ref={cameraRef}
+                      style={{ flex: 1, borderRadius: 20 }}
+                      device={device}
+                      isActive={isCameraActive}
+                      photo={true}
+                      torch={facing === 'back' ? flash : 'off'}
+                      className="rounded-2xl"
+                    />
+                    
+                    <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
+                        {facing === 'back' && (
+                            <TouchableOpacity onPress={toggleFlash} className="p-2">
+                                <MaterialIcons
+                                    name={flash === 'on' ? 'flash-on' : 'flash-off'}
+                                    size={24}
+                                    color="white"
+                                />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={flipCamera} className="p-2">
+                            <MaterialIcons name="flip-camera-ios" size={24} color="white" />
+                        </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 24 }}>
+                    <ActivityIndicator size="large" color="#FF6B00" />
+                    <Text style={{
+                      color: isDark ? '#fff' : '#333',
+                      marginTop: 14,
+                      fontFamily: 'Fredoka-Regular',
+                    }}>
+                      {hasPermission ? "Loading camera..." : "No camera permission"}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{
+                  backgroundColor: isDark ? '#181818' : '#f2f1efff',
+                  borderBottomLeftRadius: 20,
+                  borderBottomRightRadius: 20,
+                  borderTopWidth: 1,
+                  borderColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  minHeight: 65,
+                }}>
+                  <Text style={{
+                    fontFamily: 'Audiowide-Regular',
+                    fontSize: 15,
+                    color: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                    marginBottom: 4,
+                  }}>
+                    {prediction === currentData.number.toString() ? "Correct!" : "Detected Sign:"}
+                  </Text>
+                  <Text style={{
+                    fontFamily: 'Fredoka-SemiBold',
+                    fontSize: 20,
+                    color: isDark ? '#fff' : '#222',
+                    letterSpacing: 1,
+                  }}>
+                    {prediction}
+                  </Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 6,
+                  }}>
+                    <View style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: 5,
+                      backgroundColor: isCameraActive ? '#FF6B00' : '#b8bab9',
+                      marginRight: 7,
+                    }} />
+                    <Text style={{
+                      fontFamily: 'Montserrat-SemiBold',
+                      fontSize: 13,
+                      color: isDark ? '#ccc' : '#5e6272',
+                    }}>
+                      {isCameraActive ? 'LIVE' : 'Paused'}
+                    </Text>
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+
             <Text
               style={{
                 marginVertical: 8,
@@ -378,7 +558,6 @@ const Numbers = () => {
             </Text>
 
             <View className="flex-row justify-between mb-4">
-              
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
@@ -426,19 +605,19 @@ const Numbers = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleCameraAlert}
+                onPress={handleToggleCameraPanel}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
-                  isDark ? 'bg-darksurface' : 'bg-lighthover'
+                   isCameraPanelVisible ? 'bg-accent' : (isDark ? 'bg-darksurface' : 'bg-lighthover')
                 }`}
               >
                 <MaterialIcons 
-                  name="videocam" 
+                  name={isCameraPanelVisible ? "videocam-off" : "videocam"}
                   size={20} 
-                  color={isDark ? '#F8F8F8' : '#2C2C2C'} 
+                  color={isCameraPanelVisible ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
                   style={{ marginBottom: 2 }}
                 />
                 <Text
-                  className={`text-xs text-center ${textColor}`}
+                  className={`text-xs text-center ${isCameraPanelVisible ? 'text-secondary' : textColor}`}
                   style={{ fontFamily: 'Fredoka-Regular' }}
                   numberOfLines={1}
                 >
@@ -468,7 +647,6 @@ const Numbers = () => {
                   {isSaved ? 'Saved' : 'Save'}
                 </Text>
               </TouchableOpacity>
-
             </View>
 
             <TouchableOpacity 
@@ -484,12 +662,6 @@ const Numbers = () => {
               </Text>
             </TouchableOpacity>
           </ScrollView>
-
-          <FeatureModal 
-            isVisible={isFeatureModalVisible}
-            onClose={() => setFeatureModalVisible(false)}
-            isDark={isDark}
-          />
         </View>
       </ImageBackground>
     </View>
