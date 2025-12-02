@@ -20,7 +20,7 @@ import {
   markLetterCompleted, 
   getCompletedLetters, 
   resetLetterProgress, 
-  updateStreakOnLessonComplete,
+  updateStreakOnLessonComplete, 
   updatePracticeTime
 } from '../../../utils/progressStorage';
 import { 
@@ -336,7 +336,7 @@ const Letters = () => {
             className="flex-1 p-4"
             contentContainerStyle={{ paddingBottom: isCameraPanelVisible ? CAMERA_PANEL_HEIGHT + 170 : 150 }}
           >
-            {/* ... Select Letter UI (Same as before) ... */}
+            {/* ... Select Letter UI ... */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -435,7 +435,7 @@ const Letters = () => {
                   borderRadius: 22,
                   backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
                   borderWidth: 2,
-                  borderColor: prediction === currentLetter ? '#10B981' : '#FF6B00', // Green border on match
+                  borderColor: prediction === currentLetter ? '#10B981' : '#FF6B00',
                   shadowColor: prediction === currentLetter ? '#10B981' : '#FF6B00',
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.16,
@@ -446,7 +446,7 @@ const Letters = () => {
                 }}
                 pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
               >
-                {/* ... Camera View (Same as before) ... */}
+                {/* ... Camera View ... */}
                 {hasPermission && device && allowCameraInteraction ? (
                   <>
                     <Camera
@@ -458,28 +458,21 @@ const Letters = () => {
                       torch={facing === 'back' ? flash : 'off'}
                       className="rounded-2xl"
                     />
-                    <View style={{
-                      position: 'absolute',
-                      top: 13,
-                      right: 16,
-                      flexDirection: 'row',
-                      backgroundColor: 'rgba(70,44,17,0.19)',
-                      borderRadius: 99,
-                      padding: 6,
-                      zIndex: 13,
-                    }}>
-                      <TouchableOpacity onPress={flipCamera} style={{ paddingHorizontal: 6 }}>
-                        <MaterialIcons name="flip-camera-ios" size={26} color="white" />
-                      </TouchableOpacity>
-                      {facing === 'back' && (
-                        <TouchableOpacity onPress={toggleFlash} style={{ paddingHorizontal: 6 }}>
-                          <MaterialIcons
-                            name={flash === 'on' ? 'flash-on' : 'flash-off'}
-                            size={26}
-                            color="white"
-                          />
+                    
+                    {/* UPDATED: Camera Controls (Flip/Flash) matching Translate.tsx */}
+                    <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
+                        {facing === 'back' && (
+                            <TouchableOpacity onPress={toggleFlash} className="p-2">
+                                <MaterialIcons
+                                    name={flash === 'on' ? 'flash-on' : 'flash-off'}
+                                    size={24}
+                                    color="white"
+                                />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={flipCamera} className="p-2">
+                            <MaterialIcons name="flip-camera-ios" size={24} color="white" />
                         </TouchableOpacity>
-                      )}
                     </View>
                   </>
                 ) : (
@@ -575,7 +568,7 @@ const Letters = () => {
               </Text>
             </Text>
 
-            {/* Controls Row (Same as before) */}
+            {/* Controls Row */}
             <View className="flex-row justify-between mb-4">
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}
