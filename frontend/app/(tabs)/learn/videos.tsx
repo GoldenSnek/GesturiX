@@ -16,7 +16,6 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../src/ThemeContext';
 
-
 // 📺 DATA: Categorized Video List
 const videoCategories = [
   {
@@ -116,7 +115,6 @@ const videoCategories = [
   }
 ];
 
-
 export default function VideoLessonsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -126,8 +124,9 @@ export default function VideoLessonsScreen() {
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const subTextColor = isDark ? 'text-neutral' : 'text-gray-500';
   const cardBg = isDark ? 'bg-darksurface' : 'bg-white';
-  const cardBorder = isDark ? 'border-gray-700' : 'border-gray-200';
-
+  
+  // FIX 1: Change border color to highlight
+  const cardBorder = 'border-highlight';
 
   const handlePressVideo = async (videoId: string) => {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
@@ -139,6 +138,19 @@ export default function VideoLessonsScreen() {
     }
   };
 
+  // FIX 2: Open YouTube search with category pre-filled
+  const handleViewMore = async (category: string) => {
+    // Prepend "ASL" to ensure relevant results
+    const query = encodeURIComponent(`ASL ${category}`);
+    const url = `https://www.youtube.com/results?search_query=${query}`;
+    
+    try {
+      await Linking.openURL(url);
+    } catch (err) {
+      console.error("Failed to open YouTube search:", err);
+      Alert.alert("Error", "Could not open YouTube.");
+    }
+  };
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -149,7 +161,7 @@ export default function VideoLessonsScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          {/* Custom Header - Centered with larger text */}
+          {/* Custom Header */}
           <View>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
@@ -169,24 +181,36 @@ export default function VideoLessonsScreen() {
             />
           </View>
 
-
           <ScrollView 
             className="flex-1 px-4" 
             contentContainerStyle={{ paddingBottom: 100 }}
           >
             {videoCategories.map((section, sectionIndex) => (
               <View key={sectionIndex} className="mb-6">
-                <Text
-                  className={`text-lg mb-3 mt-4 ${textColor}`}
-                  style={{ fontFamily: 'Audiowide-Regular' }}
-                >
-                  {section.categoryTitle}
-                </Text>
-
+                
+                {/* Header Row with Title and View More Button */}
+                <View className="flex-row justify-between items-center mb-3 mt-4 pr-1">
+                  <Text
+                    className={`text-lg ${textColor}`}
+                    style={{ fontFamily: 'Audiowide-Regular' }}
+                  >
+                    {section.categoryTitle}
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    onPress={() => handleViewMore(section.categoryTitle)}
+                    className="flex-row items-center bg-accent/10 px-3 py-1 rounded-full"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-fredoka-medium text-accent mr-1">View More</Text>
+                    <Ionicons name="open-outline" size={12} color="#FF6B00" />
+                  </TouchableOpacity>
+                </View>
 
                 {section.data.map((item) => (
                   <TouchableOpacity 
                     key={item.id} 
+                    // FIX 1: Applied border-highlight here
                     className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
                     activeOpacity={0.9}
                     onPress={() => handlePressVideo(item.videoId)}
@@ -204,7 +228,6 @@ export default function VideoLessonsScreen() {
                            <MaterialIcons name="play-circle-fill" size={32} color="white" />
                         </View>
                       </View>
-
 
                       {/* Text Info */}
                       <View className="flex-1 justify-between py-1">
