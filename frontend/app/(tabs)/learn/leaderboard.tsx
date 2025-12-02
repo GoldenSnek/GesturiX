@@ -31,9 +31,7 @@ import {
 import { supabase } from '../../../src/supabaseClient';
 import * as Haptics from 'expo-haptics';
 
-
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 
 interface LeaderboardUser {
   user_id: string;
@@ -47,6 +45,14 @@ interface LeaderboardUser {
   };
 }
 
+// Filter Types
+type SortOption = 'lessons_completed' | 'days_streak' | 'practice_hours';
+
+const FILTERS: { key: SortOption; label: string }[] = [
+  { key: 'lessons_completed', label: 'Lessons' },
+  { key: 'days_streak', label: 'Streak' },
+  { key: 'practice_hours', label: 'Hours' },
+];
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
@@ -57,6 +63,8 @@ export default function LeaderboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Sorting State
+  const [sortBy, setSortBy] = useState<SortOption>('lessons_completed');
 
   // Modal State
   const [selectedUser, setSelectedUser] = useState<LeaderboardUser | null>(null);
@@ -68,22 +76,18 @@ export default function LeaderboardScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
 
-
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const itemBg = isDark ? 'bg-darksurface' : 'bg-white';
-  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-
-
+  
   const loadData = async () => {
     if (!refreshing) setLoading(true);
     
     try {
       const [leaderboardData, uid] = await Promise.all([
-        fetchLeaderboard(),
+        fetchLeaderboard(sortBy),
         getCurrentUserId()
       ]);
-
 
       setUsers(leaderboardData as unknown as LeaderboardUser[]);
       setCurrentUserId(uid);
@@ -95,40 +99,31 @@ export default function LeaderboardScreen() {
     }
   };
 
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
-  }, []);
+  }, [sortBy]); 
 
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
+  useEffect(() => {
+    loadData();
+  }, [sortBy]);
 
   // PanResponder for swipe-down gesture
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to vertical swipes (dy > dx)
         return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_, gestureState) => {
-        // Only allow downward swipes
         if (gestureState.dy > 0) {
           panY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If swiped down more than 150px, close the modal
         if (gestureState.dy > 150) {
           closeModal();
         } else {
-          // Otherwise, spring back to original position
           Animated.spring(panY, {
             toValue: 0,
             useNativeDriver: true,
@@ -140,11 +135,9 @@ export default function LeaderboardScreen() {
     })
   ).current;
 
-
-  // Modal Animation
   useEffect(() => {
     if (modalVisible) {
-      panY.setValue(0); // Reset pan position when opening
+      panY.setValue(0);
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -174,8 +167,6 @@ export default function LeaderboardScreen() {
     }
   }, [modalVisible]);
 
-
-  // Like Logic
   useEffect(() => {
     let isMounted = true;
     const fetchLikeStatus = async () => {
@@ -196,18 +187,14 @@ export default function LeaderboardScreen() {
     return () => { isMounted = false; };
   }, [selectedUser, currentUserId, modalVisible]);
 
-
   const handleToggleLike = async () => {
     if (!selectedUser || !currentUserId || likeLoading) return;
 
-
-    // Optimistic Update
     const previousLiked = isLiked;
     const previousCount = profileLikes;
     
     setIsLiked(!previousLiked);
     setProfileLikes(previousLiked ? previousCount - 1 : previousCount + 1);
-
 
     try {
       if (previousLiked) {
@@ -216,12 +203,10 @@ export default function LeaderboardScreen() {
         await likeProfile(currentUserId, selectedUser.user_id);
       }
     } catch (error) {
-      // Revert on error
       setIsLiked(previousLiked);
       setProfileLikes(previousCount);
     }
   };
-
 
   const getAvatarUrl = (path: string | null | undefined) => {
     if (!path) return 'https://ui-avatars.com/api/?name=User&background=random';
@@ -230,17 +215,14 @@ export default function LeaderboardScreen() {
     return data.publicUrl;
   };
 
-
   const openProfile = (user: LeaderboardUser) => {
     setSelectedUser(user);
     setModalVisible(true);
   };
 
-
   const closeModal = () => {
     setModalVisible(false);
   };
-
 
   const getRankSuffix = (index: number) => {
     const num = index + 1;
@@ -250,17 +232,15 @@ export default function LeaderboardScreen() {
     return 'th';
   };
 
-
   const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => {
     const isCurrentUser = item.user_id === currentUserId;
 
-
-    const containerBorder = isCurrentUser ? 'border-accent' : borderColor;
+    const containerBorder = isCurrentUser ? 'border-accent' : 'border-highlight';
     const containerBg = isCurrentUser 
       ? (isDark ? 'bg-orange-900/20' : 'bg-orange-50') 
       : itemBg;
-    const containerBorderWidth = isCurrentUser ? 'border-2' : 'border';
-
+    
+    const containerBorderWidth = 'border-2'; 
 
     let rankColor = '#999';
     let rankSize = 16;
@@ -268,6 +248,16 @@ export default function LeaderboardScreen() {
     else if (index === 1) { rankColor = '#C0C0C0'; rankSize = 22; }
     else if (index === 2) { rankColor = '#CD7F32'; rankSize = 20; }
 
+    let displayValue = item.lessons_completed;
+    let displayLabel = "Lessons";
+
+    if (sortBy === 'days_streak') {
+      displayValue = item.days_streak;
+      displayLabel = "Day Streak";
+    } else if (sortBy === 'practice_hours') {
+      displayValue = Math.round(item.practice_hours * 10) / 10;
+      displayLabel = "Hours";
+    }
 
     return (
       <TouchableOpacity 
@@ -283,12 +273,10 @@ export default function LeaderboardScreen() {
           )}
         </View>
 
-
         <Image
           source={{ uri: getAvatarUrl(item.profiles?.photo_url) }}
           className={`w-12 h-12 rounded-full mr-3 border ${isCurrentUser ? 'border-accent' : 'border-gray-300'}`}
         />
-
 
         <View className="flex-1">
           <Text className={`font-fredoka-semibold text-lg ${textColor}`} numberOfLines={1}>
@@ -296,22 +284,92 @@ export default function LeaderboardScreen() {
             {isCurrentUser && <Text className="text-accent text-sm"> (You)</Text>}
           </Text>
           <View className="flex-row items-center">
-             <MaterialIcons name="local-fire-department" size={14} color="#FF6B00" />
-             <Text className="text-xs text-gray-500 font-montserrat-medium ml-1">
-                {item.days_streak} day streak
-             </Text>
+             {sortBy === 'lessons_completed' && <MaterialIcons name="local-fire-department" size={14} color="#FF6B00" />}
+             {sortBy === 'lessons_completed' && (
+                <Text className="text-xs text-gray-500 font-montserrat-medium ml-1">
+                    {item.days_streak} day streak
+                </Text>
+             )}
+             
+             {sortBy !== 'lessons_completed' && (
+                <Text className="text-xs text-gray-500 font-montserrat-medium">
+                    {item.lessons_completed} lessons completed
+                </Text>
+             )}
           </View>
         </View>
 
-
         <View className="items-end">
-          <Text className="text-accent font-audiowide text-xl">{item.lessons_completed}</Text>
-          <Text className="text-xs text-gray-400 font-fredoka">Lessons</Text>
+          <Text className="text-accent font-audiowide text-xl">{displayValue}</Text>
+          <Text className="text-xs text-gray-400 font-fredoka">{displayLabel}</Text>
         </View>
       </TouchableOpacity>
     );
   };
 
+  // Updated FilterTabs Component matching Phrases.tsx UI
+  const FilterTabs = () => (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: isDark ? '#23201C' : '#f9f6f0',
+        borderRadius: 28,
+        padding: 7,
+        marginBottom: 20,
+        marginHorizontal: 12,
+        borderWidth: 1,
+        borderColor: isDark ? '#B5B1A2' : '#E5DDD4',
+        shadowColor: '#000',
+        shadowOpacity: 0.09,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+        elevation: isDark ? 2 : 1,
+      }}
+    >
+      {FILTERS.map((filter, i) => (
+        <React.Fragment key={filter.key}>
+          <TouchableOpacity
+            onPress={() => setSortBy(filter.key)}
+            activeOpacity={0.9}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 18,
+              paddingVertical: 1, 
+              backgroundColor: sortBy === filter.key
+                ? '#FF6B00'
+                : (isDark ? '#292822' : '#FAF3E7'),
+              marginHorizontal: 5,
+              transform: [{ scale: sortBy === filter.key ? 1.05 : 1.0 }],
+            }}
+          >
+            <Text style={{
+              fontFamily: 'Fredoka-SemiBold',
+              fontSize: 14,
+              color: sortBy === filter.key
+                ? '#FFFFFF'
+                : (isDark ? '#B3B3B3' : '#8A8A8A'),
+              letterSpacing: 0.5,
+              paddingVertical: 10,
+            }}>
+              {filter.label}
+            </Text>
+          </TouchableOpacity>
+          {i < FILTERS.length - 1 && (
+            <View style={{
+              width: 2,
+              alignSelf: 'stretch',
+              backgroundColor: isDark ? '#B5B1A2' : '#E5DDD4',
+              marginVertical: 6,
+              borderRadius: 99,
+            }} />
+          )}
+        </React.Fragment>
+      ))}
+    </View>
+  );
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -322,7 +380,6 @@ export default function LeaderboardScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          {/* Custom Header */}
           <View>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
@@ -336,12 +393,16 @@ export default function LeaderboardScreen() {
                 <Text className="text-primary text-xs font-fredoka">Community Rankings</Text>
               </View>
             </LinearGradient>
+            
+            <View className={`pt-3 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
+               <FilterTabs />
+            </View>
+            
             <LinearGradient
-              colors={['rgba(255, 171, 123, 1.0)', 'rgba(255, 171, 123, 0.0)']}
-              className="h-4"
+              colors={['rgba(255, 171, 123, 0.3)', 'rgba(255, 171, 123, 0.0)']}
+              className="h-2"
             />
           </View>
-
 
           {loading ? (
             <View className="flex-1 justify-center items-center">
@@ -369,8 +430,6 @@ export default function LeaderboardScreen() {
             />
           )}
 
-
-          {/* Professional Profile Modal */}
           <Modal
             animationType="none"
             transparent={true}
@@ -378,7 +437,6 @@ export default function LeaderboardScreen() {
             onRequestClose={closeModal}
           >
             <View style={styles.modalOverlay}>
-              {/* Backdrop */}
               <Animated.View 
                 style={[
                   styles.backdrop,
@@ -392,7 +450,6 @@ export default function LeaderboardScreen() {
                 />
               </Animated.View>
               
-              {/* Modal Content with Pan Responder */}
               <Animated.View 
                 style={[
                   styles.modalContainer,
@@ -408,26 +465,21 @@ export default function LeaderboardScreen() {
                   className={`rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#1E1E1E]' : 'bg-white'}`}
                   style={styles.modalContent}
                 >
-                  {/* Top Gradient Accent */}
                   <LinearGradient
                     colors={['#FF6B00', '#FFAB7B']}
                     className="h-24"
                   />
                   
-                  {/* Drag Handle */}
                   <View className="absolute top-2 self-center w-12 h-1.5 bg-white/40 rounded-full" />
-
 
                   {selectedUser && (
                     <View className="px-6 pb-8" style={{ marginTop: -50 }}>
-                      {/* Avatar with Shadow & Rank Badge */}
                       <View className="items-center mb-4">
                         <View style={styles.avatarContainer}>
                           <Image
                             source={{ uri: getAvatarUrl(selectedUser.profiles?.photo_url) }}
                             className="w-32 h-32 rounded-full border-4 border-white"
                           />
-                          {/* Rank Badge */}
                           <View
                             style={{
                               position: 'absolute',
@@ -458,8 +510,6 @@ export default function LeaderboardScreen() {
                         </View>
                       </View>
 
-
-                      {/* Name & Rank */}
                       <View className="items-center mb-2">
                         <Text className={`text-2xl font-fredoka-bold text-center ${textColor}`}>
                           {selectedUser.profiles?.username}
@@ -474,8 +524,6 @@ export default function LeaderboardScreen() {
                         </View>
                       </View>
 
-
-                      {/* Member Since */}
                       <View className="items-center mb-6">
                         <View className="flex-row items-center">
                           <Ionicons name="calendar-outline" size={14} color="#999" />
@@ -488,14 +536,11 @@ export default function LeaderboardScreen() {
                         </View>
                       </View>
 
-
-                      {/* Stats Grid with Enhanced Design */}
                       <View className="mb-6">
                         <Text className={`text-sm font-fredoka-semibold mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                           Performance Stats
                         </Text>
                         <View className="flex-row justify-between">
-                          {/* Lessons */}
                           <View className={`flex-1 items-center p-4 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
                             <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
                               <MaterialIcons name="check-circle" size={26} color="#FF6B00" />
@@ -506,7 +551,6 @@ export default function LeaderboardScreen() {
                             <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Lessons</Text>
                           </View>
                           
-                          {/* Streak */}
                           <View className={`flex-1 items-center p-4 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
                             <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
                               <MaterialIcons name="local-fire-department" size={26} color="#FF6B00" />
@@ -517,8 +561,6 @@ export default function LeaderboardScreen() {
                             <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Day Streak</Text>
                           </View>
 
-
-                          {/* Hours */}
                           <View className={`flex-1 items-center p-3 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
                             <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
                               <MaterialIcons name="timer" size={26} color="#FF6B00" />
@@ -531,12 +573,8 @@ export default function LeaderboardScreen() {
                         </View>
                       </View>
 
-
-                      {/* Divider */}
                       <View className={`h-px mb-6 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
 
-
-                      {/* Like Section */}
                       <View>
                         <Text className={`text-sm font-fredoka-semibold mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                           Show Appreciation
@@ -594,7 +632,6 @@ export default function LeaderboardScreen() {
                         </TouchableOpacity>
                       </View>
 
-
                     </View>
                   )}
                 </View>
@@ -602,13 +639,11 @@ export default function LeaderboardScreen() {
             </View>
           </Modal>
 
-
         </View>
       </ImageBackground>
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   modalOverlay: {

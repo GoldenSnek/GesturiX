@@ -33,9 +33,12 @@ export default function SavedSignsScreen() {
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
-  const subTextColor = isDark ? 'text-neutral' : 'text-gray-500';
+  // FIX: Improved text contrast for readability
+  const subTextColor = isDark ? 'text-gray-300' : 'text-gray-600'; 
   const cardBg = isDark ? 'bg-darksurface' : 'bg-white';
-  const cardBorder = isDark ? 'border-gray-700' : 'border-gray-200';
+  
+  // FIX: Consistent border color
+  const cardBorder = 'border-highlight';
 
   // Fetch Data
   const loadSavedItems = async () => {
@@ -99,7 +102,7 @@ export default function SavedSignsScreen() {
       const data = numbersData.find(n => n.number === numVal);
       return { 
         title: `Number ${item.item_identifier}`, 
-        subtitle: 'Counting', 
+        subtitle: 'Numbers', 
         video: data?.video, 
         tips: data?.tips 
       };
@@ -190,7 +193,7 @@ export default function SavedSignsScreen() {
                         )}
                         {/* Play overlay icon */}
                         <View className="absolute inset-0 justify-center items-center bg-black/20">
-                           <MaterialIcons name="play-circle-outline" size={24} color="white" />
+                           <MaterialIcons name="play-circle-filled" size={32} color="white" />
                         </View>
                       </View>
 
@@ -211,12 +214,15 @@ export default function SavedSignsScreen() {
                               <MaterialIcons name="bookmark" size={24} color="#FF6B00" />
                             </TouchableOpacity>
                           </View>
-                          <Text className="text-xs font-fredoka text-accent uppercase mt-0.5">
+                          
+                          {/* FIX: Consistent Highlight Color for Category */}
+                          <Text className="text-xs font-montserrat-bold text-highlight uppercase mt-0.5">
                             {details.subtitle}
                           </Text>
                         </View>
                         
-                        <Text className={`text-xs font-montserrat-regular ${subTextColor} mt-2`} numberOfLines={2}>
+                        {/* FIX: Increased font size and improved color for readability */}
+                        <Text className={`text-sm font-montserrat-medium ${subTextColor} mt-2`} numberOfLines={2}>
                           Tip: {details.tips}
                         </Text>
                       </View>

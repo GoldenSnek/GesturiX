@@ -15,11 +15,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../src/ThemeContext';
 
-
 import { alphabetSigns } from '../../../constants/alphabetSigns';
 import { numbersData } from '../../../constants/numbers';
 import { phrases } from '../../../constants/phrases';
-
 
 export default function DictionaryScreen() {
   const insets = useSafeAreaInsets();
@@ -27,32 +25,30 @@ export default function DictionaryScreen() {
   const { isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
-
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const itemBg = isDark ? 'bg-darksurface' : 'bg-white';
-  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-
+  
+  // FIX 1: Change border color to highlight
+  const borderColor = 'border-highlight'; 
 
   // Combine all data into one searchable list
   const allItems = useMemo(() => {
     const letters = alphabetSigns.map(l => ({
       id: l.letter,
-      title: `Letter ${l.letter}`,
+      title: `${l.letter}`,
       type: 'letter',
       category: 'Alphabet',
       sortKey: l.letter
     }));
 
-
     const numbers = numbersData.map(n => ({
       id: n.number.toString(),
-      title: `Number ${n.number}`,
+      title: `${n.number}`,
       type: 'number',
       category: 'Numbers',
       sortKey: n.number.toString()
     }));
-
 
     const phraseItems = phrases.map(p => ({
       id: p.id,
@@ -62,10 +58,8 @@ export default function DictionaryScreen() {
       sortKey: p.text
     }));
 
-
     return [...letters, ...numbers, ...phraseItems];
   }, []);
-
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return allItems;
@@ -75,7 +69,6 @@ export default function DictionaryScreen() {
       item.category.toLowerCase().includes(lower)
     );
   }, [searchQuery, allItems]);
-
 
   const handlePressItem = (item: any) => {
     if (item.type === 'letter') {
@@ -87,6 +80,15 @@ export default function DictionaryScreen() {
     }
   };
 
+  // Helper to get icon name based on type
+  const getIconName = (type: string) => {
+    switch (type) {
+      case 'letter': return 'text-fields';
+      case 'number': return 'format-list-numbered';
+      case 'phrase': return 'record-voice-over';
+      default: return 'help-outline';
+    }
+  };
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -97,7 +99,7 @@ export default function DictionaryScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          {/* Custom Header - Centered with larger text */}
+          {/* Custom Header */}
           <View>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
@@ -116,7 +118,6 @@ export default function DictionaryScreen() {
               className="h-4"
             />
           </View>
-
 
           {/* Search Bar */}
           <View className="px-4 mt-2 mb-4">
@@ -137,24 +138,31 @@ export default function DictionaryScreen() {
             </View>
           </View>
 
-
           {/* List */}
-          <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
+          <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 150 }}>
             {filteredItems.map((item, index) => (
               <TouchableOpacity
                 key={`${item.type}-${item.id}-${index}`}
                 onPress={() => handlePressItem(item)}
-                className={`mb-3 p-4 rounded-2xl flex-row items-center border ${itemBg} ${borderColor} shadow-sm`}
+                // FIX 1: Applied border-highlight
+                className={`mb-3 p-7 rounded-2xl flex-row items-center border ${itemBg} ${borderColor} shadow-sm`}
                 activeOpacity={0.7}
               >
                 <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isDark ? 'bg-darkhover' : 'bg-gray-100'}`}>
-                  <Text className="text-xl">{item.type === 'letter' ? 'Aa' : item.type === 'number' ? '123' : 'Aa'}</Text>
+                  {/* FIX 2 & 3: Distinct Icons colored Accent */}
+                  <MaterialIcons 
+                    name={getIconName(item.type) as any} 
+                    size={24} 
+                    color="#FF6B00" 
+                  />
                 </View>
                 <View className="flex-1">
                   <Text className={`text-base font-fredoka-medium ${textColor}`}>{item.title}</Text>
-                  <Text className="text-xs font-montserrat-regular text-accent uppercase">{item.category}</Text>
+                  {/* FIX 4: Label color changed to highlight */}
+                  <Text className="text-xs font-montserrat-regular text-highlight uppercase">{item.category}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={24} color={isDark ? '#666' : '#ccc'} />
+                {/* FIX 3: Chevron color changed to accent */}
+                <MaterialIcons name="chevron-right" size={24} color="#FF6B00" />
               </TouchableOpacity>
             ))}
             {filteredItems.length === 0 && (
@@ -163,7 +171,6 @@ export default function DictionaryScreen() {
               </View>
             )}
           </ScrollView>
-
 
         </View>
       </ImageBackground>

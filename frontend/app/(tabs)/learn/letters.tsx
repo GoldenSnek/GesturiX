@@ -20,7 +20,7 @@ import {
   markLetterCompleted, 
   getCompletedLetters, 
   resetLetterProgress, 
-  updateStreakOnLessonComplete,
+  updateStreakOnLessonComplete, 
   updatePracticeTime
 } from '../../../utils/progressStorage';
 import { 
@@ -35,7 +35,6 @@ import axios from 'axios';
 import { Video, ResizeMode } from 'expo-av';
 import { ENDPOINTS } from '../../../constants/ApiConfig';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'; 
-// 📳 Import settings hook and haptics
 import { useSettings } from '../../../src/SettingsContext';
 import * as Haptics from 'expo-haptics';
 
@@ -45,7 +44,7 @@ const CAMERA_PANEL_HEIGHT = 370;
 const Letters = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
-  const { vibrationEnabled } = useSettings(); // <--- Consume Settings
+  const { vibrationEnabled } = useSettings();
   const { initialLetter } = useLocalSearchParams<{ initialLetter?: string }>(); 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
@@ -69,7 +68,10 @@ const Letters = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [prediction, setPrediction] = useState<string>('None');
-  const [isSending, setIsSending] = useState(false);
+  
+  // FIX: Use useRef ONLY (Removed duplicate useState)
+  const isSending = useRef(false);
+
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
 
@@ -88,7 +90,6 @@ const Letters = () => {
   
   const currentLetter = alphabetSigns[currentIdx]?.letter;
 
-  // 🕒 LEARNING TIME TRACKER
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
@@ -101,7 +102,6 @@ const Letters = () => {
     }, [])
   );
 
-  // Load User ID and Saved Items
   useFocusEffect(
     useCallback(() => {
       const loadUserAndSaved = async () => {
@@ -116,7 +116,6 @@ const Letters = () => {
     }, [])
   );
 
-  // Check if current letter is saved
   useEffect(() => {
     if (currentLetter) {
       const found = userSavedItems.find(
@@ -124,11 +123,9 @@ const Letters = () => {
       );
       setIsSaved(!!found);
     }
-    // Reset vibration state when letter changes
     setHasVibratedForCurrent(false); 
   }, [currentIdx, userSavedItems, currentLetter]);
 
-  // Toggle Save
   const handleToggleSave = async () => {
     if (!userId || !currentLetter) return;
 
@@ -145,7 +142,6 @@ const Letters = () => {
     }
   };
 
-  // Load progress on mount AND handle redirection param
   useEffect(() => {
     (async () => {
       const uid = await getCurrentUserId();
@@ -153,15 +149,12 @@ const Letters = () => {
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
 
-      // Determine the first legitimate uncompleted index (Progression limit)
       const firstUncompletedIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
       const maxAllowedIdx = firstUncompletedIdx === -1 ? TOTAL_LETTERS - 1 : firstUncompletedIdx;
 
-      // Priority 1: Navigation Param (Redirection from Saved Screen)
       if (initialLetter) {
         const paramIdx = alphabetSigns.findIndex(l => l.letter === initialLetter);
         if (paramIdx !== -1) {
-          // Allow jump if unlocked, or if it's the immediate next lesson
           if (paramIdx <= maxAllowedIdx) {
             setCurrentIdx(paramIdx);
             return;
@@ -169,7 +162,6 @@ const Letters = () => {
         }
       }
 
-      // Priority 2: Last saved state (User Specific Key)
       if (uid) {
         const storageKey = `user_${uid}_letters_last_idx`;
         const lastLetter = await AsyncStorage.getItem(storageKey);
@@ -183,12 +175,10 @@ const Letters = () => {
         }
       }
 
-      // Priority 3: Sequential default (First uncompleted item)
       setCurrentIdx(maxAllowedIdx);
     })();
   }, [initialLetter]); 
 
-  // Save last state (User Specific)
   useEffect(() => {
     if (alphabetSigns[currentIdx] && userId) {
       const storageKey = `user_${userId}_letters_last_idx`;
@@ -200,7 +190,6 @@ const Letters = () => {
     setCompleted(doneLetters.includes(alphabetSigns[currentIdx].letter));
   }, [doneLetters, currentIdx]);
 
-  // Camera permission & activation animations
   useEffect(() => {
     (async () => {
       const status = await Camera.requestCameraPermission();
@@ -225,13 +214,13 @@ const Letters = () => {
     });
   }, [isCameraPanelVisible]);
 
-  // 📹 Camera Prediction Loop with Vibration Logic
+  // 📹 Camera Prediction Loop
   useEffect(() => {
     if (!isCameraActive || !cameraRef.current) return;
     
     const interval = setInterval(async () => {
-      if (isSending) return;
-      setIsSending(true);
+      if (isSending.current) return; 
+      isSending.current = true;
       try {
         const photo = await cameraRef.current!.takePhoto({});
         const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
@@ -246,14 +235,12 @@ const Letters = () => {
           const pred = res.data.prediction.toUpperCase();
           setPrediction(pred);
 
-          // 📳 Vibration Logic
           if (pred === currentLetter && !hasVibratedForCurrent) {
             if (vibrationEnabled) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
-            setHasVibratedForCurrent(true); // Prevent repeating
+            setHasVibratedForCurrent(true);
           } 
-          // Reset if user stops signing correctly (optional, keeps feedback snappy)
           else if (pred !== currentLetter) {
             setHasVibratedForCurrent(false);
           }
@@ -262,13 +249,13 @@ const Letters = () => {
           setPrediction('No Hand Detected');
           setHasVibratedForCurrent(false);
         }
-      } catch {
-        setPrediction('Camera error');
+      } catch (e) {
+        // FIX: Silent catch ensures no UI error flash during camera flip
       }
-      setIsSending(false);
+      isSending.current = false;
     }, 200);
     return () => clearInterval(interval);
-  }, [isCameraActive, isSending, currentLetter, hasVibratedForCurrent, vibrationEnabled]); // Added dependencies
+  }, [isCameraActive, currentLetter, hasVibratedForCurrent, vibrationEnabled]);
 
   const handleComplete = async () => {
     await markLetterCompleted(alphabetSigns[currentIdx].letter);
@@ -334,9 +321,9 @@ const Letters = () => {
 
           <ScrollView
             className="flex-1 p-4"
-            contentContainerStyle={{ paddingBottom: isCameraPanelVisible ? CAMERA_PANEL_HEIGHT + 170 : 150 }}
+            // FIX: Fixed padding to 150
+            contentContainerStyle={{ paddingBottom: 150 }}
           >
-            {/* ... Select Letter UI (Same as before) ... */}
             <Text
               className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}
@@ -344,7 +331,8 @@ const Letters = () => {
               Select a Letter
             </Text>
 
-            <View className="flex-row flex-wrap justify-between mb-1">
+            {/* FIX: Removed margin-bottom from View to reduce gap */}
+            <View className="flex-row flex-wrap justify-between">
               {alphabetSigns.map((item, idx) => {
                 const isCompleted = doneLetters.includes(item.letter);
                 const isSelected = currentIdx === idx;
@@ -389,16 +377,16 @@ const Letters = () => {
               Practice: "{letterData.letter}"
             </Text>
 
-            {/* Video Container */}
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
+                // FIX: Added border-accent
+                className="border-accent"
                 style={{
                   width: '100%',
                   aspectRatio: 16 / 9,
                   borderRadius: 20,
                   backgroundColor: isDark ? '#222' : '#fffcfa',
                   borderWidth: 2,
-                  borderColor: isDark ? '#FFB366' : '#FF6B00',
                   shadowColor: isDark ? '#FFB366' : '#FF6B00',
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.15,
@@ -435,7 +423,7 @@ const Letters = () => {
                   borderRadius: 22,
                   backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
                   borderWidth: 2,
-                  borderColor: prediction === currentLetter ? '#10B981' : '#FF6B00', // Green border on match
+                  borderColor: prediction === currentLetter ? '#10B981' : '#FF6B00',
                   shadowColor: prediction === currentLetter ? '#10B981' : '#FF6B00',
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.16,
@@ -446,7 +434,7 @@ const Letters = () => {
                 }}
                 pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
               >
-                {/* ... Camera View (Same as before) ... */}
+                {/* ... Camera View ... */}
                 {hasPermission && device && allowCameraInteraction ? (
                   <>
                     <Camera
@@ -458,28 +446,21 @@ const Letters = () => {
                       torch={facing === 'back' ? flash : 'off'}
                       className="rounded-2xl"
                     />
-                    <View style={{
-                      position: 'absolute',
-                      top: 13,
-                      right: 16,
-                      flexDirection: 'row',
-                      backgroundColor: 'rgba(70,44,17,0.19)',
-                      borderRadius: 99,
-                      padding: 6,
-                      zIndex: 13,
-                    }}>
-                      <TouchableOpacity onPress={flipCamera} style={{ paddingHorizontal: 6 }}>
-                        <MaterialIcons name="flip-camera-ios" size={26} color="white" />
-                      </TouchableOpacity>
-                      {facing === 'back' && (
-                        <TouchableOpacity onPress={toggleFlash} style={{ paddingHorizontal: 6 }}>
-                          <MaterialIcons
-                            name={flash === 'on' ? 'flash-on' : 'flash-off'}
-                            size={26}
-                            color="white"
-                          />
+                    
+                    {/* FIX: Updated UI: Flip/Flash icons in rounded container */}
+                    <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
+                        {facing === 'back' && (
+                            <TouchableOpacity onPress={toggleFlash} className="p-2">
+                                <MaterialIcons
+                                    name={flash === 'on' ? 'flash-on' : 'flash-off'}
+                                    size={24}
+                                    color="white"
+                                />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={flipCamera} className="p-2">
+                            <MaterialIcons name="flip-camera-ios" size={24} color="white" />
                         </TouchableOpacity>
-                      )}
                     </View>
                   </>
                 ) : (
@@ -545,7 +526,6 @@ const Letters = () => {
               </Animated.View>
             )}
 
-            {/* Tips Section */}
             <Text
               style={{
                 marginVertical: 8,
@@ -575,7 +555,6 @@ const Letters = () => {
               </Text>
             </Text>
 
-            {/* Controls Row (Same as before) */}
             <View className="flex-row justify-between mb-4">
               <TouchableOpacity
                 onPress={() => setIsSlowMotion(!isSlowMotion)}

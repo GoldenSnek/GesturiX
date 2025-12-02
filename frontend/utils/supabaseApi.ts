@@ -30,9 +30,11 @@ export async function fetchUserStatistics(userId: string) {
 
 // --- Leaderboard Functions ---
 
-export async function fetchLeaderboard() {
-  // Fetches ALL users ordered by lessons_completed.
-  // Added created_at to fetch "Member since" data
+// UPDATED: Now accepts a sortBy parameter
+export async function fetchLeaderboard(
+  sortBy: 'lessons_completed' | 'days_streak' | 'practice_hours' = 'lessons_completed'
+) {
+  // Fetches ALL users ordered by the selected metric.
   const { data, error } = await supabase
     .from('user_statistics')
     .select(`
@@ -46,7 +48,7 @@ export async function fetchLeaderboard() {
         created_at
       )
     `)
-    .order('lessons_completed', { ascending: false });
+    .order(sortBy, { ascending: false });
 
   if (error) {
     console.error('Error fetching leaderboard:', error);
