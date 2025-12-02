@@ -7,19 +7,15 @@ import {
     ActivityIndicator,
     PanResponder,
     ScrollView,
-    PanResponderGestureState,
-    GestureResponderEvent,
     ImageBackground,
-    StyleSheet,
     Modal,
-    Alert, // 💡 Added Alert for the placeholder
+    Alert,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../src/ThemeContext";
-import AppHeader from "../../components/AppHeader";
 import axios from "axios";
 import Animated, { 
     FadeInUp, 
@@ -125,11 +121,71 @@ const TranslationHelpModal = ({ isVisible, onClose, isDark }: { isVisible: boole
     );
 };
 
+// --- DeleteConfirmationModal Component ---
+const DeleteConfirmationModal = ({ 
+    isVisible, 
+    onClose, 
+    onConfirm, 
+    isDark 
+}: { 
+    isVisible: boolean; 
+    onClose: () => void; 
+    onConfirm: () => void; 
+    isDark: boolean 
+}) => {
+    const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
+    const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
+    const textColor = isDark ? "text-secondary" : "text-primary";
+
+    return (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={isVisible}
+            onRequestClose={onClose}
+        >
+            <TouchableOpacity 
+                className={`flex-1 justify-center items-center ${modalBg} p-8`}
+                onPress={onClose}
+                activeOpacity={1}
+            >
+                <View className={`w-full rounded-2xl p-6 shadow-xl border border-accent ${surfaceColor}`}>
+                    <MaterialIcons name="delete-forever" size={50} color="#ef4444" style={{ alignSelf: 'center', marginBottom: 16 }} />
+                    
+                    <Text className={`text-2xl font-audiowide text-center mb-2 color-accent ${textColor}`}>
+                        Clear All?
+                    </Text>
+                    
+                    <Text className={`text-base font-montserrat-regular text-center mb-6 ${textColor}`}>
+                        This will delete your current translation text. This action cannot be undone.
+                    </Text>
+
+                    <View className="flex-row justify-between space-x-4">
+                        <TouchableOpacity 
+                            onPress={onClose} 
+                            className={`flex-1 p-3 rounded-xl border border-neutral-300 ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}
+                        >
+                            <Text className={`text-center font-fredoka-bold ${textColor}`}>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            onPress={onConfirm} 
+                            className="flex-1 p-3 rounded-xl bg-red-500 shadow-md"
+                        >
+                            <Text className="text-white text-center font-fredoka-bold">Delete</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
+
 export default function Translate() {
-    // 🧠 States
+    // ｧ States
     const [isCameraActive, setIsCameraActive] = useState(true); // Default True
     const [isTranslating, setIsTranslating] = useState(false);
-    const [statusMessage, setStatusMessage] = useState("Tap Play to begin recognition."); // Simplified message
+    const [statusMessage, setStatusMessage] = useState("Tap Play to begin recognition.");
     
     // Output States
     const [currentTranslation, setCurrentTranslation] = useState("");
@@ -138,7 +194,9 @@ export default function Translate() {
     const [lastTranslatedLetter, setLastTranslatedLetter] = useState<string | null>(null);
 
     const [hasPermission, setHasPermission] = useState(false);
-    const [isSending, setIsSending] = useState(false);
+    // 庁 Fixed: Use Ref for sending state to prevent effect restarts and stale closures
+    const isSending = useRef(false);
+    
     const [prediction, setPrediction] = useState<string>("None");
     const [facing, setFacing] = useState<"front" | "back">("back");
     const [flash, setFlash] = useState<"on" | "off">("off");
@@ -150,6 +208,7 @@ export default function Translate() {
     const [lastHandDetectionTime, setLastHandDetectionTime] = useState(Date.now());
     const [showGuidanceOverlay, setShowGuidanceOverlay] = useState(false);
     const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
+    const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
     const cameraRef = useRef<Camera>(null);
     const devices = useCameraDevices();
@@ -202,7 +261,7 @@ export default function Translate() {
 
     useFocusEffect(
         React.useCallback(() => {
-            setIsCameraActive(true); // 💡 Force camera ON when entering tab
+            setIsCameraActive(true);
             setIsTranslating(false);
             setStatusMessage("Tap Play to begin recognition.");
             setCurrentTranslation(""); 
@@ -210,7 +269,7 @@ export default function Translate() {
             setLastTranslatedLetter(null); 
             setZoom(1); 
             return () => {
-                setIsCameraActive(false); // Turn off when leaving tab to save battery
+                setIsCameraActive(false);
                 setIsTranslating(false);
             };
         }, [])
@@ -218,11 +277,15 @@ export default function Translate() {
 
     useEffect(() => { 
         if (!isTranslating || !cameraRef.current) return;
+        
+        // 庁 Fixed: Use a flag to prevent updates if component unmounts or pauses
+        let isActive = true;
 
         const interval = setInterval(async () => {
-            if (isSending) return; 
+            // Check Ref instead of State
+            if (isSending.current) return; 
 
-            setIsSending(true);
+            isSending.current = true;
             try {
                 const photo = await cameraRef.current!.takePhoto({
                     flash: 'off',
@@ -243,6 +306,9 @@ export default function Translate() {
                 const res = await axios.post(ENDPOINTS.PREDICT, formData, { 
                     headers: { "Content-Type": "multipart/form-data" },
                 });
+
+                // 庁 Fixed: Critical check to ensure we are still active before updating state
+                if (!isActive) return;
 
                 if (res.data.prediction) {
                     const newPrediction = res.data.prediction.toUpperCase();
@@ -275,13 +341,17 @@ export default function Translate() {
                 }
             } catch (err) {
                 console.log("Error sending frame:", err);
+            } finally {
+                // Always reset ref
+                isSending.current = false;
             }
-
-            setIsSending(false);
         }, 100);
 
-        return () => clearInterval(interval);
-    }, [isTranslating, isSending, lastTranslatedLetter, currentTranslation]);
+        return () => {
+            isActive = false; // Cleanup flag
+            clearInterval(interval);
+        };
+    }, [isTranslating, lastTranslatedLetter, currentTranslation]); // isSending removed from deps
 
     useEffect(() => { 
         let guidanceInterval: number | undefined;
@@ -336,7 +406,26 @@ export default function Translate() {
         }
     };
 
-    // 💡 Renamed from toggleCamera to toggleTranslation since camera is always on
+    const handleBackspace = () => {
+        if (currentTranslation.length > 0) {
+            setCurrentTranslation(prev => prev.slice(0, -1));
+            setLastTranslatedLetter(null); 
+        }
+    };
+
+    const handleClearAllTrigger = () => {
+        if (currentTranslation.length === 0) return;
+        setIsDeleteModalVisible(true);
+    };
+
+    const confirmClearAll = () => {
+        setCurrentTranslation("");
+        setEnhancedTranslation("");
+        setLastTranslatedLetter(null);
+        setStatusMessage("Tap Play to begin recognition.");
+        setIsDeleteModalVisible(false);
+    };
+
     const toggleTranslation = () => { 
         if (!hasPermission) {
             Alert.alert("Permission needed", "Camera permission is required.");
@@ -344,10 +433,10 @@ export default function Translate() {
         }
 
         setIsTranslating((prev) => !prev);
-        if (!isTranslating) { // Logic for STARTING translation
+        if (!isTranslating) { 
             setStatusMessage("Recognizing signs...");
             setLastHandDetectionTime(Date.now()); 
-        } else { // Logic for STOPPING translation
+        } else { 
             setStatusMessage("Recognition paused. Tap to continue.");
         }
     };
@@ -466,17 +555,16 @@ export default function Translate() {
                         {/* Controls Container */}
                         <View className="flex-row justify-between items-center w-full px-10 mt-2">
                             
-                            {/* 💡 LEFT: Text-to-Speech Placeholder (Replaces Off Button) */}
+                            {/* LEFT: Text-to-Speech (Updated color) */}
                             <TouchableOpacity
                                 onPress={() => Alert.alert("Coming Soon UwU", "Text-to-Speech feature will be available here!")}
-                                // Disabled look if no text, active look if text exists
-                                className={`w-[60px] h-[60px] rounded-full justify-center items-center ${
+                                className={`w-[60px] h-[60px] border border-accent rounded-full justify-center items-center ${
                                     (currentTranslation.length > 0 || enhancedTranslation.length > 0) 
-                                    ? "bg-sky-500/80" 
+                                    ? "bg-accent/70" 
                                     : "bg-neutral-500/50"
                                 }`}
                             >
-                                <MaterialIcons name="record-voice-over" size={28} color="white" />
+                                <MaterialIcons name="record-voice-over" size={28} color="lightblue" />
                             </TouchableOpacity>
 
                             {/* CENTER: Play/Pause Button */}
@@ -497,16 +585,16 @@ export default function Translate() {
                             <TouchableOpacity
                                 onPress={enhanceTranslationWithAI}
                                 disabled={!currentTranslation || isEnhancing}
-                                className={`w-[60px] h-[60px] rounded-full justify-center items-center shadow-lg ${
+                                className={`w-[60px] h-[60px] border border-accent rounded-full justify-center items-center ${
                                     !currentTranslation || isEnhancing
                                         ? "bg-neutral-500/50" 
-                                        : "bg-highlight/70"
+                                        : "bg-accent/70"
                                 }`}
                             >
                                 {isEnhancing ? (
                                     <ActivityIndicator color="white" size="small" />
                                 ) : (
-                                    <MaterialIcons name="auto-fix-high" size={28} color="white" />
+                                    <MaterialIcons name="auto-fix-high" size={28} color="lightgreen" />
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -515,17 +603,45 @@ export default function Translate() {
 
                     {/* Output */}
                     <Animated.View entering={FadeInUp.duration(600).delay(400)} className="px-5 pb-5 mt-5">
-                        <Text className={`text-base font-audiowide mb-3 ${textColor}`}>Raw Translation:</Text>
                         
+                        {/* UPDATED: Buttons outside and above the container */}
+                        <View className="flex-row justify-end items-center mb-2 gap-x-4 pr-1">
+                            <TouchableOpacity 
+                                onPress={handleBackspace} 
+                                disabled={currentTranslation.length === 0}
+                                className={`p-2 rounded-full ${currentTranslation.length === 0 ? 'bg-gray-500/10' : 'bg-accent/10'}`}
+                            >
+                                <MaterialIcons 
+                                    name="backspace" 
+                                    size={24} 
+                                    color={currentTranslation.length === 0 ? "gray" : "rgb(255,107,0)"} 
+                                />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                onPress={handleClearAllTrigger}
+                                disabled={currentTranslation.length === 0}
+                                className={`p-2 rounded-full ${currentTranslation.length === 0 ? 'bg-gray-500/10' : 'bg-red-500/10'}`}
+                            >
+                                <MaterialIcons 
+                                    name="delete" 
+                                    size={24} 
+                                    color={currentTranslation.length === 0 ? "gray" : "#ef4444"} 
+                                />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Raw Translation Container - No internal borders */}
                         <View className={`w-full rounded-xl p-5 min-h-[40px] border border-accent shadow-sm ${surfaceColor}`}>
+                            <Text className={`text-base font-audiowide mb-2 ${textColor}`}>Raw Translation:</Text>
                             <Text className={`text-xl text-center leading-6 font-montserrat-bold ${textColor}`}>
                                 {currentTranslation.length > 0 ? currentTranslation : statusMessage}
                             </Text>
                         </View>
                         
                         {enhancedTranslation.length > 0 && (
-                             <View className={`w-full rounded-xl p-5 pt-8 mt-4 min-h-[40px] border border-highlight shadow-md ${surfaceColor}`}>
-                                <Text className={`text-base font-audiowide mb-2 ${textColor}`}>Enhanced Sentence:</Text>
+                             <View className={`w-full rounded-xl p-5 pt-8 mt-4 min-h-[40px] border border-accent shadow-md ${surfaceColor}`}>
+                                <Text className={`text-base font-audiowide mb-2 ${textColor}`}>Enhanced Translation:</Text>
                                 <Text className={`text-xl text-center leading-7 font-montserrat-bold text-highlight`}>
                                     {enhancedTranslation}
                                 </Text>
@@ -555,6 +671,13 @@ export default function Translate() {
                     isVisible={isHelpModalVisible} 
                     onClose={() => setIsHelpModalVisible(false)} 
                     isDark={isDark} 
+                />
+
+                <DeleteConfirmationModal
+                    isVisible={isDeleteModalVisible}
+                    onClose={() => setIsDeleteModalVisible(false)}
+                    onConfirm={confirmClearAll}
+                    isDark={isDark}
                 />
 
             </ImageBackground>

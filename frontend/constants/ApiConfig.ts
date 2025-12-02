@@ -1,7 +1,7 @@
 // File: frontend/constants/ApiConfig.ts
 
 // Kani lang usa ka IP Adress ilisi good to go na
-export const SERVER_IP = '10.227.208.192'; 
+export const SERVER_IP = '10.176.194.192'; 
 export const SERVER_PORT = '8000';
 
 export const API_BASE_URL = `http://${SERVER_IP}:${SERVER_PORT}`;
