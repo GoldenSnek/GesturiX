@@ -1,374 +1,298 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
-  FlatList, 
-  ImageBackground, 
-  Image,
-  ActivityIndicator,
-  RefreshControl,
-  Modal,
-  Dimensions,
+  ScrollView, 
+  ImageBackground,
   Animated,
-  StyleSheet,
-  PanResponder
+  Easing,
+  ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
+import AppHeaderLearn from '../../../components/AppHeaderLearn';
 import { useTheme } from '../../../src/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { numbersData } from '../../../constants/numbers';
 import { 
-  fetchLeaderboard, 
+  getCompletedNumbers, 
+  markNumberCompleted, 
+  resetNumberProgress, 
+  updateStreakOnLessonComplete,
+  updatePracticeTime
+} from '../../../utils/progressStorage';
+import { 
   getCurrentUserId, 
-  getProfileLikeCount, 
-  getHasUserLiked, 
-  likeProfile, 
-  unlikeProfile 
+  getUserSavedItems, 
+  saveItem, 
+  unsaveItem,
+  SavedItem 
 } from '../../../utils/supabaseApi';
-import { supabase } from '../../../src/supabaseClient';
+import { Camera, useCameraDevices, CameraDevice } from 'react-native-vision-camera';
+import axios from 'axios';
+import { Video, ResizeMode } from 'expo-av';
+import { ENDPOINTS } from '../../../constants/ApiConfig';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useSettings } from '../../../src/SettingsContext';
 import * as Haptics from 'expo-haptics';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CAMERA_PANEL_HEIGHT = 370;
 
-interface LeaderboardUser {
-  user_id: string;
-  lessons_completed: number;
-  days_streak: number;
-  practice_hours: number;
-  profiles: {
-    username: string;
-    photo_url?: string | null;
-    created_at?: string;
-  };
-}
-
-// Filter Types
-type SortOption = 'lessons_completed' | 'days_streak' | 'practice_hours';
-
-const FILTERS: { key: SortOption; label: string }[] = [
-  { key: 'lessons_completed', label: 'Lessons' },
-  { key: 'days_streak', label: 'Streak' },
-  { key: 'practice_hours', label: 'Hours' },
-];
-
-export default function LeaderboardScreen() {
+const Numbers = () => {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { isDark } = useTheme();
-  const [users, setUsers] = useState<LeaderboardUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  // Sorting State
-  const [sortBy, setSortBy] = useState<SortOption>('lessons_completed');
-
-  // Modal State
-  const [selectedUser, setSelectedUser] = useState<LeaderboardUser | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [profileLikes, setProfileLikes] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeLoading, setLikeLoading] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const panY = useRef(new Animated.Value(0)).current;
+  const { isDark } = useTheme(); 
+  const { vibrationEnabled } = useSettings();
+  const { initialNumber } = useLocalSearchParams<{ initialNumber?: string }>(); 
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
-  const itemBg = isDark ? 'bg-darksurface' : 'bg-white';
-  
-  const loadData = async () => {
-    if (!refreshing) setLoading(true);
-    
-    try {
-      const [leaderboardData, uid] = await Promise.all([
-        fetchLeaderboard(sortBy),
-        getCurrentUserId()
-      ]);
 
-      setUsers(leaderboardData as unknown as LeaderboardUser[]);
-      setCurrentUserId(uid);
-    } catch (error) {
-      console.error("Error loading leaderboard data:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const [doneNumbers, setDoneNumbers] = useState<number[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [completed, setCompleted] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadData();
-  }, [sortBy]); 
+  const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [sortBy]);
+  const [isSlowMotion, setIsSlowMotion] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(true);
 
-  // PanResponder for swipe-down gesture
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy);
+  const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [prediction, setPrediction] = useState<string>('None');
+  const [isSending, setIsSending] = useState(false);
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
+  const [flash, setFlash] = useState<'on' | 'off'>('off');
+
+  const [hasVibratedForCurrent, setHasVibratedForCurrent] = useState(false);
+
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [allowCameraInteraction, setAllowCameraInteraction] = useState(false);
+
+  const cameraRef = useRef<Camera>(null);
+  const devices = useCameraDevices();
+  const device: CameraDevice | undefined =
+    devices.find(d => d.position === facing) ??
+    devices.find(d => d.position === 'front') ??
+    devices.find(d => d.position === 'back');
+
+  const currentData = numbersData[currentIdx];
+
+  useFocusEffect(
+    useCallback(() => {
+      const startTime = Date.now();
+      return () => {
+        const durationMs = Date.now() - startTime;
+        if (durationMs > 2000) {
+          updatePracticeTime(durationMs / 1000 / 60 / 60);
         }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 150) {
-          closeModal();
-        } else {
-          Animated.spring(panY, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 65,
-            friction: 11,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  useEffect(() => {
-    if (modalVisible) {
-      panY.setValue(0);
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 65,
-          friction: 11
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true
-        })
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 250,
-          useNativeDriver: true
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true
-        })
-      ]).start();
-    }
-  }, [modalVisible]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLikeStatus = async () => {
-      if (selectedUser && currentUserId && modalVisible) {
-        setLikeLoading(true);
-        const [count, userLiked] = await Promise.all([
-          getProfileLikeCount(selectedUser.user_id),
-          getHasUserLiked(currentUserId, selectedUser.user_id)
-        ]);
-        if (isMounted) {
-          setProfileLikes(count);
-          setIsLiked(userLiked);
-          setLikeLoading(false);
-        }
-      }
-    };
-    fetchLikeStatus();
-    return () => { isMounted = false; };
-  }, [selectedUser, currentUserId, modalVisible]);
-
-  const handleToggleLike = async () => {
-    if (!selectedUser || !currentUserId || likeLoading) return;
-
-    const previousLiked = isLiked;
-    const previousCount = profileLikes;
-    
-    setIsLiked(!previousLiked);
-    setProfileLikes(previousLiked ? previousCount - 1 : previousCount + 1);
-
-    try {
-      if (previousLiked) {
-        await unlikeProfile(currentUserId, selectedUser.user_id);
-      } else {
-        await likeProfile(currentUserId, selectedUser.user_id);
-      }
-    } catch (error) {
-      setIsLiked(previousLiked);
-      setProfileLikes(previousCount);
-    }
-  };
-
-  const getAvatarUrl = (path: string | null | undefined) => {
-    if (!path) return 'https://ui-avatars.com/api/?name=User&background=random';
-    if (path.startsWith('http')) return path;
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    return data.publicUrl;
-  };
-
-  const openProfile = (user: LeaderboardUser) => {
-    setSelectedUser(user);
-    setModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-  };
-
-  const getRankSuffix = (index: number) => {
-    const num = index + 1;
-    if (num === 1) return 'st';
-    if (num === 2) return 'nd';
-    if (num === 3) return 'rd';
-    return 'th';
-  };
-
-  const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => {
-    const isCurrentUser = item.user_id === currentUserId;
-
-    const containerBorder = isCurrentUser ? 'border-accent' : 'border-highlight';
-    const containerBg = isCurrentUser 
-      ? (isDark ? 'bg-orange-900/20' : 'bg-orange-50') 
-      : itemBg;
-    
-    const containerBorderWidth = 'border-2'; 
-
-    let rankColor = '#999';
-    let rankSize = 16;
-    if (index === 0) { rankColor = '#FFD700'; rankSize = 24; }
-    else if (index === 1) { rankColor = '#C0C0C0'; rankSize = 22; }
-    else if (index === 2) { rankColor = '#CD7F32'; rankSize = 20; }
-
-    let displayValue = item.lessons_completed;
-    let displayLabel = "Lessons";
-
-    if (sortBy === 'days_streak') {
-      displayValue = item.days_streak;
-      displayLabel = "Day Streak";
-    } else if (sortBy === 'practice_hours') {
-      displayValue = Math.round(item.practice_hours * 10) / 10;
-      displayLabel = "Hours";
-    }
-
-    return (
-      <TouchableOpacity 
-        onPress={() => openProfile(item)}
-        activeOpacity={0.9}
-        className={`flex-row items-center p-4 mb-3 rounded-2xl ${containerBorderWidth} ${containerBorder} ${containerBg} shadow-sm`}
-      >
-        <View className="w-8 items-center justify-center mr-2">
-          {index < 3 ? (
-            <MaterialIcons name="emoji-events" size={rankSize} color={rankColor} />
-          ) : (
-            <Text className={`font-audiowide text-lg text-gray-400`}>{index + 1}</Text>
-          )}
-        </View>
-
-        <Image
-          source={{ uri: getAvatarUrl(item.profiles?.photo_url) }}
-          className={`w-12 h-12 rounded-full mr-3 border ${isCurrentUser ? 'border-accent' : 'border-gray-300'}`}
-        />
-
-        <View className="flex-1">
-          <Text className={`font-fredoka-semibold text-lg ${textColor}`} numberOfLines={1}>
-            {item.profiles?.username || 'Unknown'} 
-            {isCurrentUser && <Text className="text-accent text-sm"> (You)</Text>}
-          </Text>
-          <View className="flex-row items-center">
-             {sortBy === 'lessons_completed' && <MaterialIcons name="local-fire-department" size={14} color="#FF6B00" />}
-             {sortBy === 'lessons_completed' && (
-                <Text className="text-xs text-gray-500 font-montserrat-medium ml-1">
-                    {item.days_streak} day streak
-                </Text>
-             )}
-             
-             {sortBy !== 'lessons_completed' && (
-                <Text className="text-xs text-gray-500 font-montserrat-medium">
-                    {item.lessons_completed} lessons completed
-                </Text>
-             )}
-          </View>
-        </View>
-
-        <View className="items-end">
-          <Text className="text-accent font-audiowide text-xl">{displayValue}</Text>
-          <Text className="text-xs text-gray-400 font-fredoka">{displayLabel}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // Updated FilterTabs Component matching Phrases.tsx UI
-  const FilterTabs = () => (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: isDark ? '#23201C' : '#f9f6f0',
-        borderRadius: 28,
-        padding: 7,
-        marginBottom: 20,
-        marginHorizontal: 12,
-        borderWidth: 1,
-        borderColor: isDark ? '#B5B1A2' : '#E5DDD4',
-        shadowColor: '#000',
-        shadowOpacity: 0.09,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-        elevation: isDark ? 2 : 1,
-      }}
-    >
-      {FILTERS.map((filter, i) => (
-        <React.Fragment key={filter.key}>
-          <TouchableOpacity
-            onPress={() => setSortBy(filter.key)}
-            activeOpacity={0.9}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 18,
-              paddingVertical: 1, 
-              backgroundColor: sortBy === filter.key
-                ? '#FF6B00'
-                : (isDark ? '#292822' : '#FAF3E7'),
-              marginHorizontal: 5,
-              transform: [{ scale: sortBy === filter.key ? 1.05 : 1.0 }],
-            }}
-          >
-            <Text style={{
-              fontFamily: 'Fredoka-SemiBold',
-              fontSize: 14,
-              color: sortBy === filter.key
-                ? '#FFFFFF'
-                : (isDark ? '#B3B3B3' : '#8A8A8A'),
-              letterSpacing: 0.5,
-              paddingVertical: 10,
-            }}>
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-          {i < FILTERS.length - 1 && (
-            <View style={{
-              width: 2,
-              alignSelf: 'stretch',
-              backgroundColor: isDark ? '#B5B1A2' : '#E5DDD4',
-              marginVertical: 6,
-              borderRadius: 99,
-            }} />
-          )}
-        </React.Fragment>
-      ))}
-    </View>
+      };
+    }, [])
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadSaved = async () => {
+        const uid = await getCurrentUserId();
+        setUserId(uid);
+        if (uid) {
+          const items = await getUserSavedItems(uid);
+          setUserSavedItems(items);
+        }
+      };
+      loadSaved();
+    }, [])
+  );
+
+  useEffect(() => {
+    if (currentData?.number !== undefined) {
+      const found = userSavedItems.find(
+        i => i.item_type === 'number' && i.item_identifier === currentData.number.toString()
+      );
+      setIsSaved(!!found);
+    }
+    setHasVibratedForCurrent(false);
+  }, [currentIdx, userSavedItems, currentData]);
+
+  const handleToggleSave = async () => {
+    if (!userId || currentData?.number === undefined) return;
+
+    if (isSaved) {
+      setIsSaved(false);
+      await unsaveItem(userId, 'number', currentData.number.toString());
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    } else {
+      setIsSaved(true);
+      await saveItem(userId, 'number', currentData.number.toString());
+      const items = await getUserSavedItems(userId);
+      setUserSavedItems(items);
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      const uid = await getCurrentUserId();
+      const allNumbers = numbersData.map(n => n.number);
+      const done = await getCompletedNumbers(allNumbers);
+      setDoneNumbers(done);
+
+      const firstUncompletedIdx = numbersData.findIndex(n => !done.includes(n.number));
+      const defaultIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
+
+      if (initialNumber) {
+        const numVal = parseInt(initialNumber, 10);
+        const paramIdx = numbersData.findIndex(n => n.number === numVal);
+        if (paramIdx !== -1) {
+          setCurrentIdx(paramIdx);
+          return;
+        }
+      }
+
+      if (uid) {
+        const storageKey = `user_${uid}_numbers_last_idx`;
+        const lastNumStr = await AsyncStorage.getItem(storageKey);
+        if (lastNumStr) {
+          const lastNum = parseInt(lastNumStr, 10);
+          const lastIdx = numbersData.findIndex(n => n.number === lastNum);
+          if (lastIdx !== -1) {
+            setCurrentIdx(lastIdx);
+            return;
+          }
+        }
+      }
+
+      setCurrentIdx(defaultIdx);
+    })();
+  }, [initialNumber]); 
+
+  useEffect(() => {
+    if (numbersData[currentIdx] && userId) {
+      const storageKey = `user_${userId}_numbers_last_idx`;
+      AsyncStorage.setItem(storageKey, numbersData[currentIdx].number.toString());
+    }
+  }, [currentIdx, userId]);
+
+  useEffect(() => {
+    setCompleted(doneNumbers.includes(numbersData[currentIdx].number));
+  }, [doneNumbers, currentIdx]);
+
+  useEffect(() => {
+    (async () => {
+      const status = await Camera.requestCameraPermission();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: isCameraPanelVisible ? 1 : 0,
+      duration: 330,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setIsCameraActive(isCameraPanelVisible);
+      setAllowCameraInteraction(isCameraPanelVisible);
+      if (!isCameraPanelVisible) {
+        setPrediction('None');
+        setHasVibratedForCurrent(false);
+      }
+      if (isCameraPanelVisible) setFacing('front');
+    });
+  }, [isCameraPanelVisible]);
+
+  useEffect(() => {
+    if (!isCameraActive || !cameraRef.current) return;
+    
+    const interval = setInterval(async () => {
+      if (isSending) return;
+      setIsSending(true);
+      try {
+        const photo = await cameraRef.current!.takePhoto({});
+        const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+        const formData = new FormData();
+        formData.append('file', { uri, type: 'image/jpeg', name: 'frame.jpg' } as any);
+        
+        const res = await axios.post(ENDPOINTS.PREDICT, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        if (res.data.prediction && res.data.prediction !== 'None') {
+          const pred = res.data.prediction.toUpperCase();
+          setPrediction(pred);
+
+          const target = currentData.number.toString();
+
+          if (pred === target && !hasVibratedForCurrent) {
+            if (vibrationEnabled) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            setHasVibratedForCurrent(true); 
+          } 
+          else if (pred !== target) {
+            setHasVibratedForCurrent(false);
+          }
+
+        } else {
+          setPrediction('No Hand Detected');
+          setHasVibratedForCurrent(false);
+        }
+      } catch (e) {
+        // Silent catch
+      }
+      setIsSending(false);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isCameraActive, isSending, currentData, hasVibratedForCurrent, vibrationEnabled]);
+
+  const handleComplete = async () => {
+    await markNumberCompleted(numbersData[currentIdx].number);
+    await updateStreakOnLessonComplete();
+    
+    const allNumbers = numbersData.map(n => n.number);
+    const done = await getCompletedNumbers(allNumbers);
+    setDoneNumbers(done);
+    setCompleted(true);
+
+    if (currentIdx < numbersData.length - 1) {
+      setTimeout(() => {
+        setCurrentIdx(currentIdx + 1);
+      }, 200);
+    }
+  };
+
+  const handleReset = async () => {
+    await resetNumberProgress();
+    setDoneNumbers([]);
+    setCurrentIdx(0);
+  };
+
+  const handleToggleCameraPanel = async () => {
+    if (!isCameraPanelVisible) {
+      if (!hasPermission) {
+        const status = await Camera.requestCameraPermission();
+        setHasPermission(status === 'granted');
+        if (status !== 'granted') return;
+      }
+      setCameraPanelVisible(true);
+    } else {
+      setAllowCameraInteraction(false);
+      setTimeout(() => setCameraPanelVisible(false), 10);
+    }
+  };
+
+  const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
+  const toggleFlash = () => setFlash(flash === 'off' ? 'on' : 'off');
+
+  const completedCount = doneNumbers.length;
+
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CAMERA_PANEL_HEIGHT + 16, 0],
+  });
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -377,297 +301,359 @@ export default function LeaderboardScreen() {
         className="flex-1"
         resizeMode="cover"
       >
-        <View className="flex-1" style={{ paddingTop: insets.top }}>
-          
-          <View>
-            <LinearGradient
-              colors={['#FF6B00', '#FFAB7B']}
-              className="py-3 px-4 flex-row items-center"
-            >
-              <TouchableOpacity onPress={() => router.back()} className="p-1 absolute left-4 z-10">
-                <MaterialIcons name="arrow-back" size={24} color="black" />
-              </TouchableOpacity>
-              <View className="flex-1 items-center">
-                <Text className="text-primary text-xl font-fredoka-semibold">Leaderboard</Text>
-                <Text className="text-primary text-xs font-fredoka">Community Rankings</Text>
-              </View>
-            </LinearGradient>
-            
-            <View className={`pt-3 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
-               <FilterTabs />
-            </View>
-            
-            <LinearGradient
-              colors={['rgba(255, 171, 123, 0.3)', 'rgba(255, 171, 123, 0.0)']}
-              className="h-2"
-            />
-          </View>
+        <View
+          className="flex-1"
+          style={{ paddingTop: insets.top }}
+        >
+          <AppHeaderLearn
+            title="Learn Numbers"
+            completedCount={completedCount}
+            totalCount={numbersData.length}
+            onResetProgress={handleReset}
+          />
 
-          {loading ? (
-            <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-          ) : (
-            <FlatList
-              data={users}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={renderItem}
-              contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={['#FF6B00']}
-                  tintColor={'#FF6B00'}
-                />
-              }
-              ListEmptyComponent={
-                <Text className={`text-center mt-10 font-montserrat-regular ${textColor}`}>
-                  No users found.
-                </Text>
-              }
-            />
-          )}
-
-          <Modal
-            animationType="none"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={closeModal}
+          <ScrollView
+            className="flex-1 p-4"
+            contentContainerStyle={{ paddingBottom: 150 }}
           >
-            <View style={styles.modalOverlay}>
-              <Animated.View 
-                style={[
-                  styles.backdrop,
-                  { opacity: fadeAnim }
-                ]}
+            <Text
+              className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Select a Number
+            </Text>
+
+            <View className="flex-row flex-wrap justify-between">
+              {numbersData.map((item, index) => {
+                const isCompleted = doneNumbers.includes(item.number);
+                const isSelected = currentIdx === index;
+
+                return (
+                  <TouchableOpacity
+                    key={item.number}
+                    className={`w-[18%] aspect-square rounded-lg items-center justify-center m-[1%] border-2 ${
+                      isCompleted
+                        ? 'border-accent bg-secondary'
+                        : isDark
+                          ? 'border-darkhover bg-darksurface'
+                          : 'border-neutral bg-lighthover'
+                    }`}
+                    onPress={() => setCurrentIdx(index)}
+                    activeOpacity={0.7}
+                    style={isSelected ? { borderWidth: 3, borderColor: '#FF6B00' } : {}}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: 'Fredoka-SemiBold',
+                        fontSize: 20,
+                        color: isCompleted
+                          ? '#FF6B00'
+                          : (isDark ? '#E5E7EB' : '#6B7280'),
+                      }}
+                    >
+                      {item.number}
+                    </Text>
+                    {isCompleted && (
+                      <View className="absolute top-1 right-1">
+                        <MaterialIcons name="check-circle" size={14} color="#FF6B00" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text
+              className={`text-lg mb-4 ${isDark ? 'text-secondary' : 'text-primary'}`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Practice: "{currentData.number}"
+            </Text>
+
+            <View style={{ position: 'relative', marginBottom: 20 }}>
+              <View
+                className="border-accent"
+                style={{
+                  width: '100%',
+                  aspectRatio: 16 / 9,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? '#222' : '#fffcfa',
+                  borderWidth: 2,
+                  shadowColor: isDark ? '#FFB366' : '#FF6B00',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 7,
+                  elevation: 4,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
               >
-                <TouchableOpacity 
-                  style={StyleSheet.absoluteFill} 
-                  activeOpacity={1} 
-                  onPress={closeModal} 
+                <Video
+                  key={currentIdx}
+                  source={currentData.video}
+                  style={{ width: '100%', height: '100%', borderRadius: 18 }}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay={true}
+                  isLooping={isRepeating}
+                  useNativeControls
+                  rate={isSlowMotion ? 0.5 : 1.0}
+                  isMuted={true}
                 />
-              </Animated.View>
-              
-              <Animated.View 
-                style={[
-                  styles.modalContainer,
-                  {
-                    transform: [
-                      { translateY: Animated.add(slideAnim, panY) }
-                    ]
-                  }
-                ]}
-                {...panResponder.panHandlers}
+              </View>
+            </View>
+
+            {/* Camera Panel */}
+            {isCameraPanelVisible && (
+              <Animated.View
+                style={{
+                  width: '100%',
+                  height: CAMERA_PANEL_HEIGHT,
+                  transform: [{ translateY }],
+                  marginBottom: 20,
+                  position: 'relative',
+                  borderRadius: 22,
+                  backgroundColor: isDark ? '#1E1A1A' : '#f5eee3',
+                  borderWidth: 2,
+                  borderColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  shadowColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.16,
+                  shadowRadius: 11,
+                  elevation: 8,
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+                pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
               >
-                <View 
-                  className={`rounded-t-3xl overflow-hidden ${isDark ? 'bg-[#1E1E1E]' : 'bg-white'}`}
-                  style={styles.modalContent}
-                >
-                  <LinearGradient
-                    colors={['#FF6B00', '#FFAB7B']}
-                    className="h-24"
-                  />
-                  
-                  <View className="absolute top-2 self-center w-12 h-1.5 bg-white/40 rounded-full" />
-
-                  {selectedUser && (
-                    <View className="px-6 pb-8" style={{ marginTop: -50 }}>
-                      <View className="items-center mb-4">
-                        <View style={styles.avatarContainer}>
-                          <Image
-                            source={{ uri: getAvatarUrl(selectedUser.profiles?.photo_url) }}
-                            className="w-32 h-32 rounded-full border-4 border-white"
-                          />
-                          <View
-                            style={{
-                              position: 'absolute',
-                              bottom: -8,
-                              right: -8,
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              borderWidth: 4,
-                              borderColor: '#fff',
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: 4 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 8,
-                              elevation: 6,
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <LinearGradient
-                              colors={['#FF6B00', '#FF8C42']}
-                              style={{ width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }}
-                            >
-                              <MaterialIcons name="emoji-events" size={22} color="white" />
-                            </LinearGradient>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View className="items-center mb-2">
-                        <Text className={`text-2xl font-fredoka-bold text-center ${textColor}`}>
-                          {selectedUser.profiles?.username}
-                        </Text>
-                        <View className="flex-row items-center mt-1">
-                          <View className={`px-3 py-1 rounded-full ${isDark ? 'bg-accent/20' : 'bg-orange-100'}`}>
-                            <Text className="text-accent font-audiowide text-sm">
-                              {users.findIndex(u => u.user_id === selectedUser.user_id) + 1}
-                              {getRankSuffix(users.findIndex(u => u.user_id === selectedUser.user_id))} Place
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View className="items-center mb-6">
-                        <View className="flex-row items-center">
-                          <Ionicons name="calendar-outline" size={14} color="#999" />
-                          <Text className="text-xs font-montserrat-medium text-gray-500 ml-1.5">
-                            Member since {new Date(selectedUser.profiles?.created_at || Date.now()).toLocaleDateString(undefined, { 
-                              year: 'numeric', 
-                              month: 'short'
-                            })}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View className="mb-6">
-                        <Text className={`text-sm font-fredoka-semibold mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Performance Stats
-                        </Text>
-                        <View className="flex-row justify-between">
-                          <View className={`flex-1 items-center p-4 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
-                            <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
-                              <MaterialIcons name="check-circle" size={26} color="#FF6B00" />
-                            </View>
-                            <Text className={`text-xl font-fredoka-bold ${textColor}`}>
-                              {selectedUser.lessons_completed}
-                            </Text>
-                            <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Lessons</Text>
-                          </View>
-                          
-                          <View className={`flex-1 items-center p-4 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
-                            <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
-                              <MaterialIcons name="local-fire-department" size={26} color="#FF6B00" />
-                            </View>
-                            <Text className={`text-xl font-fredoka-bold ${textColor}`}>
-                              {selectedUser.days_streak}
-                            </Text>
-                            <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Day Streak</Text>
-                          </View>
-
-                          <View className={`flex-1 items-center p-3 rounded-2xl mx-1 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
-                            <View className="w-12 h-12 rounded-full bg-accent/10 items-center justify-center mb-2">
-                              <MaterialIcons name="timer" size={26} color="#FF6B00" />
-                            </View>
-                            <Text className={`text-xl font-fredoka-bold ${textColor}`}>
-                              {selectedUser.practice_hours.toFixed(1)}
-                            </Text>
-                            <Text className="text-xs text-gray-500 font-montserrat mt-0.5">Practice Hours</Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View className={`h-px mb-6 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
-
-                      <View>
-                        <Text className={`text-sm font-fredoka-semibold mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Show Appreciation
-                        </Text>
-                        <TouchableOpacity
-                          onPress={handleToggleLike}
-                          activeOpacity={0.8}
-                          disabled={likeLoading}
-                          className="overflow-hidden rounded-2xl shadow-md"
-                        >
-                          {isLiked ? (
-                            <LinearGradient
-                              colors={['#EF4444', '#DC2626']}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 1 }}
-                              className="flex-row items-center justify-center py-4 px-6"
-                            >
-                              <Ionicons name="heart" size={26} color="white" />
-                              <View className="flex-1 ml-3">
-                                <Text className="text-lg font-fredoka-bold text-white">
-                                  You liked this profile
-                                </Text>
-                                <Text className="text-xs font-montserrat text-white/80">
-                                  {profileLikes} {profileLikes === 1 ? 'person likes' : 'people like'} this profile
-                                </Text>
-                              </View>
-                              {profileLikes > 0 && (
-                                <View className="px-3 py-1.5 rounded-full bg-white/20">
-                                  <Text className="text-sm font-audiowide text-white">
-                                    {profileLikes}
-                                  </Text>
-                                </View>
-                              )}
-                            </LinearGradient>
-                          ) : (
-                            <View className={`flex-row items-center justify-center py-4 px-6 ${isDark ? 'bg-darksurface border border-gray-700' : 'bg-gray-50'}`}>
-                              <Ionicons name="heart-outline" size={26} color="#FF6B00" />
-                              <View className="flex-1 ml-3">
-                                <Text className={`text-lg font-fredoka-bold ${textColor}`}>
-                                  Give them a like!
-                                </Text>
-                                <Text className="text-xs font-montserrat text-gray-500">
-                                  {profileLikes} {profileLikes === 1 ? 'person likes' : 'people like'} this profile
-                                </Text>
-                              </View>
-                              {profileLikes > 0 && (
-                                <View className="px-3 py-1.5 rounded-full bg-accent/10">
-                                  <Text className="text-sm font-audiowide text-accent">
-                                    {profileLikes}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
+                {hasPermission && device && allowCameraInteraction ? (
+                  <>
+                    <Camera
+                      ref={cameraRef}
+                      style={{ flex: 1, borderRadius: 20 }}
+                      device={device}
+                      isActive={isCameraActive}
+                      photo={true}
+                      torch={facing === 'back' ? flash : 'off'}
+                      className="rounded-2xl"
+                    />
+                    
+                    <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
+                        {facing === 'back' && (
+                            <TouchableOpacity onPress={toggleFlash} className="p-2">
+                                <MaterialIcons
+                                    name={flash === 'on' ? 'flash-on' : 'flash-off'}
+                                    size={24}
+                                    color="white"
+                                />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={flipCamera} className="p-2">
+                            <MaterialIcons name="flip-camera-ios" size={24} color="white" />
                         </TouchableOpacity>
-                      </View>
-
                     </View>
-                  )}
+                  </>
+                ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 24 }}>
+                    <ActivityIndicator size="large" color="#FF6B00" />
+                    <Text style={{
+                      color: isDark ? '#fff' : '#333',
+                      marginTop: 14,
+                      fontFamily: 'Fredoka-Regular',
+                    }}>
+                      {hasPermission ? "Loading camera..." : "No camera permission"}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{
+                  backgroundColor: isDark ? '#181818' : '#f2f1efff',
+                  borderBottomLeftRadius: 20,
+                  borderBottomRightRadius: 20,
+                  borderTopWidth: 1,
+                  borderColor: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  minHeight: 65,
+                }}>
+                  <Text style={{
+                    fontFamily: 'Audiowide-Regular',
+                    fontSize: 15,
+                    color: prediction === currentData.number.toString() ? '#10B981' : '#FF6B00',
+                    marginBottom: 4,
+                  }}>
+                    {prediction === currentData.number.toString() ? "Correct!" : "Detected Sign:"}
+                  </Text>
+                  <Text style={{
+                    fontFamily: 'Fredoka-SemiBold',
+                    fontSize: 20,
+                    color: isDark ? '#fff' : '#222',
+                    letterSpacing: 1,
+                  }}>
+                    {prediction}
+                  </Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 6,
+                  }}>
+                    <View style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: 5,
+                      backgroundColor: isCameraActive ? '#FF6B00' : '#b8bab9',
+                      marginRight: 7,
+                    }} />
+                    <Text style={{
+                      fontFamily: 'Montserrat-SemiBold',
+                      fontSize: 13,
+                      color: isDark ? '#ccc' : '#5e6272',
+                    }}>
+                      {isCameraActive ? 'LIVE' : 'Paused'}
+                    </Text>
+                  </View>
                 </View>
               </Animated.View>
-            </View>
-          </Modal>
+            )}
 
+            <Text
+              style={{
+                marginVertical: 8,
+                paddingHorizontal: 4,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+              }}
+            >
+              <Text
+                style={{
+                  fontWeight: 'bold',
+                  fontFamily: 'Montserrat-Bold',
+                  fontSize: 14,
+                  color: isDark ? '#FFA500' : '#FF6B00',
+                }}
+              >
+                Tips:
+              </Text>
+              <Text
+                style={{
+                  fontFamily: 'Montserrat-SemiBold',
+                  color: isDark ? '#ccc' : '#333',
+                  fontSize: 13,
+                }}
+              >
+                {' '}{currentData.tips}
+              </Text>
+            </Text>
+
+            <View className="flex-row justify-between mb-4">
+              <TouchableOpacity
+                onPress={() => setIsSlowMotion(!isSlowMotion)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isSlowMotion 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="speed" 
+                  size={20} 
+                  color={isSlowMotion ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isSlowMotion ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Slow Mo
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsRepeating(!isRepeating)}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isRepeating 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name="replay" 
+                  size={20} 
+                  color={isRepeating ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isRepeating ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Repeat
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleToggleCameraPanel}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                   isCameraPanelVisible ? 'bg-accent' : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name={isCameraPanelVisible ? "videocam-off" : "videocam"}
+                  size={20} 
+                  color={isCameraPanelVisible ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isCameraPanelVisible ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  Practice
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleToggleSave}
+                className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
+                  isSaved 
+                    ? 'bg-accent' 
+                    : (isDark ? 'bg-darksurface' : 'bg-lighthover')
+                }`}
+              >
+                <MaterialIcons 
+                  name={isSaved ? "bookmark" : "bookmark-outline"}
+                  size={20} 
+                  color={isSaved ? '#F8F8F8' : (isDark ? '#F8F8F8' : '#2C2C2C')} 
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  className={`text-xs text-center ${isSaved ? 'text-secondary' : textColor}`}
+                  style={{ fontFamily: 'Fredoka-Regular' }}
+                  numberOfLines={1}
+                >
+                  {isSaved ? 'Saved' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              onPress={handleComplete}
+              disabled={completed}
+              className={`w-full bg-accent rounded-full py-4 items-center shadow-md ${completed ? 'opacity-60' : ''}`}
+            >
+              <Text
+                className="text-secondary text-lg"
+                style={{ fontFamily: 'Fredoka-SemiBold' }}
+              >
+                {completed ? 'Completed!' : 'Mark as Completed'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </ImageBackground>
     </View>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  modalContainer: {
-    maxHeight: '90%',
-  },
-  modalContent: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 20,
-  },
-  avatarContainer: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-});
+export default Numbers;

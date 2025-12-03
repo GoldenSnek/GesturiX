@@ -98,7 +98,7 @@ export default function PhraseLearnScreen() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [isSlowMotion, setIsSlowMotion] = useState(false);
-  const [isRepeating, setIsRepeating] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(true);
   const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';

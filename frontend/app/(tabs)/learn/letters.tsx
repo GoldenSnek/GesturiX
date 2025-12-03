@@ -58,7 +58,7 @@ const Letters = () => {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [isSlowMotion, setIsSlowMotion] = useState(false);
-  const [isRepeating, setIsRepeating] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(true);
 
   const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);

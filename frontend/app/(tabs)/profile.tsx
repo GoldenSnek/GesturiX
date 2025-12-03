@@ -522,6 +522,53 @@ const Profile = () => {
               ))}
             </View>
             
+            {/* 🎥 Content Credits */}
+            <Text
+              className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
+              style={{ fontFamily: 'Audiowide-Regular' }}
+            >
+              Credits
+            </Text>
+
+            <View
+              className={`rounded-2xl p-4 shadow-md border border-accent mb-10 ${
+                isDark ? 'bg-darksurface' : 'bg-white'
+              }`}
+            >
+              <Text
+                className={`text-base mb-4 ${isDark ? 'text-neutral' : 'text-primary'}`}
+                style={{ fontFamily: 'Montserrat-SemiBold', lineHeight: 22 }}
+              >
+                Special thanks to the following creators for their educational content:
+              </Text>
+
+              {[
+                { label: 'Letters (Alphabet)', name: 'ASL THAT (@ASLTHAT)', url: 'https://www.youtube.com/watch?v=tkMg8g8vVUo' },
+                { label: 'Numbers (1-20)', name: 'ASL THAT (@ASLTHAT)', url: 'https://www.youtube.com/watch?v=hFCXyB6q2nU' },
+                { label: 'Phrases', name: 'Bill Vicars (@sign-language)', url: 'https://youtube.com/@sign-language?si=8fo_SHKjD_F-KuRQ' },
+              ].map((credit, idx) => (
+                <View key={idx} className="mb-3">
+                  <Text
+                    className={`text-sm ${isDark ? 'text-secondary' : 'text-primary'}`}
+                    style={{ fontFamily: 'Fredoka-SemiBold' }}
+                  >
+                    {credit.label}:
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => openGitHub(credit.url)}
+                    className="active:opacity-70"
+                  >
+                    <Text
+                      className="text-accent text-base underline"
+                      style={{ fontFamily: 'Fredoka-SemiBold' }}
+                    >
+                      {credit.name}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
             {/* 👤 Account */}
             <Text
               className={`text-lg mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
