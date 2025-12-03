@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/leaderboard.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 

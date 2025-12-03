@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/saved.tsx
 import React, { useState, useCallback } from 'react';
 import { 
   View, 
@@ -17,7 +16,6 @@ import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../../../src/ThemeContext';
 import { getCurrentUserId, getUserSavedItems, unsaveItem, SavedItem } from '../../../utils/supabaseApi';
 
-// Data Sources
 import { alphabetSigns } from '../../../constants/alphabetSigns';
 import { numbersData } from '../../../constants/numbers';
 import { phrases } from '../../../constants/phrases';
@@ -33,21 +31,17 @@ export default function SavedSignsScreen() {
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
-  // FIX: Improved text contrast for readability
   const subTextColor = isDark ? 'text-gray-300' : 'text-gray-600'; 
   const cardBg = isDark ? 'bg-darksurface' : 'bg-white';
   
-  // FIX: Consistent border color
   const cardBorder = 'border-highlight';
 
-  // Fetch Data
   const loadSavedItems = async () => {
     setLoading(true);
     const uid = await getCurrentUserId();
     setUserId(uid);
     if (uid) {
       const items = await getUserSavedItems(uid);
-      // Sort by newest first
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setSavedItems(items);
     }
@@ -63,7 +57,6 @@ export default function SavedSignsScreen() {
   const handleUnsave = async (item: SavedItem) => {
     if (!userId) return;
     
-    // Optimistic update
     setSavedItems(prev => prev.filter(i => i.id !== item.id));
     
     await unsaveItem(userId, item.item_type, item.item_identifier);
@@ -183,7 +176,7 @@ export default function SavedSignsScreen() {
                             source={details.video}
                             style={{ width: '100%', height: '100%' }}
                             resizeMode={ResizeMode.COVER}
-                            shouldPlay={false} // Don't auto play all
+                            shouldPlay={false}
                             isMuted={true}
                           />
                         ) : (
@@ -215,13 +208,11 @@ export default function SavedSignsScreen() {
                             </TouchableOpacity>
                           </View>
                           
-                          {/* FIX: Consistent Highlight Color for Category */}
                           <Text className="text-xs font-montserrat-bold text-highlight uppercase mt-0.5">
                             {details.subtitle}
                           </Text>
                         </View>
                         
-                        {/* FIX: Increased font size and improved color for readability */}
                         <Text className={`text-sm font-montserrat-medium ${subTextColor} mt-2`} numberOfLines={2}>
                           Tip: {details.tips}
                         </Text>

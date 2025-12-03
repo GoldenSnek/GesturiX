@@ -1,5 +1,3 @@
-// constants/numbers.ts
-
 export const numbersData = [
   {
     number: 1,

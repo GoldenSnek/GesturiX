@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/_layout.tsx
 import React from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
@@ -24,7 +23,6 @@ const LearnStack = () => {
         <Stack.Screen name="phrases" options={{ title: 'Phrases' }} />
         <Stack.Screen name="saved" options={{ title: 'Saved Signs' }} />
         <Stack.Screen name="videos" options={{ title: 'Video Lessons' }} />
-        {/* NEW SCREENS */}
         <Stack.Screen name="dictionary" options={{ title: 'Dictionary' }} />
         <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
       </Stack>

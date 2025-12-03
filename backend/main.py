@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 import torch
@@ -14,11 +13,10 @@ import uvicorn
 
 # ================= CONFIG =================
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = 29  # UPDATED: Matches model2 (A-Z + del + nothing + space)
-model_path = "model2.pth" # UPDATED: Pointing to the new model file
+num_classes = 29  # model2 (A-Z + del + nothing + space)
+model_path = "model2.pth"
 
-# ================= MODEL (UPDATED ARCHITECTURE) =================
-# This matches the architecture defined in webcammodel2.py
+# ================= MODEL =================
 class SignNet(nn.Module):
     def __init__(self, num_classes=29):
         super(SignNet, self).__init__()
@@ -43,7 +41,6 @@ class SignNet(nn.Module):
 
 model = SignNet(num_classes).to(device)
 
-# Load the new model weights
 try:
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
@@ -51,15 +48,14 @@ try:
 except FileNotFoundError:
     print(f"❌ Error: {model_path} not found. Make sure the file is in the same directory.")
 
-# UPDATED: Class names for model2
 class_names = [chr(i) for i in range(ord('A'), ord('Z')+1)] + ['del', 'nothing', 'space']
 
 # ================= MEDIAPIPE =================
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=2, # UPDATED: Increased to 2 to match webcam script
-    min_detection_confidence=0.8
+    max_num_hands=1,
+    min_detection_confidence=0.8 # change para balance speed vs accuracy
 )
 
 def normalize_landmarks(coords):
@@ -68,7 +64,7 @@ def normalize_landmarks(coords):
     coords /= np.max(np.abs(coords) + 1e-6)
     return coords
 
-# ================= GEMINI SETUP =================
+# ================= GEMINI =================
 load_dotenv() 
 
 try:
@@ -89,7 +85,6 @@ app = FastAPI()
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    # Read image
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -99,9 +94,6 @@ async def predict(file: UploadFile = File(...)):
     if not results.multi_hand_landmarks:
         return {"prediction": "None"}
 
-    # Process the first detected hand
-    # Note: Even if max_num_hands=2, we usually only predict one character 
-    # at a time for simple endpoints unless you want to return a list of predictions.
     landmarks = results.multi_hand_landmarks[0] 
     
     coords = np.array([[lm.x, lm.y, lm.z] for lm in landmarks.landmark], dtype=np.float32)
@@ -112,9 +104,6 @@ async def predict(file: UploadFile = File(...)):
         outputs = model(features)
         probabilities = torch.softmax(outputs, dim=1)
         confidence, pred = torch.max(probabilities, 1)
-        
-        # Optional: Add a confidence threshold check here if desired
-        # if confidence.item() < 0.6: return {"prediction": "?"}
         
         label = class_names[pred.item()]
 
@@ -144,7 +133,6 @@ async def enhance_translation(request: EnhanceRequest):
     """
 
     try:
-        # Check if client exists (in case init failed)
         if 'client' not in globals():
             return {"enhanced_text": "AI Enhancement unavailable (API Key missing)."}
 

@@ -16,9 +16,8 @@ module.exports = {
         lighthover: '#EBEBEB',
       },
 
-      // 🎨 FONT SETUP
+      // FONT SETUP
       fontFamily: {
-        // 🧠 Existing fonts (Inter, Montserrat, Orbitron)
         'inter': ['Inter-Regular'],
         'inter-bold': ['Inter-Bold'],
         'inter-italic': ['Inter-Italic'],

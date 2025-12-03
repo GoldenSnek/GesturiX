@@ -1,4 +1,3 @@
-// File: frontend/utils/progressStorage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../src/supabaseClient';
 import { getCurrentUserId } from './supabaseApi';
@@ -140,7 +139,6 @@ export async function syncProgressToSupabase() {
 
     const totalCompleted = completedLetters.length + completedPhrases.length + completedNumbers.length;
 
-    // Upsert with specific columns to avoid overwriting other stats if row exists
     const { error } = await supabase
       .from('user_statistics')
       .upsert(
@@ -218,11 +216,11 @@ export async function updateStreakOnLessonComplete() {
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" which is fine for first time
+    if (error && error.code !== 'PGRST116') {
        console.error("Error fetching stats for streak:", error.message);
     }
 
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10);
     let newStreak = 1;
     let shouldUpdate = true;
 
@@ -230,10 +228,8 @@ export async function updateStreakOnLessonComplete() {
       const lastDate = stats.last_activity_date;
       
       if (lastDate === today) {
-        // User already practiced today, maintain streak, don't increment
         shouldUpdate = false; 
       } else {
-        // Check if last activity was yesterday
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yString = yesterday.toISOString().slice(0, 10);
@@ -241,12 +237,10 @@ export async function updateStreakOnLessonComplete() {
         if (lastDate === yString) {
           newStreak = (stats.days_streak || 0) + 1;
         } else {
-          // Streak broken (last activity was older than yesterday)
           newStreak = 1;
         }
       }
     } else {
-      // No stats found, first time user
       newStreak = 1;
     }
 

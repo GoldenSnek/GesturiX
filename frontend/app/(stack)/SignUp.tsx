@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-// Removed AuthSession import as it was only used for Google Sign Up
 import { supabase } from '../../src/supabaseClient';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
@@ -22,7 +21,6 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 
 global.Buffer = global.Buffer || Buffer;
-// Removed redirectUrl constant
 
 const SignUp: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -53,7 +51,6 @@ const SignUp: React.FC = () => {
   };
 
   const handleSignUp = async () => {
-    // Fix: Trim inputs to remove trailing spaces
     const cleanEmail = email.trim();
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
@@ -77,18 +74,15 @@ const SignUp: React.FC = () => {
     if (error) {
       Alert.alert('Sign Up Failed', error.message);
     } else {
-      // Pass the image URI to the verify screen
       router.push({
         pathname: '/(stack)/verify-code',
         params: { 
           email: cleanEmail,
-          image: image || '' // Pass empty string if no image selected
+          image: image || ''
         }
       });
     }
   };
-
-  // Removed handleGoogleSignUp function
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
@@ -208,9 +202,6 @@ const SignUp: React.FC = () => {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Google Sign Up Button Removed */}
-
-        {/* Adjusted animation delay to 750 (was 850) since one item was removed */}
         <Animated.View entering={FadeInUp.delay(750).duration(600)} className="mt-6 flex-row items-center justify-center">
           <Text className="text-black font-fredoka">Already have an account? </Text>
           <TouchableOpacity onPress={() => router.replace('/(stack)/Login')}>

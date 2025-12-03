@@ -1,9 +1,6 @@
-// File: ../../components/AppHeaderProfile.tsx
-
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '../src/supabaseClient';
@@ -65,13 +62,11 @@ const AppHeaderProfile = () => {
 
   return (
     <View>
-      {/* 🔸 Main Gradient Header (same as your AppHeader style) */}
       <LinearGradient
         colors={['#FF6B00', '#FFAB7B']}
         className="py-3 px-4 flex-row items-center justify-center"
       >
 
-        {/* Profile Info (replaces the logo) */}
         {loading ? (
           <ActivityIndicator size="small" color="#fff" />
         ) : profile ? (
@@ -98,11 +93,9 @@ const AppHeaderProfile = () => {
           <Text className="text-white text-sm">No profile data</Text>
         )}
 
-        {/* Empty spacer for layout balance */}
         <View style={{ width: 26 }} />
       </LinearGradient>
 
-      {/* 🔸 Bottom Gradient Fade (same as your original AppHeader) */}
       <LinearGradient
         colors={[
           'rgba(255, 171, 123, 1.0)',

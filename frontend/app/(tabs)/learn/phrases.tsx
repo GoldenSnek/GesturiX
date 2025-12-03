@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/phrases.tsx
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   View, 
@@ -105,7 +104,6 @@ export default function PhraseLearnScreen() {
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
 
-  // 🕒 LEARNING TIME TRACKER
   useFocusEffect(
     useCallback(() => {
       const startTime = Date.now();
@@ -118,7 +116,6 @@ export default function PhraseLearnScreen() {
     }, [])
   );
 
-  // Load Saved
   useFocusEffect(
     useCallback(() => {
       const loadSaved = async () => {
@@ -133,7 +130,6 @@ export default function PhraseLearnScreen() {
     }, [])
   );
 
-  // Check saved status
   useEffect(() => {
     if (selectedPhrase?.id) {
       const found = userSavedItems.find(
@@ -159,14 +155,12 @@ export default function PhraseLearnScreen() {
     }
   };
 
-  // 🧠 1. INITIAL LOAD: Restore state
   useEffect(() => {
     (async () => {
       const uid = await getCurrentUserId();
       const done = await getCompletedPhrases(phrases.map(p => p.id));
       setDoneIds(done);
 
-      // Priority 1: Navigation Param
       if (initialPhraseId) {
         const match = phrases.find(p => p.id === initialPhraseId);
         if (match) {
@@ -176,7 +170,6 @@ export default function PhraseLearnScreen() {
         }
       }
 
-      // Priority 2: Last saved state (User Specific)
       if (uid) {
         const storageKey = `user_${uid}_phrases_last_id`;
         const lastId = await AsyncStorage.getItem(storageKey);
@@ -191,14 +184,11 @@ export default function PhraseLearnScreen() {
         }
       }
 
-      // Priority 3: Default to first
-      // FIX: Removed unlocking logic. Defaults to first item of first category.
       setActiveCategory(CATEGORIES[0].key);
       setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
     })();
   }, [initialPhraseId]);
 
-  // 🧠 2. CATEGORY CHANGE LOGIC
   useEffect(() => {
     if (phrasesForCategory.length > 0) {
       const isPhraseInCurrentCat = phrasesForCategory.find(p => p.id === selectedPhrase?.id);
@@ -226,7 +216,6 @@ export default function PhraseLearnScreen() {
     }
   }, [activeCategory, phrasesForCategory]);
 
-  // Save state (User Specific)
   useEffect(() => {
     if (selectedPhrase?.id && userId) {
       const storageKey = `user_${userId}_phrases_last_id`;
@@ -235,7 +224,6 @@ export default function PhraseLearnScreen() {
     setCompleted(selectedPhrase && doneIds.includes(selectedPhrase.id));
   }, [selectedPhrase, doneIds, userId]);
 
-  // Progression logic
   const handleComplete = async () => {
     const allPhrasesInCat = phrases.filter(p => p.category === activeCategory);
     const currentIdx = allPhrasesInCat.findIndex(p => p.id === selectedPhrase.id);
@@ -274,7 +262,6 @@ export default function PhraseLearnScreen() {
     setDoneIds(done);
     setCompleted(false);
     
-    // Reset view to start
     setActiveCategory(CATEGORIES[0].key);
     setSelectedPhrase(phrases.filter(p => p.category === CATEGORIES[0].key)[0]);
   };
@@ -332,7 +319,6 @@ export default function PhraseLearnScreen() {
                       justifyContent: 'center',
                       borderRadius: 18,
                       paddingVertical: 1,
-                      // FIX: Use Accent Color for Active Background
                       backgroundColor: activeCategory === cat.key
                         ? '#FF6B00' 
                         : (isDark ? '#292822' : '#FAF3E7'),
@@ -343,7 +329,6 @@ export default function PhraseLearnScreen() {
                     <Text style={{
                       fontFamily: 'Fredoka-SemiBold',
                       fontSize: 15,
-                      // FIX: Use White Text for Active State
                       color: activeCategory === cat.key
                         ? '#FFFFFF'
                         : (isDark ? '#B3B3B3' : '#8A8A8A'),
@@ -396,7 +381,6 @@ export default function PhraseLearnScreen() {
                     key={phrase.id}
                     onPress={() => setSelectedPhrase(phrase)}
                     activeOpacity={0.8}
-                    // FIX: Removed disabled prop to allow selecting any phrase
                     style={{
                       backgroundColor,
                       paddingVertical: 12,
@@ -407,7 +391,6 @@ export default function PhraseLearnScreen() {
                       minWidth: 90,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      // FIX: Removed opacity reduction
                       opacity: 1, 
                       position: 'relative',
                     }}
@@ -447,7 +430,6 @@ export default function PhraseLearnScreen() {
                 borderRadius: 20,
                 backgroundColor: isDark ? '#222' : '#fffcfa',
                 borderWidth: 2,
-                // FIX: Main video border is now always Accent color
                 borderColor: '#FF6B00',
                 shadowColor: isDark ? '#FFB366' : '#FF6B00',
                 shadowOffset: { width: 0, height: 3 },

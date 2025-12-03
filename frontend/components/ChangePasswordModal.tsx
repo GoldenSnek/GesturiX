@@ -1,4 +1,3 @@
-// File: frontend/components/ChangePasswordModal.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -32,18 +31,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Visibility toggles
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-
-  // Colors based on your theme
   const bgColor = isDark ? 'bg-darksurface' : 'bg-white';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const inputBg = isDark ? 'bg-darkbg' : 'bg-secondary';
   const borderColor = isDark ? 'border-highlight' : 'border-highlight';
   const placeholderColor = isDark ? '#A8A8A8' : '#888';
-
 
   const handleUpdatePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -51,38 +46,30 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
       return;
     }
 
-
     if (newPassword.length < 6) {
       Alert.alert('Weak Password', 'New password must be at least 6 characters long.');
       return;
     }
-
 
     if (newPassword !== confirmPassword) {
       Alert.alert('Mismatch', 'New passwords do not match.');
       return;
     }
 
-
     if (oldPassword === newPassword) {
       Alert.alert('Error', 'New password cannot be the same as the old password.');
       return;
     }
 
-
     setLoading(true);
 
-
     try {
-      // 1. Get current user email
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user || !user.email) {
         throw new Error('Unable to identify user. Please sign in again.');
       }
 
-
-      // 2. Verify Old Password by attempting to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: oldPassword,
@@ -95,15 +82,11 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
         return;
       }
 
-
-      // 3. Update to New Password
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
 
-
       if (updateError) throw updateError;
-
 
       Alert.alert('Success', 'Your password has been updated successfully.', [
         { 
@@ -121,7 +104,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
     }
   };
 
-
   const resetForm = () => {
     setOldPassword('');
     setNewPassword('');
@@ -130,12 +112,10 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
     setShowNewPassword(false);
   };
 
-
   const handleClose = () => {
     resetForm();
     onClose();
   };
-
 
   return (
     <Modal
@@ -165,8 +145,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                 </Text>
               </View>
 
-
-              {/* Old Password - Separated from new password fields */}
+              {/* Old Password */}
               <View className="mb-5">
                 <View className={`flex-row items-center border rounded-xl px-4 py-3 ${inputBg} ${borderColor}`}>
                   <MaterialIcons name="lock" size={20} color="#FF6B00" style={{ marginRight: 10 }} />
@@ -188,7 +167,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                 </View>
               </View>
 
-
               {/* Divider for visual separation */}
               <View className="flex-row items-center mb-4">
                 <View className="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
@@ -197,7 +175,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                 </Text>
                 <View className="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
               </View>
-
 
               {/* New Password Fields */}
               <View className="space-y-3">
@@ -213,7 +190,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                     className={`flex-1 text-base font-montserrat-semibold ${textColor}`}
                   />
                 </View>
-
 
                 {/* Confirm Password */}
                 <View className={`flex-row items-center border rounded-xl px-4 py-3 gap-y-3 ${inputBg} ${borderColor}`}>
@@ -236,7 +212,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                 </View>
               </View>
 
-
               {/* Actions */}
               <View className="flex-row justify-between mt-8">
                 <TouchableOpacity
@@ -251,7 +226,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                   </Text>
                 </TouchableOpacity>
 
-
                 <TouchableOpacity
                   onPress={handleUpdatePassword}
                   disabled={loading}
@@ -265,7 +239,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
                 </TouchableOpacity>
               </View>
 
-
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -273,6 +246,5 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
     </Modal>
   );
 };
-
 
 export default ChangePasswordModal;

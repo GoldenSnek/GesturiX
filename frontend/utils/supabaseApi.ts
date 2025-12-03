@@ -1,4 +1,3 @@
-// File: frontend/utils/supabaseApi.ts
 import { supabase } from '../src/supabaseClient';
 
 /**
@@ -8,7 +7,7 @@ import { supabase } from '../src/supabaseClient';
 export async function getCurrentUserId() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) return null;
-  return data.user.id; // Supabase UUID, matches your DB schema
+  return data.user.id;
 }
 
 export async function fetchUserStatistics(userId: string) {
@@ -30,11 +29,9 @@ export async function fetchUserStatistics(userId: string) {
 
 // --- Leaderboard Functions ---
 
-// UPDATED: Now accepts a sortBy parameter
 export async function fetchLeaderboard(
   sortBy: 'lessons_completed' | 'days_streak' | 'practice_hours' = 'lessons_completed'
 ) {
-  // Fetches ALL users ordered by the selected metric.
   const { data, error } = await supabase
     .from('user_statistics')
     .select(`
@@ -81,7 +78,6 @@ export async function getHasUserLiked(likerId: string, profileId: string): Promi
     .maybeSingle();
     
   if (error) {
-    // Silent fail or log if needed
     return false;
   }
   return !!data;
@@ -130,14 +126,13 @@ export async function getUserSavedItems(userId: string): Promise<SavedItem[]> {
 }
 
 export async function saveItem(userId: string, itemType: string, itemIdentifier: string) {
-  // Check if already exists to avoid duplicates
   const { data: existing } = await supabase
     .from('user_saved_items')
     .select('id')
     .match({ user_id: userId, item_type: itemType, item_identifier: itemIdentifier })
     .maybeSingle();
 
-  if (existing) return; // Already saved
+  if (existing) return;
 
   const { error } = await supabase
     .from('user_saved_items')
@@ -190,7 +185,6 @@ export async function fetchUserSettings(userId: string) {
     .single();
 
   if (error) {
-    // It's okay if no settings exist yet, we will use defaults
     if (error.code !== 'PGRST116') { 
       console.error('Error fetching user settings:', error.message);
     }
@@ -200,7 +194,6 @@ export async function fetchUserSettings(userId: string) {
 }
 
 export async function updateUserSetting(userId: string, column: string, value: boolean) {
-  // Upsert creates the row if it doesn't exist
   const { error } = await supabase
     .from('user_settings')
     .upsert(

@@ -1,4 +1,3 @@
-// File: frontend/app/(stack)/verify-code.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -18,14 +17,12 @@ import { supabase } from '../../src/supabaseClient';
 import * as FileSystem from 'expo-file-system';
 import { Buffer } from 'buffer';
 
-// Polyfill Buffer for image upload
 global.Buffer = global.Buffer || Buffer;
 
 const { width } = Dimensions.get('window');
 const BOX_SIZE = width / 8; 
 
 export default function VerifyCode() {
-  // Receive email AND image params
   const { email, image } = useLocalSearchParams<{ email: string; image?: string }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,26 +72,22 @@ export default function VerifyCode() {
       return;
     }
 
-    // Verification successful, try to upload image if it exists
     if (data?.user && image) {
       try {
         const userId = data.user.id;
         const fileExt = image.split('.').pop();
         const fileName = `${userId}/${Date.now()}.${fileExt}`;
         
-        // Read file as Base64
         const base64 = await FileSystem.readAsStringAsync(image, { 
           encoding: FileSystem.EncodingType.Base64 
         });
         const fileBytes = Buffer.from(base64, 'base64');
 
-        // Upload to 'avatars' bucket
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(fileName, fileBytes, { contentType: 'image/jpeg', upsert: true });
 
         if (!uploadError) {
-          // Update profile with the new photo_url
           await supabase
             .from('profiles')
             .update({ 
