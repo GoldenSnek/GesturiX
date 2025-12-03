@@ -284,7 +284,7 @@ const Learn = () => {
                   >
                     <View
                       style={{ width: `${category.progress * 100}%` }}
-                      className="h-full bg-highlight rounded-full"
+                      className="h-full bg-accent rounded-full"
                     />
                   </View>
                   <Text

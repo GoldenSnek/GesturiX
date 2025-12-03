@@ -69,7 +69,6 @@ const Letters = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [prediction, setPrediction] = useState<string>('None');
   
-  // FIX: Use useRef ONLY (Removed duplicate useState)
   const isSending = useRef(false);
 
   const [facing, setFacing] = useState<'front' | 'back'>('front');
@@ -149,33 +148,35 @@ const Letters = () => {
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
 
+      // Find the first uncompleted letter to set as default view, but don't lock access
       const firstUncompletedIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
-      const maxAllowedIdx = firstUncompletedIdx === -1 ? TOTAL_LETTERS - 1 : firstUncompletedIdx;
+      const defaultIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
 
+      // 1. Check navigation param
       if (initialLetter) {
         const paramIdx = alphabetSigns.findIndex(l => l.letter === initialLetter);
         if (paramIdx !== -1) {
-          if (paramIdx <= maxAllowedIdx) {
-            setCurrentIdx(paramIdx);
-            return;
-          }
+          setCurrentIdx(paramIdx);
+          return;
         }
       }
 
+      // 2. Check saved progress (resume learning)
       if (uid) {
         const storageKey = `user_${uid}_letters_last_idx`;
         const lastLetter = await AsyncStorage.getItem(storageKey);
         
         if (lastLetter) {
           const lastIdx = alphabetSigns.findIndex(l => l.letter === lastLetter);
-          if (lastIdx !== -1 && lastIdx <= maxAllowedIdx) {
+          if (lastIdx !== -1) {
             setCurrentIdx(lastIdx);
             return;
           }
         }
       }
 
-      setCurrentIdx(maxAllowedIdx);
+      // 3. Default to first uncompleted
+      setCurrentIdx(defaultIdx);
     })();
   }, [initialLetter]); 
 
@@ -250,7 +251,7 @@ const Letters = () => {
           setHasVibratedForCurrent(false);
         }
       } catch (e) {
-        // FIX: Silent catch ensures no UI error flash during camera flip
+        // Silent catch ensures no UI error flash during camera flip
       }
       isSending.current = false;
     }, 200);
@@ -274,11 +275,6 @@ const Letters = () => {
     setDoneLetters([]);
     setCurrentIdx(0);
   };
-
-  const canSelectLetter = (idx: number) =>
-    idx === 0 || 
-    doneLetters.includes(alphabetSigns[idx - 1].letter) || 
-    doneLetters.includes(alphabetSigns[idx].letter);
 
   const handleToggleCameraPanel = async () => {
     if (!isCameraPanelVisible) {
@@ -321,7 +317,6 @@ const Letters = () => {
 
           <ScrollView
             className="flex-1 p-4"
-            // FIX: Fixed padding to 150
             contentContainerStyle={{ paddingBottom: 150 }}
           >
             <Text
@@ -331,12 +326,12 @@ const Letters = () => {
               Select a Letter
             </Text>
 
-            {/* FIX: Removed margin-bottom from View to reduce gap */}
             <View className="flex-row flex-wrap justify-between">
               {alphabetSigns.map((item, idx) => {
                 const isCompleted = doneLetters.includes(item.letter);
                 const isSelected = currentIdx === idx;
-                const canSelect = canSelectLetter(idx);
+
+                // Locked logic removed: Users can now select any letter
 
                 return (
                   <TouchableOpacity
@@ -346,16 +341,16 @@ const Letters = () => {
                         ? 'border-accent bg-secondary'
                         : isDark ? 'border-darkhover bg-darksurface' : 'border-neutral bg-lighthover'
                     }`}
-                    activeOpacity={canSelect ? 0.95 : 1}
-                    onPress={() => { if (canSelect) setCurrentIdx(idx); }}
-                    disabled={!canSelect}
+                    activeOpacity={0.95}
+                    onPress={() => setCurrentIdx(idx)}
                     style={isSelected ? { borderWidth: 3, borderColor: '#FF6B00' } : {}}
                   >
                     <Text
                       style={{
                         fontFamily: 'Fredoka-SemiBold',
                         fontSize: 24,
-                        color: isCompleted ? '#FF6B00' : canSelect ? (isDark ? '#E5E7EB' : '#6B7280') : (isDark ? '#4B5563' : '#D1D5DB'),
+                        // Removed disabled gray color logic
+                        color: isCompleted ? '#FF6B00' : (isDark ? '#E5E7EB' : '#6B7280'),
                       }}
                     >
                       {item.letter}
@@ -379,7 +374,6 @@ const Letters = () => {
 
             <View style={{ position: 'relative', marginBottom: 20 }}>
               <View
-                // FIX: Added border-accent
                 className="border-accent"
                 style={{
                   width: '100%',
@@ -447,7 +441,6 @@ const Letters = () => {
                       className="rounded-2xl"
                     />
                     
-                    {/* FIX: Updated UI: Flip/Flash icons in rounded container */}
                     <View className="absolute top-6 right-6 flex-row space-x-2 bg-black/30 rounded-xl p-1 z-50">
                         {facing === 'back' && (
                             <TouchableOpacity onPress={toggleFlash} className="p-2">

@@ -141,32 +141,36 @@ const Numbers = () => {
       const done = await getCompletedNumbers(allNumbers);
       setDoneNumbers(done);
 
+      // Default to first uncompleted, but no locking
       const firstUncompletedIdx = numbersData.findIndex(n => !done.includes(n.number));
-      const maxAllowedIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
+      const defaultIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
 
+      // 1. Navigation param
       if (initialNumber) {
         const numVal = parseInt(initialNumber, 10);
         const paramIdx = numbersData.findIndex(n => n.number === numVal);
-        if (paramIdx !== -1 && paramIdx <= maxAllowedIdx) {
+        if (paramIdx !== -1) {
           setCurrentIdx(paramIdx);
           return;
         }
       }
 
+      // 2. Saved progress (resume)
       if (uid) {
         const storageKey = `user_${uid}_numbers_last_idx`;
         const lastNumStr = await AsyncStorage.getItem(storageKey);
         if (lastNumStr) {
           const lastNum = parseInt(lastNumStr, 10);
           const lastIdx = numbersData.findIndex(n => n.number === lastNum);
-          if (lastIdx !== -1 && lastIdx <= maxAllowedIdx) {
+          if (lastIdx !== -1) {
             setCurrentIdx(lastIdx);
             return;
           }
         }
       }
 
-      setCurrentIdx(maxAllowedIdx);
+      // 3. Default
+      setCurrentIdx(defaultIdx);
     })();
   }, [initialNumber]); 
 
@@ -243,8 +247,7 @@ const Numbers = () => {
           setHasVibratedForCurrent(false);
         }
       } catch (e) {
-        // FIX: Silent catch. Do NOT update state to "Camera error" to avoid UI flashes during switching.
-        // console.log("Camera transient error:", e);
+        // Silent catch
       }
       setIsSending(false);
     }, 200);
@@ -290,11 +293,6 @@ const Numbers = () => {
   const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
   const toggleFlash = () => setFlash(flash === 'off' ? 'on' : 'off');
 
-  const canSelectNumber = (idx: number) =>
-    idx === 0 ||
-    doneNumbers.includes(numbersData[idx - 1].number) ||
-    doneNumbers.includes(numbersData[idx].number);
-
   const completedCount = doneNumbers.length;
 
   const translateY = slideAnim.interpolate({
@@ -335,7 +333,8 @@ const Numbers = () => {
               {numbersData.map((item, index) => {
                 const isCompleted = doneNumbers.includes(item.number);
                 const isSelected = currentIdx === index;
-                const canSelect = canSelectNumber(index);
+
+                // Locked logic removed: Users can now select any number
 
                 return (
                   <TouchableOpacity
@@ -347,20 +346,18 @@ const Numbers = () => {
                           ? 'border-darkhover bg-darksurface'
                           : 'border-neutral bg-lighthover'
                     }`}
-                    onPress={() => { if (canSelect) setCurrentIdx(index); }}
-                    activeOpacity={canSelect ? 0.7 : 1}
-                    disabled={!canSelect}
+                    onPress={() => setCurrentIdx(index)}
+                    activeOpacity={0.7}
                     style={isSelected ? { borderWidth: 3, borderColor: '#FF6B00' } : {}}
                   >
                     <Text
                       style={{
                         fontFamily: 'Fredoka-SemiBold',
                         fontSize: 20,
+                        // Removed disabled gray color logic
                         color: isCompleted
                           ? '#FF6B00'
-                          : canSelect
-                            ? (isDark ? '#E5E7EB' : '#6B7280')
-                            : (isDark ? '#4B5563' : '#D1D5DB'),
+                          : (isDark ? '#E5E7EB' : '#6B7280'),
                       }}
                     >
                       {item.number}
