@@ -58,7 +58,7 @@ class_names = [chr(i) for i in range(ord('A'), ord('Z')+1)] + ['del', 'nothing',
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=2, # UPDATED: Increased to 2 to match webcam script
+    max_num_hands=1, # UPDATED: Increased to 2 to match webcam script
     min_detection_confidence=0.8
 )
 

@@ -2,7 +2,7 @@ import Constants from 'expo-constants'; //
 
 // Fallback IP (This is used if the app can't detect the bundler, e.g., in a production build)
 // You can leave this as your last known working IP.
-const FALLBACK_IP = '192.168.61.136'; 
+const FALLBACK_IP = '10.35.54.193'; 
 export const SERVER_PORT = '8000';
 
 const getDevServerIP = () => {

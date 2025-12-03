@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/profile.tsx
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -16,7 +15,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, AntDesign, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, AntDesign } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../src/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
@@ -215,7 +214,6 @@ const Profile = () => {
     );
   }
 
-  // FIX: Removed Linking.canOpenURL check which often fails on Android 11+
   const openGitHub = async (url: string) => {
     try {
       await Linking.openURL(url);
@@ -340,7 +338,7 @@ const Profile = () => {
               </View>
             </View>
 
-            {/* 🏆 User Stats Section (Renamed from Achievements) */}
+            {/* 🏆 User Stats Section */}
             <Text
               className={`text-xl mb-3 ${isDark ? 'text-secondary' : 'text-primary'}`}
               style={{ fontFamily: 'Audiowide-Regular' }}

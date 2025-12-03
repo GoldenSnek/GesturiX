@@ -161,7 +161,7 @@ const DeleteConfirmationModal = ({
                         This will delete your current translation text. This action cannot be undone.
                     </Text>
 
-                    <View className="flex-row justify-between space-x-4">
+                    <View className="flex-row justify-between gap-x-4">
                         <TouchableOpacity 
                             onPress={onClose} 
                             className={`flex-1 p-3 rounded-xl border border-neutral-300 ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}

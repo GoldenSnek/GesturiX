@@ -23,7 +23,6 @@ export default function VerifyReset() {
   const { email } = useLocalSearchParams<{ email: string }>();
   const router = useRouter();
   
-  // State for UI Mode: 'otp' or 'password'
   const [mode, setMode] = useState<'otp' | 'password'>('otp');
 
   // OTP State
@@ -79,7 +78,6 @@ export default function VerifyReset() {
       showStatus(error.message || 'Invalid code.', 'error');
     } else {
       showStatus('Code verified!', 'success');
-      // Switch to password reset mode
       setMode('password');
     }
   };
@@ -107,7 +105,6 @@ export default function VerifyReset() {
       showStatus('Password updated! Please log in.', 'success');
       
       setTimeout(() => {
-        // Redirect to Login page
         router.replace('/(stack)/Login');
       }, 1500);
     }

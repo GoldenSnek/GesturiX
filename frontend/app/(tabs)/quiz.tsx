@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/quiz.tsx
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -80,15 +79,14 @@ export default function QuizScreen() {
 
   // 🎨 Unified Theme Colors
   const colors = {
-    text: isDark ? '#secondary' : '#primary', // mapped to Tailwind config colors basically
-    textColor: isDark ? '#E5E7EB' : '#1F2937', // Hex fallback
+    text: isDark ? '#secondary' : '#primary',
+    textColor: isDark ? '#E5E7EB' : '#1F2937',
     subText: isDark ? '#9CA3AF' : '#4B5563',
     accent: '#FF6B00',
     success: '#10B981',
     error: '#EF4444',
     warning: '#F59E0B',
     surface: isDark ? '#1F1F1F' : '#FFFFFF',
-    // FIX: Updated default border to match "highlight" feel if needed, but we mostly use explicit border-accent now
     border: isDark ? '#374151' : '#E5E7EB', 
     bg: isDark ? 'bg-darkbg' : 'bg-secondary',
     cardBg: isDark ? 'bg-darksurface' : 'bg-white',
@@ -438,7 +436,6 @@ export default function QuizScreen() {
 
   const renderMenu = () => (
     <View className="flex-1 justify-center items-center px-6">
-      {/* FIX: Changed border to accent for Main Menu Card */}
       <View className={`w-full p-8 rounded-[32px] shadow-lg border border-accent ${colors.cardBg}`}>
         <View className="items-center mb-6 bg-accent/10 p-6 rounded-full self-center">
           <MaterialIcons name="school" size={60} color={colors.accent} />
@@ -469,7 +466,6 @@ export default function QuizScreen() {
         <TouchableOpacity 
           key={level} 
           onPress={() => startGame(level)}
-          // FIX: Applied specific border colors to match "highlight" style (gray/dark-gray)
           className={`w-full py-5 rounded-2xl border-2 mb-4 items-center ${colors.cardBg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
         >
           <Text className={`text-xl font-fredoka-bold capitalize text-accent`}>{level}</Text>
@@ -531,7 +527,6 @@ export default function QuizScreen() {
 
           {/* Recognition Mode Visuals */}
           {q.type === 'recognition' && (
-            // FIX: Applied border-accent to main video container
             <View className="w-full aspect-video bg-black rounded-2xl overflow-hidden mb-6 shadow-sm border-2 border-accent">
               <Video
                 source={q.target.video}
@@ -544,7 +539,6 @@ export default function QuizScreen() {
 
           {/* Performance Mode Visuals (Camera) */}
           {q.type === 'performance' && (
-             // FIX: Applied border-accent to camera container
              <View className="w-full aspect-[3/4] bg-black rounded-3xl overflow-hidden mb-6 relative border-4 border-accent">
                {device && <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format} isActive={isDetecting} photo={true} />}
                
@@ -629,7 +623,6 @@ export default function QuizScreen() {
 
   const renderSummary = () => (
     <View className="flex-1 justify-center px-6">
-       {/* FIX: Changed border to accent for Summary Card */}
        <View className={`p-8 rounded-[32px] ${colors.cardBg} border border-accent items-center`}>
          <MaterialIcons name={score > questions.length/2 ? "emoji-events" : "trending-up"} size={60} color={colors.accent} style={{marginBottom: 16}} />
          

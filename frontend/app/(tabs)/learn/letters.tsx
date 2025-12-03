@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/letters.tsx
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
@@ -54,16 +53,13 @@ const Letters = () => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
 
-  // Saved state
   const [userSavedItems, setUserSavedItems] = useState<SavedItem[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // 🕹️ Controls State
   const [isSlowMotion, setIsSlowMotion] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
 
-  // Camera states
   const [isCameraPanelVisible, setCameraPanelVisible] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
@@ -74,7 +70,6 @@ const Letters = () => {
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
 
-  // State to prevent continuous vibration
   const [hasVibratedForCurrent, setHasVibratedForCurrent] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -148,11 +143,9 @@ const Letters = () => {
       const done = await getCompletedLetters(letters);
       setDoneLetters(done);
 
-      // Find the first uncompleted letter to set as default view, but don't lock access
       const firstUncompletedIdx = alphabetSigns.findIndex(l => !done.includes(l.letter));
       const defaultIdx = firstUncompletedIdx === -1 ? 0 : firstUncompletedIdx;
 
-      // 1. Check navigation param
       if (initialLetter) {
         const paramIdx = alphabetSigns.findIndex(l => l.letter === initialLetter);
         if (paramIdx !== -1) {
@@ -161,7 +154,6 @@ const Letters = () => {
         }
       }
 
-      // 2. Check saved progress (resume learning)
       if (uid) {
         const storageKey = `user_${uid}_letters_last_idx`;
         const lastLetter = await AsyncStorage.getItem(storageKey);
@@ -175,7 +167,6 @@ const Letters = () => {
         }
       }
 
-      // 3. Default to first uncompleted
       setCurrentIdx(defaultIdx);
     })();
   }, [initialLetter]); 
@@ -215,7 +206,6 @@ const Letters = () => {
     });
   }, [isCameraPanelVisible]);
 
-  // 📹 Camera Prediction Loop
   useEffect(() => {
     if (!isCameraActive || !cameraRef.current) return;
     
@@ -251,7 +241,7 @@ const Letters = () => {
           setHasVibratedForCurrent(false);
         }
       } catch (e) {
-        // Silent catch ensures no UI error flash during camera flip
+        //silent catch
       }
       isSending.current = false;
     }, 200);
@@ -331,8 +321,6 @@ const Letters = () => {
                 const isCompleted = doneLetters.includes(item.letter);
                 const isSelected = currentIdx === idx;
 
-                // Locked logic removed: Users can now select any letter
-
                 return (
                   <TouchableOpacity
                     key={item.letter}
@@ -349,7 +337,6 @@ const Letters = () => {
                       style={{
                         fontFamily: 'Fredoka-SemiBold',
                         fontSize: 24,
-                        // Removed disabled gray color logic
                         color: isCompleted ? '#FF6B00' : (isDark ? '#E5E7EB' : '#6B7280'),
                       }}
                     >
@@ -428,7 +415,7 @@ const Letters = () => {
                 }}
                 pointerEvents={allowCameraInteraction ? 'auto' : 'none'}
               >
-                {/* ... Camera View ... */}
+                {/* Camera View */}
                 {hasPermission && device && allowCameraInteraction ? (
                   <>
                     <Camera

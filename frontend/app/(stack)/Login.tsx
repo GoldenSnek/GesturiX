@@ -55,7 +55,6 @@ const Login = () => {
       return;
     }
 
-    // Check and create profile if needed (handled silently usually, but kept per your logic)
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
       .select('id')

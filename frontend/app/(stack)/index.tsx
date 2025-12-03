@@ -1,14 +1,11 @@
 import { StyleSheet, Text, View, TouchableOpacity, ImageBackground, Image, ScrollView, Dimensions } from 'react-native';
 import React from 'react';
 import { router } from 'expo-router';
-// We only keep basic Animated imports for the initial splash screen entrance effects
 import Animated, { 
   FadeInUp, FadeInLeft, FadeInRight,
   useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, 
   interpolate, FadeInDown
 } from 'react-native-reanimated';
-// NOTE: BlurView is not used in this file, but kept in imports
-// import { BlurView } from 'expo-blur'; 
 
 const windowHeight = Dimensions.get('window').height;
 
@@ -24,19 +21,17 @@ interface InfoBlockProps {
 }
 // ---------------------------------------
 
-// --- Feature Item Component (Updated with dark background and light text, NO ICON) ---
+// --- Feature Item Component ---
 const FeatureItem = ({ title, description }: FeatureItemProps) => (
   <View className="w-full bg-black/60 p-6 rounded-2xl shadow-xl shadow-black/20 mb-6 border border-accent/50">
-    {/* Title is now standalone since the icon is removed */}
     <Text className="text-xl font-montserrat-bold text-white mb-2">{title}</Text>
     <Text className="text-base font-montserrat-regular text-gray-200">{description}</Text>
   </View>
 );
 
-// --- Info Block Component (Updated with accent border) ---
+// --- Info Block Component ---
 const InfoBlock = ({ title, content }: InfoBlockProps) => (
   <View className="w-full max-w-sm p-8 rounded-3xl bg-white/80 border-2 border-accent shadow-xl mb-8">
-    {/* Text color maintained for light background contrast */}
     <Text className="text-2xl font-audiowide mb-3 text-center text-gray-800">{title}</Text>
     <Text className="text-lg text-center text-gray-600 font-montserrat-regular">{content}</Text>
   </View>
@@ -45,14 +40,11 @@ const InfoBlock = ({ title, content }: InfoBlockProps) => (
 const LandingPage = () => {
   const scrollY = useSharedValue(0);
 
-  // Animated Scroll Handler to track vertical offset
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
   });
 
-  // Animated style for the static scroll down arrow (no pulse, but fades on scroll)
   const arrowAnimatedStyle = useAnimatedStyle(() => {
-    // Calculate opacity based on scroll position (fades out completely when scrolled past 50px)
     const scrollVisibility = interpolate(
       scrollY.value,
       [0, 50],
@@ -60,7 +52,6 @@ const LandingPage = () => {
     );
 
     return {
-      // The arrow is now static, using only the scroll-based fade
       opacity: scrollVisibility,
       transform: [{ scale: 1.0 }],
     };
@@ -69,19 +60,17 @@ const LandingPage = () => {
 
   return (
     <ImageBackground
-      source={require('../../assets/images/LoginSignUpBG.png')} // main static background
+      source={require('../../assets/images/LoginSignUpBG.png')}
       style={{ flex: 1 }}
       resizeMode="cover"
     >
-      {/* Dark overlay for contrast on the entire page */}
       <View className="absolute inset-0 bg-black opacity-30" />
       
-      {/* Use Animated.ScrollView for Reanimated scroll handler */}
       <Animated.ScrollView 
         style={{ flex: 1 }} 
         contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
-        onScroll={scrollHandler} // Attach the handler
-        scrollEventThrottle={16} // Standard practice for smooth tracking
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
         
         {/* SECTION 1: Top Landing Section (Full Viewport Height) */}
@@ -91,10 +80,8 @@ const LandingPage = () => {
             style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: 32, paddingTop: 16, paddingBottom: 32 }}
             resizeMode="cover"
           >
-            {/* Dark overlay for contrast on the landing image */}
             <View className="absolute inset-0 bg-black opacity-50" />
 
-            {/* Logo (Placed higher via flex alignment) */}
             <Animated.View 
               entering={FadeInUp.duration(2000).delay(0)}
               className="z-10 items-center" 
@@ -106,7 +93,7 @@ const LandingPage = () => {
               />
             </Animated.View>
 
-            {/* Buttons (Positioned lower with mb-8) and Scroll Indicator */}
+            {/* Buttons and Scroll Indicator */}
             <View className="z-10 w-full mb-8 items-center">
               {/* Get Started */}
               <Animated.View entering={FadeInUp.duration(500).delay(1300)} className="w-full">
@@ -132,13 +119,10 @@ const LandingPage = () => {
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* Static Scroll Down Indicator (FIXED: Separating entering animation from style animation) */}
-              {/* Outer View for the Layout Animation (FadeInDown) */}
               <Animated.View 
                 entering={FadeInDown.duration(3000).delay(2500)} 
                 className=""
               >
-                {/* Inner View for the Shared Value Animation (opacity/transform from scroll) */}
                 <Animated.View style={arrowAnimatedStyle}>
                   <Text className="text-accent text-2xl">⇩</Text>
                 </Animated.View>
@@ -147,17 +131,13 @@ const LandingPage = () => {
           </ImageBackground>
         </View>
 
-        {/* SECTION 2: Features & Highlights - ACCENT BACKGROUND, DARK/ACCENT TITLE, DARK CONTAINERS */}
+        {/* SECTION 2: Features & Highlights */}
         <View className="w-full items-center py-16 px-6 bg-accent/20">
-          <Text 
-            // Title changed to use the accent color for a dark, prominent look
-            className="text-4xl font-audiowide mb-10 text-center text-gray-800 shadow-md shadow-black/50"
-          >
+          <Text className="text-4xl font-audiowide mb-10 text-center text-gray-800 shadow-md shadow-black/50">
             Features & Highlights
           </Text>
           
           <View className="w-full max-w-lg items-center">
-            {/* Icons removed from FeatureItem calls */}
             <FeatureItem 
               title="Real-Time Translation"
               description="Instantly translate spoken and written words as you interact, breaking down communication barriers globally."
@@ -177,11 +157,9 @@ const LandingPage = () => {
           </View>
         </View>
 
-        {/* SECTION 3: More Info & Mission - LIGHTER BACKGROUND, ACCENT BORDERS */}
+        {/* SECTION 3: More Info & Mission */}
         <View className="w-full items-center py-16 px-6 bg-white/10">
-          <Text
-            className="text-4xl font-audiowide mb-10 text-center text-gray-800 shadow-md shadow-black/10"
-          >
+          <Text className="text-4xl font-audiowide mb-10 text-center text-gray-800 shadow-md shadow-black/10">
             Our Mission
           </Text>
 
@@ -201,7 +179,7 @@ const LandingPage = () => {
           </View>
         </View>
 
-        {/* SECTION 4: Footer (Static content) */}
+        {/* SECTION 4: Footer */}
         <View className="w-full items-center py-12 px-6 bg-black/80 border-t-2 border-accent">
           <View className="w-full max-w-lg items-center">
             <Text className="text-white text-3xl font-audiowide mb-4">GesturiX</Text>

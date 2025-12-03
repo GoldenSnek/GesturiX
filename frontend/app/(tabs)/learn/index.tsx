@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/index.tsx
 import React, { useRef, useState, useMemo } from 'react';
 import {
   View,
@@ -42,7 +41,6 @@ const Learn = () => {
     practice_hours: 0,
   });
 
-  // Quick Actions Data
   const quickActionsData = [
     { id: 'leaderboard', title: 'Leaderboard', subtitle: 'Top learners', icon: 'leaderboard', route: '/(tabs)/learn/leaderboard' },
     { id: 'dictionary', title: 'Dictionary', subtitle: 'Browse all signs', icon: 'menu-book', route: '/(tabs)/learn/dictionary' },
@@ -50,7 +48,6 @@ const Learn = () => {
     { id: 'saved', title: 'Saved Signs', subtitle: 'Your favorites', icon: 'bookmark-outline', route: '/(tabs)/learn/saved' },
   ];
 
-  // ⚡ OPTIMIZED: Load all progress and stats in parallel
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
@@ -94,7 +91,6 @@ const Learn = () => {
   );
 
   const getFormattedPracticeTime = (hours: number) => {
-    // Handle very small values
     if (hours < (1 / 60)) {
        return "0 mins";
     }
@@ -103,10 +99,8 @@ const Learn = () => {
       const mins = Math.round(hours * 60);
       return `${mins} ${mins === 1 ? 'min' : 'mins'}`;
     } else if (hours < 100) {
-      // 1 decimal place for typical hours
       return `${hours.toFixed(1)} hrs`;
     } else {
-      // Round to integer and use commas for large hours (e.g., 1,200 hrs)
       return `${Math.round(hours).toLocaleString()} hrs`;
     }
   };
@@ -192,7 +186,7 @@ const Learn = () => {
             className="flex-1 px-4 py-6"
             contentContainerStyle={{ paddingBottom: 150 }}
           >
-            {/* 🧠 Progress Section */}
+            {/* Progress Section */}
             <Text
               className={`text-2xl mb-4 ${
                 isDark ? 'text-secondary' : 'text-primary'
@@ -205,7 +199,6 @@ const Learn = () => {
               {progressData.map((item, index) => (
                 <View
                   key={index}
-                  // FIX: Changed w-32 to min-w-[8rem] so it grows for large text (e.g. "1,000 days")
                   className={`rounded-xl p-4 mr-3 items-center justify-center min-w-[8rem] h-24 shadow-sm border border-accent ${
                     isDark ? 'bg-darksurface' : 'bg-secondary'
                   }`}
@@ -230,7 +223,7 @@ const Learn = () => {
               ))}
             </ScrollView>
 
-            {/* 🏷️ Category Section */}
+            {/* Category Section */}
             <Text
               className={`text-2xl mb-4 ${
                 isDark ? 'text-secondary' : 'text-primary'
@@ -299,7 +292,7 @@ const Learn = () => {
               </TouchableOpacity>
             ))}
 
-            {/* ⚡ Quick Actions */}
+            {/* Quick Actions */}
             <Text
               className={`text-2xl mb-4 ${
                 isDark ? 'text-secondary' : 'text-primary'

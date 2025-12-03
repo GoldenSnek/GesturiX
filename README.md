@@ -80,6 +80,14 @@ Gesturix is a modern sign language learning companion that helps you learn, tran
   pip install -r requirements.txt
 ```
 
+**Step 8:** Create .env file
+
+```bash
+  echo "GEMINI_API_KEY=your_actual_api_key_here" > .env
+```
+
+**Step 9:** Replace the placeholder with your actual API key
+
 ## Run Locally
 
 **Step 1:** Navigate into the backend folder
@@ -94,7 +102,7 @@ Gesturix is a modern sign language learning companion that helps you learn, tran
   py main.py
 ```
 
-**Step 3:** Download the latest GesturiX build as of _Nov 11, 2025_ -> https://expo.dev/accounts/gesturix/projects/frontend/builds/2da9af85-7a0d-4e3e-9846-c45b2641ab2f
+**Step 3:** Download the latest GesturiX build as of _Dec 3, 2025_ -> https://expo.dev/accounts/gesturix/projects/frontend/builds/379d6b5c-3ed6-44f0-ac4e-cbb3e36c1d01
 
 **Step 4:** Navigate into the frontend folder
 
@@ -116,10 +124,10 @@ Gesturix is a modern sign language learning companion that helps you learn, tran
 
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Jasner13)
 
-- **John Michael A. Nave** << Lead Developer | DevOps Engineer >>
+- **John Michael A. Nave** << Lead Developer | Frontend Designer >>
 
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/GoldenSnek)
 
-- **John Michael B. Villamor** << ML Engineer | Quality Assurance>>
+- **John Michael B. Villamor** << ML Engineer | Quality Assurance >>
 
   [![github](https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Villamormike)

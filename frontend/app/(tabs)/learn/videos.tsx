@@ -1,4 +1,3 @@
-// File: frontend/app/(tabs)/learn/videos.tsx
 import React from 'react';
 import { 
   View, 
@@ -16,7 +15,6 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../src/ThemeContext';
 
-// 📺 DATA: Categorized Video List
 const videoCategories = [
   {
     categoryTitle: "Fundamentals",
@@ -125,7 +123,6 @@ export default function VideoLessonsScreen() {
   const subTextColor = isDark ? 'text-neutral' : 'text-gray-500';
   const cardBg = isDark ? 'bg-darksurface' : 'bg-white';
   
-  // FIX 1: Change border color to highlight
   const cardBorder = 'border-highlight';
 
   const handlePressVideo = async (videoId: string) => {
@@ -138,9 +135,7 @@ export default function VideoLessonsScreen() {
     }
   };
 
-  // FIX 2: Open YouTube search with category pre-filled
   const handleViewMore = async (category: string) => {
-    // Prepend "ASL" to ensure relevant results
     const query = encodeURIComponent(`ASL ${category}`);
     const url = `https://www.youtube.com/results?search_query=${query}`;
     
@@ -210,7 +205,6 @@ export default function VideoLessonsScreen() {
                 {section.data.map((item) => (
                   <TouchableOpacity 
                     key={item.id} 
-                    // FIX 1: Applied border-highlight here
                     className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
                     activeOpacity={0.9}
                     onPress={() => handlePressVideo(item.videoId)}

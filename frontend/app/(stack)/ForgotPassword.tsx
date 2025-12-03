@@ -37,14 +37,12 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      // Request password reset. Since your template uses {{ .Token }}, this sends an OTP.
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
 
       if (error) throw error;
 
       showStatus('Code sent! Check your email.', 'success');
       
-      // Navigate to the verification screen passing the email
       setTimeout(() => {
         router.push({
           pathname: '/(stack)/verify-reset',
