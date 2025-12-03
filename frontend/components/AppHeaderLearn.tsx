@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, Feather } from '@expo/vector-icons'; // Feather for a more minimalist icon
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 interface AppHeaderLearnProps {
   title: string;
   completedCount: number;
   totalCount: number;
-  onResetProgress?: () => void; // Parent passes reset handler
+  onResetProgress?: () => void;
 }
 
 const AppHeaderLearn: React.FC<AppHeaderLearnProps> = ({

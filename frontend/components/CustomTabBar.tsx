@@ -1,11 +1,9 @@
-// File: frontend/components/CustomTabBar.tsx
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Text, Image, Animated, Dimensions, Platform, ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { MaterialIcons } from '@expo/vector-icons'; // ✅ Added for Quiz icon
+import { MaterialIcons } from '@expo/vector-icons';
 
-// Define the type for our tab names
 type TabName = 'translate' | 'learn' | 'quiz' | 'profile';
 
 const { width } = Dimensions.get('window'); 
@@ -19,20 +17,18 @@ interface TabButtonProps {
 }
 
 const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, options, tabItemWidth }) => {
-  // Label comes from options.title (which we set to "Quiz" in _layout.tsx)
   const label = options.title || route.name;
 
   const rotationAnim = useRef(new Animated.Value(0)).current; 
   const iconTintColor = isFocused ? '#FF6B00' : '#F8F8F8'; 
   const textClassName = isFocused ? 'text-accent' : 'text-secondary';
 
-  // ✅ Define icon source for image-based tabs only
   const getIconSource = (): ImageSourcePropType | null => {
     switch (route.name) {
       case 'translate': return require('../assets/images/Translate-icon.png');
       case 'learn': return require('../assets/images/Learn-icon.png');
       case 'profile': return require('../assets/images/Profile-icon.png');
-      default: return null; // compose/quiz handled via MaterialIcons
+      default: return null;
     }
   };
   
@@ -70,7 +66,6 @@ const TabButton: React.FC<TabButtonProps> = ({ route, isFocused, onPress, option
         className="flex-col items-center justify-center"
         style={{ transform: [{ rotate }] }}
       >
-        {/* ✅ Conditional Rendering: MaterialIcons for 'compose' (Quiz), Image for others */}
         {route.name === 'quiz' ? (
           <MaterialIcons name="school" size={26} color={iconTintColor} />
         ) : (

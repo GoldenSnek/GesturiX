@@ -1,31 +1,24 @@
-// Message.tsx
-
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-// Import Animated from react-native-reanimated
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-// Import all necessary icons
 import { XCircle, AlertTriangle, CheckCircle, AlertOctagon, LucideIcon } from 'lucide-react-native'; 
 
-// Define the possible types
 export type MessageType = 'error' | 'warning' | 'success';
 
-// 1. Define the TypeScript Interface for the props
 interface MessageProps {
-  type: MessageType;         // The type of message: error, warning, or success
-  message: string;         // The message content
-  onClose: () => void;     // Function to close the message
+  type: MessageType;
+  message: string;
+  onClose: () => void;
 }
 
-// Configuration map for styles and icons
 const TYPE_CONFIG: Record<MessageType, { icon: LucideIcon, colors: { bg: string, border: string, text: string, icon: string } }> = {
   error: {
-    icon: AlertOctagon, // Used AlertOctagon for error, XCircle is for the close button
+    icon: AlertOctagon,
     colors: {
       bg: 'bg-red-100',
       border: 'border-red-500',
       text: 'text-red-700',
-      icon: '#ef4444', // Red 500
+      icon: '#ef4444',
     },
   },
   warning: {
@@ -34,7 +27,7 @@ const TYPE_CONFIG: Record<MessageType, { icon: LucideIcon, colors: { bg: string,
       bg: 'bg-yellow-100',
       border: 'border-yellow-500',
       text: 'text-yellow-700',
-      icon: '#f59e0b', // Yellow 500
+      icon: '#f59e0b',
     },
   },
   success: {
@@ -43,12 +36,11 @@ const TYPE_CONFIG: Record<MessageType, { icon: LucideIcon, colors: { bg: string,
       bg: 'bg-green-100',
       border: 'border-green-500',
       text: 'text-green-700',
-      icon: '#10b981', // Green 500
+      icon: '#10b981',
     },
   },
 };
 
-// 2. Apply the interface and use the config map
 const Message: React.FC<MessageProps> = ({ type, message, onClose }) => {
   if (!message) return null;
 
@@ -56,17 +48,13 @@ const Message: React.FC<MessageProps> = ({ type, message, onClose }) => {
   const IconComponent = config.icon;
 
   return (
-    // Outer View for positioning (remains non-animated)
     <View className="absolute top-7 left-0 right-0 z-50 p-4">
       
-      {/* 🎯 Animated Container */}
+      {/* Animated Container */}
       <Animated.View 
-        // FadeInUp: Slides up from below its final position while fading in
         entering={FadeInUp.duration(500)}
-        // FadeOutUp: Slides up and fades out when the message is dismissed
         exiting={FadeOutUp.duration(300)}
         
-        // Dynamic styling based on type
         className={`flex-row items-center justify-between ${config.colors.bg} border-l-4 ${config.colors.border} p-4 rounded-lg shadow-md`}
       >
         <View className="flex-row items-center flex-1 pr-4">
