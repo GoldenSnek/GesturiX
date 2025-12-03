@@ -7,7 +7,8 @@ import {
   ImageBackground,
   Animated,
   Easing,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -39,6 +40,46 @@ import * as Haptics from 'expo-haptics';
 
 const CAMERA_PANEL_HEIGHT = 370;
 
+const FeatureModal = ({ isVisible, onClose, isDark }: { isVisible: boolean; onClose: () => void; isDark: boolean }) => {
+  const modalBg = isDark ? "bg-darkbg/95" : "bg-white/95";
+  const surfaceColor = isDark ? "bg-darksurface" : "bg-white";
+  const textColor = isDark ? "text-secondary" : "text-primary";
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        className={`flex-1 justify-center items-center ${modalBg} p-8`}
+        onPress={onClose}
+        activeOpacity={1}
+      >
+        <View
+          className={`w-full rounded-2xl p-6 shadow-xl border border-accent ${surfaceColor}`}
+          style={{ maxHeight: '80%' }}
+        >
+          <Text className={`text-2xl font-audiowide text-center mb-4 color-accent ${textColor}`}>
+            Feature Coming Soon
+          </Text>
+          <View className="space-y-3">
+            <View className="flex-row items-start justify-center">
+              <Text className={`text-base font-montserrat-regular text-center leading-6 ${textColor}`}>
+                Our AI model is currently learning to recognize numbers efficiently. Stay tuned for updates!
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={onClose} className="mt-6 p-2 px-6 rounded-full bg-accent/20 self-center">
+            <Text className="text-accent text-center font-fredoka-bold">Got it!</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
 const Numbers = () => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme(); 
@@ -66,6 +107,7 @@ const Numbers = () => {
   const [isSending, setIsSending] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [flash, setFlash] = useState<'on' | 'off'>('off');
+  const [isFeatureModalVisible, setFeatureModalVisible] = useState(false);
 
   const [hasVibratedForCurrent, setHasVibratedForCurrent] = useState(false);
 
@@ -282,6 +324,10 @@ const Numbers = () => {
       setAllowCameraInteraction(false);
       setTimeout(() => setCameraPanelVisible(false), 10);
     }
+  };
+
+  const handleCameraAlert = () => {
+    setFeatureModalVisible(true);
   };
 
   const flipCamera = () => setFacing(facing === 'back' ? 'front' : 'back');
@@ -593,7 +639,7 @@ const Numbers = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleToggleCameraPanel}
+                onPress={handleCameraAlert}
                 className={`flex-1 rounded-xl py-2 mx-1 items-center justify-center border border-accent ${
                    isCameraPanelVisible ? 'bg-accent' : (isDark ? 'bg-darksurface' : 'bg-lighthover')
                 }`}
@@ -650,6 +696,12 @@ const Numbers = () => {
               </Text>
             </TouchableOpacity>
           </ScrollView>
+
+          <FeatureModal 
+            isVisible={isFeatureModalVisible}
+            onClose={() => setFeatureModalVisible(false)}
+            isDark={isDark}
+          />
         </View>
       </ImageBackground>
     </View>
