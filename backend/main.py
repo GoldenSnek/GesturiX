@@ -59,7 +59,7 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2, # UPDATED: Increased to 2 to match webcam script
-    min_detection_confidence=0.7
+    min_detection_confidence=0.8
 )
 
 def normalize_landmarks(coords):

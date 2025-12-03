@@ -1,0 +1,13 @@
+# Ignore the native folders (EAS will regenerate them)
+android/
+ios/
+
+# Ignore dependencies and builds
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Ignore local env files
+.env
+.env*.local

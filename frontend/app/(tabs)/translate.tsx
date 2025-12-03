@@ -25,6 +25,7 @@ import Animated, {
     withRepeat, 
     Easing,
 } from 'react-native-reanimated';
+import * as Speech from 'expo-speech';
 
 import {
     Camera,
@@ -193,6 +194,9 @@ export default function Translate() {
     const [isEnhancing, setIsEnhancing] = useState(false); 
     const [lastTranslatedLetter, setLastTranslatedLetter] = useState<string | null>(null);
 
+    // TTS State
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
     const [hasPermission, setHasPermission] = useState(false);
     // 庁 Fixed: Use Ref for sending state to prevent effect restarts and stale closures
     const isSending = useRef(false);
@@ -257,6 +261,11 @@ export default function Translate() {
             const status = await Camera.requestCameraPermission();
             setHasPermission(status === "granted");
         })();
+
+        // Cleanup speech on unmount
+        return () => {
+            Speech.stop();
+        };
     }, []);
 
     useFocusEffect(
@@ -268,9 +277,13 @@ export default function Translate() {
             setEnhancedTranslation("");
             setLastTranslatedLetter(null); 
             setZoom(1); 
+            Speech.stop(); // Stop speech when refocusing/resetting
+            setIsSpeaking(false);
             return () => {
                 setIsCameraActive(false);
                 setIsTranslating(false);
+                Speech.stop();
+                setIsSpeaking(false);
             };
         }, [])
     );
@@ -377,6 +390,18 @@ export default function Translate() {
     }, [isTranslating, lastHandDetectionTime]);
 
     const enhanceTranslationWithAI = async () => {
+        // [cite: Toggle Logic Implemented]
+        // If enhanced translation already exists, this button acts as a toggle to CLEAR it.
+        if (enhancedTranslation.length > 0) {
+            setEnhancedTranslation("");
+            // Also stop speech if it was currently speaking the enhanced text
+            if (isSpeaking) {
+                Speech.stop();
+                setIsSpeaking(false);
+            }
+            return;
+        }
+
         if (!currentTranslation || isEnhancing) return;
         
         const rawTextToEnhance = currentTranslation.trim().replace(/\s+/g, ' '); 
@@ -406,6 +431,34 @@ export default function Translate() {
         }
     };
 
+    // --- TTS Handler ---
+    const handleSpeak = async () => {
+        // [cite: TTS Restriction]
+        // Strictly only allow speech if enhanced translation is available
+        if (!enhancedTranslation) return;
+
+        try {
+            const isSpeakingNow = await Speech.isSpeakingAsync();
+
+            if (isSpeakingNow || isSpeaking) {
+                Speech.stop();
+                setIsSpeaking(false);
+            } else {
+                setIsSpeaking(true);
+                // Only speak the enhanced translation
+                Speech.speak(enhancedTranslation, {
+                    onDone: () => setIsSpeaking(false),
+                    onStopped: () => setIsSpeaking(false),
+                    onError: () => setIsSpeaking(false),
+                    rate: 0.9, 
+                });
+            }
+        } catch (error) {
+            console.error("TTS Error:", error);
+            setIsSpeaking(false);
+        }
+    };
+
     const handleBackspace = () => {
         if (currentTranslation.length > 0) {
             setCurrentTranslation(prev => prev.slice(0, -1));
@@ -424,6 +477,8 @@ export default function Translate() {
         setLastTranslatedLetter(null);
         setStatusMessage("Tap Play to begin recognition.");
         setIsDeleteModalVisible(false);
+        Speech.stop();
+        setIsSpeaking(false);
     };
 
     const toggleTranslation = () => { 
@@ -555,16 +610,22 @@ export default function Translate() {
                         {/* Controls Container */}
                         <View className="flex-row justify-between items-center w-full px-10 mt-2">
                             
-                            {/* LEFT: Text-to-Speech (Updated color) */}
+                            {/* LEFT: Text-to-Speech (IMPLEMENTED) */}
                             <TouchableOpacity
-                                onPress={() => Alert.alert("Coming Soon UwU", "Text-to-Speech feature will be available here!")}
+                                onPress={handleSpeak}
+                                // [cite: Disabled until Enhanced]
+                                disabled={!enhancedTranslation}
                                 className={`w-[60px] h-[60px] border border-accent rounded-full justify-center items-center ${
-                                    (currentTranslation.length > 0 || enhancedTranslation.length > 0) 
+                                    enhancedTranslation.length > 0
                                     ? "bg-accent/70" 
                                     : "bg-neutral-500/50"
                                 }`}
                             >
-                                <MaterialIcons name="record-voice-over" size={28} color="lightblue" />
+                                <MaterialIcons 
+                                    name={isSpeaking ? "stop" : "record-voice-over"} 
+                                    size={28} 
+                                    color={isSpeaking ? "white" : "lightblue"} 
+                                />
                             </TouchableOpacity>
 
                             {/* CENTER: Play/Pause Button */}
@@ -584,9 +645,16 @@ export default function Translate() {
                             {/* RIGHT: AI Enhance Button */}
                             <TouchableOpacity
                                 onPress={enhanceTranslationWithAI}
-                                disabled={!currentTranslation || isEnhancing}
+                                // [cite: Disabled Logic Updated]
+                                // Enabled if:
+                                // 1. We have raw text (to start enhancing)
+                                // 2. OR we have enhanced text (to toggle it off)
+                                // Disabled only if:
+                                // 1. Both are empty
+                                // 2. OR currently loading
+                                disabled={(currentTranslation.length === 0 && enhancedTranslation.length === 0) || isEnhancing}
                                 className={`w-[60px] h-[60px] border border-accent rounded-full justify-center items-center ${
-                                    !currentTranslation || isEnhancing
+                                    (currentTranslation.length === 0 && enhancedTranslation.length === 0) || isEnhancing
                                         ? "bg-neutral-500/50" 
                                         : "bg-accent/70"
                                 }`}
@@ -594,7 +662,12 @@ export default function Translate() {
                                 {isEnhancing ? (
                                     <ActivityIndicator color="white" size="small" />
                                 ) : (
-                                    <MaterialIcons name="auto-fix-high" size={28} color="lightgreen" />
+                                    <MaterialIcons 
+                                        // Visual feedback: If enhanced text exists, show "Off" icon
+                                        name={enhancedTranslation.length > 0 ? "auto-fix-off" : "auto-fix-high"} 
+                                        size={28} 
+                                        color={enhancedTranslation.length > 0 ? "white" : "lightgreen"} 
+                                    />
                                 )}
                             </TouchableOpacity>
                         </View>
