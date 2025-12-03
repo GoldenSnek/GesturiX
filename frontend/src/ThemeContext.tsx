@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 🧭 Define your color palette consistent with tailwind.config.js
 const lightTheme = {
   mode: 'light',
   primary: '#2C2C2C',
@@ -42,7 +41,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isDark, setIsDark] = useState(false);
   const [colors, setColors] = useState(lightTheme);
 
-  // 🧠 Load saved theme
   useEffect(() => {
     (async () => {
       try {
@@ -60,7 +58,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   }, []);
 
-  // 🌓 Toggle theme
   const toggleTheme = async () => {
     const newTheme = !isDark;
     setIsDark(newTheme);

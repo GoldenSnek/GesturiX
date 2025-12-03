@@ -1,4 +1,3 @@
-// File: frontend/src/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -8,7 +7,6 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
-  // Updated return type to include data
   verifyOtp: (email: string, token: string) => Promise<{ data: any; error: any }>;
   resendOtp: (email: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -60,7 +58,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  // Updated to return data
   const verifyOtp = async (email: string, token: string) => {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
