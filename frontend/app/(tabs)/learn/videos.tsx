@@ -14,6 +14,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../src/ThemeContext';
+import Reanimated, { FadeInDown } from 'react-native-reanimated';
 
 const videoCategories = [
   {
@@ -156,8 +157,8 @@ export default function VideoLessonsScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          {/* Custom Header */}
-          <View>
+          {/* Custom Header - Animated Entrance */}
+          <Reanimated.View entering={FadeInDown.duration(500).springify()}>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
               className="py-3 px-4 flex-row items-center"
@@ -174,7 +175,7 @@ export default function VideoLessonsScreen() {
               colors={['rgba(255, 171, 123, 1.0)', 'rgba(255, 171, 123, 0.0)']}
               className="h-4"
             />
-          </View>
+          </Reanimated.View>
 
           <ScrollView 
             className="flex-1 px-4" 
@@ -183,8 +184,11 @@ export default function VideoLessonsScreen() {
             {videoCategories.map((section, sectionIndex) => (
               <View key={sectionIndex} className="mb-6">
                 
-                {/* Header Row with Title and View More Button */}
-                <View className="flex-row justify-between items-center mb-3 mt-4 pr-1">
+                {/* Header Row Animation */}
+                <Reanimated.View 
+                  entering={FadeInDown.delay(sectionIndex * 200 + 100).springify()}
+                  className="flex-row justify-between items-center mb-3 mt-4 pr-1"
+                >
                   <Text
                     className={`text-lg ${textColor}`}
                     style={{ fontFamily: 'Audiowide-Regular' }}
@@ -200,53 +204,58 @@ export default function VideoLessonsScreen() {
                     <Text className="text-xs font-fredoka-medium text-accent mr-1">View More</Text>
                     <Ionicons name="open-outline" size={12} color="#FF6B00" />
                   </TouchableOpacity>
-                </View>
+                </Reanimated.View>
 
-                {section.data.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
-                    className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
-                    activeOpacity={0.9}
-                    onPress={() => handlePressVideo(item.videoId)}
+                {/* Staggered Video Cards Animation */}
+                {section.data.map((item, itemIndex) => (
+                  <Reanimated.View
+                    key={item.id}
+                    entering={FadeInDown.delay((sectionIndex * 200) + (itemIndex * 100) + 200).springify().damping(16)}
                   >
-                    <View className="flex-row p-3">
-                      {/* Thumbnail Container */}
-                      <View className="w-32 h-24 rounded-xl overflow-hidden bg-black mr-3 relative border border-gray-300 items-center justify-center">
-                        <Image
-                          source={{ uri: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg` }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                        />
-                        {/* Play Icon Overlay */}
-                        <View className="absolute inset-0 justify-center items-center bg-black/30">
-                           <MaterialIcons name="play-circle-fill" size={32} color="white" />
+                    <TouchableOpacity 
+                      className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
+                      activeOpacity={0.9}
+                      onPress={() => handlePressVideo(item.videoId)}
+                    >
+                      <View className="flex-row p-3">
+                        {/* Thumbnail Container */}
+                        <View className="w-32 h-24 rounded-xl overflow-hidden bg-black mr-3 relative border border-gray-300 items-center justify-center">
+                          <Image
+                            source={{ uri: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg` }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                          />
+                          {/* Play Icon Overlay */}
+                          <View className="absolute inset-0 justify-center items-center bg-black/30">
+                             <MaterialIcons name="play-circle-fill" size={32} color="white" />
+                          </View>
                         </View>
-                      </View>
 
-                      {/* Text Info */}
-                      <View className="flex-1 justify-between py-1">
-                        <View>
-                          <Text className={`text-base font-fredoka-semibold ${textColor} mb-1`} numberOfLines={2}>
-                            {item.title}
-                          </Text>
-                          <Text className="text-xs font-fredoka text-accent uppercase">
-                            {item.channel}
-                          </Text>
-                        </View>
-                        
-                        <View className="flex-row items-center">
-                            <MaterialIcons name="access-time" size={12} color={isDark ? '#A8A8A8' : '#666'} />
-                            <Text className={`text-xs font-montserrat-medium ml-1 ${subTextColor}`}>
-                                {item.duration}
+                        {/* Text Info */}
+                        <View className="flex-1 justify-between py-1">
+                          <View>
+                            <Text className={`text-base font-fredoka-semibold ${textColor} mb-1`} numberOfLines={2}>
+                              {item.title}
                             </Text>
+                            <Text className="text-xs font-fredoka text-accent uppercase">
+                              {item.channel}
+                            </Text>
+                          </View>
+                          
+                          <View className="flex-row items-center">
+                              <MaterialIcons name="access-time" size={12} color={isDark ? '#A8A8A8' : '#666'} />
+                              <Text className={`text-xs font-montserrat-medium ml-1 ${subTextColor}`}>
+                                  {item.duration}
+                              </Text>
+                          </View>
+                          
+                          <Text className={`text-xs font-montserrat-regular ${subTextColor} mt-1`} numberOfLines={1}>
+                            {item.description}
+                          </Text>
                         </View>
-                        
-                        <Text className={`text-xs font-montserrat-regular ${subTextColor} mt-1`} numberOfLines={1}>
-                          {item.description}
-                        </Text>
                       </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Reanimated.View>
                 ))}
               </View>
             ))}
