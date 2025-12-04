@@ -12,6 +12,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
+import Reanimated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 import { useTheme } from '../../../src/ThemeContext';
 import { getCurrentUserId, getUserSavedItems, unsaveItem, SavedItem } from '../../../utils/supabaseApi';
@@ -120,8 +121,8 @@ export default function SavedSignsScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          {/* Custom Header */}
-          <View>
+          {/* Custom Header - Animated Entrance */}
+          <Reanimated.View entering={FadeInDown.duration(500).springify()}>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
               className="py-3 px-4 flex-row items-center"
@@ -138,7 +139,7 @@ export default function SavedSignsScreen() {
               colors={['rgba(255, 171, 123, 1.0)', 'rgba(255, 171, 123, 0.0)']}
               className="h-4"
             />
-          </View>
+          </Reanimated.View>
 
           {/* Content */}
           {loading ? (
@@ -146,7 +147,10 @@ export default function SavedSignsScreen() {
               <ActivityIndicator size="large" color="#FF6B00" />
             </View>
           ) : savedItems.length === 0 ? (
-            <View className="flex-1 justify-center items-center px-10">
+            <Reanimated.View 
+              entering={ZoomIn.delay(300).springify()}
+              className="flex-1 justify-center items-center px-10"
+            >
               <MaterialIcons name="bookmark-border" size={64} color={isDark ? '#555' : '#ccc'} />
               <Text className={`text-center mt-4 text-lg font-fredoka-medium ${subTextColor}`}>
                 No saved signs yet.
@@ -154,71 +158,75 @@ export default function SavedSignsScreen() {
               <Text className={`text-center mt-2 text-sm font-montserrat-regular ${subTextColor}`}>
                 Tap the save icon while learning letters, numbers, or phrases to add them here.
               </Text>
-            </View>
+            </Reanimated.View>
           ) : (
             <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
-              {savedItems.map((item) => {
+              {savedItems.map((item, index) => {
                 const details = getDetailFromId(item);
                 if (!details) return null;
 
                 return (
-                  <TouchableOpacity 
-                    key={item.id} 
-                    className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
-                    activeOpacity={0.9}
-                    onPress={() => handlePressItem(item)}
+                  <Reanimated.View
+                    key={item.id}
+                    entering={FadeInDown.delay(index * 100).springify().damping(16)}
                   >
-                    <View className="flex-row p-3">
-                      {/* Mini Video Preview */}
-                      <View className="w-24 h-24 rounded-xl overflow-hidden bg-black mr-3 relative border border-gray-300">
-                        {details.video ? (
-                          <Video
-                            source={details.video}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode={ResizeMode.COVER}
-                            shouldPlay={false}
-                            isMuted={true}
-                          />
-                        ) : (
-                          <View className="flex-1 justify-center items-center">
-                            <MaterialIcons name="broken-image" size={24} color="white" />
+                    <TouchableOpacity 
+                      className={`mb-4 rounded-2xl overflow-hidden border ${cardBorder} ${cardBg} shadow-sm`}
+                      activeOpacity={0.9}
+                      onPress={() => handlePressItem(item)}
+                    >
+                      <View className="flex-row p-3">
+                        {/* Mini Video Preview */}
+                        <View className="w-24 h-24 rounded-xl overflow-hidden bg-black mr-3 relative border border-gray-300">
+                          {details.video ? (
+                            <Video
+                              source={details.video}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode={ResizeMode.COVER}
+                              shouldPlay={false}
+                              isMuted={true}
+                            />
+                          ) : (
+                            <View className="flex-1 justify-center items-center">
+                              <MaterialIcons name="broken-image" size={24} color="white" />
+                            </View>
+                          )}
+                          {/* Play overlay icon */}
+                          <View className="absolute inset-0 justify-center items-center bg-black/20">
+                             <MaterialIcons name="play-circle-filled" size={32} color="white" />
                           </View>
-                        )}
-                        {/* Play overlay icon */}
-                        <View className="absolute inset-0 justify-center items-center bg-black/20">
-                           <MaterialIcons name="play-circle-filled" size={32} color="white" />
                         </View>
-                      </View>
 
-                      {/* Text Info */}
-                      <View className="flex-1 justify-between py-1">
-                        <View>
-                          <View className="flex-row justify-between items-start">
-                            <Text className={`text-lg font-fredoka-semibold ${textColor} flex-1 mr-2`} numberOfLines={1}>
-                              {details.title}
+                        {/* Text Info */}
+                        <View className="flex-1 justify-between py-1">
+                          <View>
+                            <View className="flex-row justify-between items-start">
+                              <Text className={`text-lg font-fredoka-semibold ${textColor} flex-1 mr-2`} numberOfLines={1}>
+                                {details.title}
+                              </Text>
+                              <TouchableOpacity 
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleUnsave(item);
+                                }}
+                                className="p-1"
+                              >
+                                <MaterialIcons name="bookmark" size={24} color="#FF6B00" />
+                              </TouchableOpacity>
+                            </View>
+                            
+                            <Text className="text-xs font-montserrat-bold text-highlight uppercase mt-0.5">
+                              {details.subtitle}
                             </Text>
-                            <TouchableOpacity 
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleUnsave(item);
-                              }}
-                              className="p-1"
-                            >
-                              <MaterialIcons name="bookmark" size={24} color="#FF6B00" />
-                            </TouchableOpacity>
                           </View>
                           
-                          <Text className="text-xs font-montserrat-bold text-highlight uppercase mt-0.5">
-                            {details.subtitle}
+                          <Text className={`text-sm font-montserrat-medium ${subTextColor} mt-2`} numberOfLines={2}>
+                            Tip: {details.tips}
                           </Text>
                         </View>
-                        
-                        <Text className={`text-sm font-montserrat-medium ${subTextColor} mt-2`} numberOfLines={2}>
-                          Tip: {details.tips}
-                        </Text>
                       </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Reanimated.View>
                 );
               })}
             </ScrollView>

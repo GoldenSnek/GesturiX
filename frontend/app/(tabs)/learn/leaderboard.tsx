@@ -10,7 +10,7 @@ import {
   RefreshControl,
   Modal,
   Dimensions,
-  Animated,
+  Animated as RNAnimated,
   StyleSheet,
   PanResponder
 } from 'react-native';
@@ -28,7 +28,9 @@ import {
   unlikeProfile 
 } from '../../../utils/supabaseApi';
 import { supabase } from '../../../src/supabaseClient';
-import * as Haptics from 'expo-haptics';
+
+// Reanimated imports
+import Reanimated, { FadeInDown } from 'react-native-reanimated';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -53,6 +55,79 @@ const FILTERS: { key: SortOption; label: string }[] = [
   { key: 'practice_hours', label: 'Hours' },
 ];
 
+// --- Sub-components defined OUTSIDE to prevent re-mounting glitches ---
+
+const FilterTabs = ({ 
+  sortBy, 
+  setSortBy, 
+  isDark 
+}: { 
+  sortBy: SortOption, 
+  setSortBy: (s: SortOption) => void, 
+  isDark: boolean 
+}) => (
+  <View 
+    style={{
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: isDark ? '#23201C' : '#f9f6f0',
+      borderRadius: 28,
+      padding: 7,
+      marginBottom: 20,
+      marginHorizontal: 12,
+      borderWidth: 1,
+      borderColor: isDark ? '#B5B1A2' : '#E5DDD4',
+      shadowColor: '#000',
+      shadowOpacity: 0.09,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 4,
+      elevation: isDark ? 2 : 1,
+    }}
+  >
+    {FILTERS.map((filter, i) => (
+      <React.Fragment key={filter.key}>
+        <TouchableOpacity
+          onPress={() => setSortBy(filter.key)}
+          activeOpacity={0.9}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 18,
+            paddingVertical: 1, 
+            backgroundColor: sortBy === filter.key
+              ? '#FF6B00'
+              : (isDark ? '#292822' : '#FAF3E7'),
+            marginHorizontal: 5,
+            transform: [{ scale: sortBy === filter.key ? 1.05 : 1.0 }],
+          }}
+        >
+          <Text style={{
+            fontFamily: 'Fredoka-SemiBold',
+            fontSize: 14,
+            color: sortBy === filter.key
+              ? '#FFFFFF'
+              : (isDark ? '#B3B3B3' : '#8A8A8A'),
+            letterSpacing: 0.5,
+            paddingVertical: 10,
+          }}>
+            {filter.label}
+          </Text>
+        </TouchableOpacity>
+        {i < FILTERS.length - 1 && (
+          <View style={{
+            width: 2,
+            alignSelf: 'stretch',
+            backgroundColor: isDark ? '#B5B1A2' : '#E5DDD4',
+            marginVertical: 6,
+            borderRadius: 99,
+          }} />
+        )}
+      </React.Fragment>
+    ))}
+  </View>
+);
+
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -71,14 +146,26 @@ export default function LeaderboardScreen() {
   const [profileLikes, setProfileLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const panY = useRef(new Animated.Value(0)).current;
+  
+  // RNAnimated values for Modal
+  const slideAnim = useRef(new RNAnimated.Value(SCREEN_HEIGHT)).current;
+  const fadeAnim = useRef(new RNAnimated.Value(0)).current;
+  const panY = useRef(new RNAnimated.Value(0)).current;
 
   const bgColorClass = isDark ? 'bg-darkbg' : 'bg-secondary';
   const textColor = isDark ? 'text-secondary' : 'text-primary';
   const itemBg = isDark ? 'bg-darksurface' : 'bg-white';
   
+  // Only for initial screen focus animation if needed, mostly handled by entering props
+  const [screenKey, setScreenKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Optional: Refresh data on focus
+      return () => {};
+    }, [])
+  );
+
   const loadData = async () => {
     if (!refreshing) setLoading(true);
     
@@ -123,7 +210,7 @@ export default function LeaderboardScreen() {
         if (gestureState.dy > 150) {
           closeModal();
         } else {
-          Animated.spring(panY, {
+          RNAnimated.spring(panY, {
             toValue: 0,
             useNativeDriver: true,
             tension: 65,
@@ -137,27 +224,27 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     if (modalVisible) {
       panY.setValue(0);
-      Animated.parallel([
-        Animated.spring(slideAnim, {
+      RNAnimated.parallel([
+        RNAnimated.spring(slideAnim, {
           toValue: 0,
           useNativeDriver: true,
           tension: 65,
           friction: 11
         }),
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
           toValue: 1,
           duration: 200,
           useNativeDriver: true
         })
       ]).start();
     } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
+      RNAnimated.parallel([
+        RNAnimated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
           duration: 250,
           useNativeDriver: true
         }),
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
           toValue: 0,
           duration: 200,
           useNativeDriver: true
@@ -259,116 +346,57 @@ export default function LeaderboardScreen() {
     }
 
     return (
-      <TouchableOpacity 
-        onPress={() => openProfile(item)}
-        activeOpacity={0.9}
-        className={`flex-row items-center p-4 mb-3 rounded-2xl ${containerBorderWidth} ${containerBorder} ${containerBg} shadow-sm`}
+      <Reanimated.View 
+        // Staggered list animation
+        entering={FadeInDown.delay(index * 60).springify().damping(16).mass(0.8)}
       >
-        <View className="w-8 items-center justify-center mr-2">
-          {index < 3 ? (
-            <MaterialIcons name="emoji-events" size={rankSize} color={rankColor} />
-          ) : (
-            <Text className={`font-audiowide text-lg text-gray-400`}>{index + 1}</Text>
-          )}
-        </View>
-
-        <Image
-          source={{ uri: getAvatarUrl(item.profiles?.photo_url) }}
-          className={`w-12 h-12 rounded-full mr-3 border ${isCurrentUser ? 'border-accent' : 'border-gray-300'}`}
-        />
-
-        <View className="flex-1">
-          <Text className={`font-fredoka-semibold text-lg ${textColor}`} numberOfLines={1}>
-            {item.profiles?.username || 'Unknown'} 
-            {isCurrentUser && <Text className="text-accent text-sm"> (You)</Text>}
-          </Text>
-          <View className="flex-row items-center">
-             {sortBy === 'lessons_completed' && <MaterialIcons name="local-fire-department" size={14} color="#FF6B00" />}
-             {sortBy === 'lessons_completed' && (
-                <Text className="text-xs text-gray-500 font-montserrat-medium ml-1">
-                    {item.days_streak} day streak
-                </Text>
-             )}
-             
-             {sortBy !== 'lessons_completed' && (
-                <Text className="text-xs text-gray-500 font-montserrat-medium">
-                    {item.lessons_completed} lessons completed
-                </Text>
-             )}
+        <TouchableOpacity 
+          onPress={() => openProfile(item)}
+          activeOpacity={0.9}
+          className={`flex-row items-center p-4 mb-3 rounded-2xl ${containerBorderWidth} ${containerBorder} ${containerBg} shadow-sm`}
+        >
+          <View className="w-8 items-center justify-center mr-2">
+            {index < 3 ? (
+              <MaterialIcons name="emoji-events" size={rankSize} color={rankColor} />
+            ) : (
+              <Text className={`font-audiowide text-lg text-gray-400`}>{index + 1}</Text>
+            )}
           </View>
-        </View>
 
-        <View className="items-end">
-          <Text className="text-accent font-audiowide text-xl">{displayValue}</Text>
-          <Text className="text-xs text-gray-400 font-fredoka">{displayLabel}</Text>
-        </View>
-      </TouchableOpacity>
+          <Image
+            source={{ uri: getAvatarUrl(item.profiles?.photo_url) }}
+            className={`w-12 h-12 rounded-full mr-3 border ${isCurrentUser ? 'border-accent' : 'border-gray-300'}`}
+          />
+
+          <View className="flex-1">
+            <Text className={`font-fredoka-semibold text-lg ${textColor}`} numberOfLines={1}>
+              {item.profiles?.username || 'Unknown'} 
+              {isCurrentUser && <Text className="text-accent text-sm"> (You)</Text>}
+            </Text>
+            <View className="flex-row items-center">
+               {sortBy === 'lessons_completed' && <MaterialIcons name="local-fire-department" size={14} color="#FF6B00" />}
+               {sortBy === 'lessons_completed' && (
+                  <Text className="text-xs text-gray-500 font-montserrat-medium ml-1">
+                      {item.days_streak} day streak
+                  </Text>
+               )}
+               
+               {sortBy !== 'lessons_completed' && (
+                  <Text className="text-xs text-gray-500 font-montserrat-medium">
+                      {item.lessons_completed} lessons completed
+                  </Text>
+               )}
+            </View>
+          </View>
+
+          <View className="items-end">
+            <Text className="text-accent font-audiowide text-xl">{displayValue}</Text>
+            <Text className="text-xs text-gray-400 font-fredoka">{displayLabel}</Text>
+          </View>
+        </TouchableOpacity>
+      </Reanimated.View>
     );
   };
-
-  // Updated FilterTabs Component matching Phrases.tsx UI
-  const FilterTabs = () => (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: isDark ? '#23201C' : '#f9f6f0',
-        borderRadius: 28,
-        padding: 7,
-        marginBottom: 20,
-        marginHorizontal: 12,
-        borderWidth: 1,
-        borderColor: isDark ? '#B5B1A2' : '#E5DDD4',
-        shadowColor: '#000',
-        shadowOpacity: 0.09,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-        elevation: isDark ? 2 : 1,
-      }}
-    >
-      {FILTERS.map((filter, i) => (
-        <React.Fragment key={filter.key}>
-          <TouchableOpacity
-            onPress={() => setSortBy(filter.key)}
-            activeOpacity={0.9}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 18,
-              paddingVertical: 1, 
-              backgroundColor: sortBy === filter.key
-                ? '#FF6B00'
-                : (isDark ? '#292822' : '#FAF3E7'),
-              marginHorizontal: 5,
-              transform: [{ scale: sortBy === filter.key ? 1.05 : 1.0 }],
-            }}
-          >
-            <Text style={{
-              fontFamily: 'Fredoka-SemiBold',
-              fontSize: 14,
-              color: sortBy === filter.key
-                ? '#FFFFFF'
-                : (isDark ? '#B3B3B3' : '#8A8A8A'),
-              letterSpacing: 0.5,
-              paddingVertical: 10,
-            }}>
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-          {i < FILTERS.length - 1 && (
-            <View style={{
-              width: 2,
-              alignSelf: 'stretch',
-              backgroundColor: isDark ? '#B5B1A2' : '#E5DDD4',
-              marginVertical: 6,
-              borderRadius: 99,
-            }} />
-          )}
-        </React.Fragment>
-      ))}
-    </View>
-  );
 
   return (
     <View className={`flex-1 ${bgColorClass}`}>
@@ -379,7 +407,8 @@ export default function LeaderboardScreen() {
       >
         <View className="flex-1" style={{ paddingTop: insets.top }}>
           
-          <View>
+          {/* Header & Tabs Container - Only Animates on Mount */}
+          <Reanimated.View entering={FadeInDown.duration(600).springify()}>
             <LinearGradient
               colors={['#FF6B00', '#FFAB7B']}
               className="py-3 px-4 flex-row items-center"
@@ -394,21 +423,28 @@ export default function LeaderboardScreen() {
             </LinearGradient>
             
             <View className={`pt-3 ${isDark ? 'bg-darkbg' : 'bg-secondary'}`}>
-               <FilterTabs />
+               <FilterTabs 
+                 sortBy={sortBy} 
+                 setSortBy={setSortBy} 
+                 isDark={isDark} 
+               />
             </View>
             
             <LinearGradient
               colors={['rgba(255, 171, 123, 0.3)', 'rgba(255, 171, 123, 0.0)']}
               className="h-2"
             />
-          </View>
+          </Reanimated.View>
 
           {loading ? (
             <View className="flex-1 justify-center items-center">
               <ActivityIndicator size="large" color="#FF6B00" />
             </View>
           ) : (
+            // Key property forces the FlatList to re-mount when 'sortBy' changes,
+            // triggering the item entrance animations again smoothly.
             <FlatList
+              key={sortBy}
               data={users}
               keyExtractor={(item, index) => index.toString()}
               renderItem={renderItem}
@@ -436,7 +472,7 @@ export default function LeaderboardScreen() {
             onRequestClose={closeModal}
           >
             <View style={styles.modalOverlay}>
-              <Animated.View 
+              <RNAnimated.View 
                 style={[
                   styles.backdrop,
                   { opacity: fadeAnim }
@@ -447,14 +483,14 @@ export default function LeaderboardScreen() {
                   activeOpacity={1} 
                   onPress={closeModal} 
                 />
-              </Animated.View>
+              </RNAnimated.View>
               
-              <Animated.View 
+              <RNAnimated.View 
                 style={[
                   styles.modalContainer,
                   {
                     transform: [
-                      { translateY: Animated.add(slideAnim, panY) }
+                      { translateY: RNAnimated.add(slideAnim, panY) }
                     ]
                   }
                 ]}
@@ -634,7 +670,7 @@ export default function LeaderboardScreen() {
                     </View>
                   )}
                 </View>
-              </Animated.View>
+              </RNAnimated.View>
             </View>
           </Modal>
 

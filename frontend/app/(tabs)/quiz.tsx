@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   StyleSheet,
-  Animated,
+  Animated as RNAnimated, // Renamed to avoid conflict with Reanimated
   ActivityIndicator,
   PanResponder,
   Modal,
@@ -13,7 +13,7 @@ import {
   Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Camera, useCameraDevices, useCameraFormat } from 'react-native-vision-camera';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
@@ -28,6 +28,14 @@ import { ENDPOINTS } from '../../constants/ApiConfig';
 import { supabase } from '../../src/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUserId } from '../../utils/supabaseApi';
+
+// Reanimated Imports
+import Reanimated, { 
+  FadeInDown, 
+  FadeInUp, 
+  ZoomIn,
+  FadeIn
+} from 'react-native-reanimated';
 
 // --- CONFIGURATION ---
 const DETECTION_INTERVAL = 500; // ms between camera checks
@@ -101,6 +109,10 @@ export default function QuizScreen() {
   const [score, setScore] = useState(0);
   const [questionAttempts, setQuestionAttempts] = useState<QuestionAttempt[]>([]);
 
+  // Animation Key for Tab Focus
+  const [animationKey, setAnimationKey] = useState(0);
+  const isFirstRender = useRef(true);
+
   // Gameplay State
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -128,8 +140,8 @@ export default function QuizScreen() {
 
   // Refs
   const cameraRef = useRef<Camera>(null);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const timerAnim = useRef(new Animated.Value(100)).current;
+  const progressAnim = useRef(new RNAnimated.Value(0)).current;
+  const timerAnim = useRef(new RNAnimated.Value(100)).current;
   const timerInterval = useRef<any>(null);
 
   // Camera Setup
@@ -180,6 +192,12 @@ export default function QuizScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Logic to trigger animation restart on return visits
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      } else {
+        setAnimationKey(prev => prev + 1);
+      }
       return () => stopGame();
     }, [])
   );
@@ -299,7 +317,7 @@ export default function QuizScreen() {
     
     startTimer(settings.timeLimit);
 
-    Animated.timing(progressAnim, {
+    RNAnimated.timing(progressAnim, {
       toValue: ((currentQIndex + 1) / questions.length) * 100,
       duration: 500,
       useNativeDriver: false,
@@ -320,7 +338,7 @@ export default function QuizScreen() {
         const newVal = prev - 1;
         const toValue = (newVal / seconds) * 100;
         
-        Animated.timing(timerAnim, {
+        RNAnimated.timing(timerAnim, {
           toValue: isNaN(toValue) ? 0 : toValue, 
           duration: 1000,
           useNativeDriver: false,
@@ -436,7 +454,12 @@ export default function QuizScreen() {
 
   const renderMenu = () => (
     <View className="flex-1 justify-center items-center px-6">
-      <View className={`w-full p-8 rounded-[32px] shadow-lg border border-accent ${colors.cardBg}`}>
+      {/* Sleek, professional entrance - Replays on focus via key */}
+      <Reanimated.View 
+        key={`menu-card-${animationKey}`}
+        entering={FadeInUp.springify().damping(20).mass(0.8)} 
+        className={`w-full p-8 rounded-[32px] shadow-lg border border-accent ${colors.cardBg}`}
+      >
         <View className="items-center mb-6 bg-accent/10 p-6 rounded-full self-center">
           <MaterialIcons name="school" size={60} color={colors.accent} />
         </View>
@@ -454,30 +477,42 @@ export default function QuizScreen() {
         <TouchableOpacity onPress={() => setShowTutorial(true)} className={`py-4 rounded-full border-2 ${isDark ? 'border-highlight' : 'border-highlight'}`}>
           <Text className={`text-center font-fredoka-medium`} style={{ color: colors.textColor }}>How to Play</Text>
         </TouchableOpacity>
-      </View>
+      </Reanimated.View>
     </View>
   );
 
   const renderDifficulty = () => (
     <View className="flex-1 justify-center px-6">
-      <Text className={`text-2xl font-audiowide text-center mb-8`} style={{ color: colors.textColor }}>Select Difficulty</Text>
+      <Reanimated.Text 
+        entering={FadeInDown.duration(400)}
+        className={`text-2xl font-audiowide text-center mb-8`} 
+        style={{ color: colors.textColor }}
+      >
+        Select Difficulty
+      </Reanimated.Text>
       
-      {(['beginner', 'intermediate', 'advanced'] as DifficultyLevel[]).map(level => (
-        <TouchableOpacity 
-          key={level} 
-          onPress={() => startGame(level)}
-          className={`w-full py-5 rounded-2xl border-2 mb-4 items-center ${colors.cardBg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+      {(['beginner', 'intermediate', 'advanced'] as DifficultyLevel[]).map((level, index) => (
+        <Reanimated.View
+          key={level}
+          entering={FadeInDown.delay(index * 120 + 50).springify().damping(18)}
         >
-          <Text className={`text-xl font-fredoka-bold capitalize text-accent`}>{level}</Text>
-          <Text className="text-gray-500 text-xs mt-1 font-montserrat-regular">
-             {level === 'beginner' ? '5 Qs • 25s' : level === 'intermediate' ? '10 Qs • 20s' : '15 Qs • 10s'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => startGame(level)}
+            className={`w-full py-5 rounded-2xl border-2 mb-4 items-center ${colors.cardBg} ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+          >
+            <Text className={`text-xl font-fredoka-bold capitalize text-accent`}>{level}</Text>
+            <Text className="text-gray-500 text-xs mt-1 font-montserrat-regular">
+               {level === 'beginner' ? '5 Qs • 25s' : level === 'intermediate' ? '10 Qs • 20s' : '15 Qs • 10s'}
+            </Text>
+          </TouchableOpacity>
+        </Reanimated.View>
       ))}
       
-      <TouchableOpacity onPress={() => setGameState('menu')} className="mt-4 self-center p-2">
-        <Text className="text-highlight font-montserrat-medium">Cancel</Text>
-      </TouchableOpacity>
+      <Reanimated.View entering={FadeIn.delay(500)}>
+        <TouchableOpacity onPress={() => setGameState('menu')} className="mt-4 self-center p-2">
+          <Text className="text-highlight font-montserrat-medium">Cancel</Text>
+        </TouchableOpacity>
+      </Reanimated.View>
     </View>
   );
 
@@ -496,7 +531,7 @@ export default function QuizScreen() {
           </TouchableOpacity>
           
           <View className="flex-1 mx-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <Animated.View style={{ flex: 1, backgroundColor: colors.accent, width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }} />
+            <RNAnimated.View style={{ flex: 1, backgroundColor: colors.accent, width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }} />
           </View>
 
           <View className={`flex-row items-center px-3 py-1 rounded-full ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
@@ -553,9 +588,9 @@ export default function QuizScreen() {
 
                {answerState === 'correct' && (
                   <View className="absolute inset-0 bg-black/40 justify-center items-center">
-                    <View className="bg-white p-4 rounded-full shadow-lg">
+                    <Reanimated.View entering={ZoomIn.springify()} className="bg-white p-4 rounded-full shadow-lg">
                       <MaterialIcons name="check" size={40} color={colors.success} />
-                    </View>
+                    </Reanimated.View>
                   </View>
                )}
              </View>
@@ -579,15 +614,19 @@ export default function QuizScreen() {
                 }
 
                 return (
-                  <TouchableOpacity 
-                    key={i} 
-                    className={`w-full py-4 rounded-xl border-2 items-center justify-center shadow-sm`}
-                    style={{ backgroundColor: bg, borderColor: border }}
-                    disabled={answerState !== 'idle'}
-                    onPress={() => handleAnswer(opt)}
+                  <Reanimated.View 
+                    key={`${currentQIndex}-${i}`} 
+                    entering={FadeInDown.delay(i * 80).springify().damping(20)}
                   >
-                    <Text className={`text-xl font-fredoka-bold text-center`} style={{ color: colors.textColor }}>{opt}</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity 
+                      className={`w-full py-4 rounded-xl border-2 items-center justify-center shadow-sm`}
+                      style={{ backgroundColor: bg, borderColor: border }}
+                      disabled={answerState !== 'idle'}
+                      onPress={() => handleAnswer(opt)}
+                    >
+                      <Text className={`text-xl font-fredoka-bold text-center`} style={{ color: colors.textColor }}>{opt}</Text>
+                    </TouchableOpacity>
+                  </Reanimated.View>
                 );
               })}
             </View>
@@ -623,7 +662,10 @@ export default function QuizScreen() {
 
   const renderSummary = () => (
     <View className="flex-1 justify-center px-6">
-       <View className={`p-8 rounded-[32px] ${colors.cardBg} border border-accent items-center`}>
+       <Reanimated.View 
+         entering={ZoomIn.springify().damping(15)}
+         className={`p-8 rounded-[32px] ${colors.cardBg} border border-accent items-center`}
+       >
          <MaterialIcons name={score > questions.length/2 ? "emoji-events" : "trending-up"} size={60} color={colors.accent} style={{marginBottom: 16}} />
          
          <Text className={`text-3xl font-audiowide text-center mb-2`} style={{ color: colors.textColor }}>
@@ -651,7 +693,7 @@ export default function QuizScreen() {
          <TouchableOpacity onPress={() => setGameState('menu')} className="bg-accent w-full py-4 rounded-full shadow-md">
            <Text className="text-white text-center font-fredoka-bold text-lg">Back to Menu</Text>
          </TouchableOpacity>
-       </View>
+       </Reanimated.View>
     </View>
   );
 
@@ -710,7 +752,7 @@ export default function QuizScreen() {
             <View className={`p-6 rounded-3xl w-full max-w-xs ${colors.cardBg}`}>
               <Text className={`text-xl font-fredoka-bold mb-2 text-center`} style={{ color: colors.textColor }}>Hint</Text>
               <Text className="text-center text-gray-500 mb-6">
-                 {questions[currentQIndex]?.type === 'performance' 
+                  {questions[currentQIndex]?.type === 'performance' 
                   ? "Ensure your hand is well-lit and centered in the frame." 
                   : "Watch closely for hand shape and movement."}
               </Text>
